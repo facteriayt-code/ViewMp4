@@ -1,6 +1,5 @@
-
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Share2, Check } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
@@ -11,12 +10,25 @@ interface MovieRowProps {
 
 const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
   const rowRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
       const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
       rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent, movie: Movie) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}?v=${movie.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedId(movie.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
     }
   };
 
@@ -48,11 +60,27 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
                 alt={movie.title} 
                 className="w-full h-full object-cover"
               />
+              
+              {/* Share Button on Card */}
+              <button 
+                onClick={(e) => handleShare(e, movie)}
+                className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
+              >
+                {copiedId === movie.id ? <Check className="w-3 h-3 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4 text-white" />}
+              </button>
+
+              {copiedId === movie.id && (
+                <div className="absolute top-10 right-2 z-40 bg-green-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-in fade-in slide-in-from-top-1 uppercase tracking-tighter">
+                  Copied!
+                </div>
+              )}
+
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col justify-end p-2 md:p-4">
-                 <p className="text-xs md:text-sm font-bold text-white truncate">{movie.title}</p>
+                 <p className="text-xs md:text-sm font-bold text-white truncate pr-6">{movie.title}</p>
                  <div className="flex items-center space-x-2 text-[8px] md:text-[10px] text-green-400 font-bold mt-1">
                     <span>{movie.rating}</span>
                     <span>{movie.year}</span>
+                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm">USER</span>}
                  </div>
               </div>
             </div>
