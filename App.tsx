@@ -7,6 +7,7 @@ import MovieDetails from './components/MovieDetails.tsx';
 import UploadModal from './components/UploadModal.tsx';
 import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
+import AgeDisclaimer from './components/AgeDisclaimer.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -15,6 +16,7 @@ import { signOut } from './services/authService.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
+  AGE_VERIFIED: 'geministream_age_verified'
 };
 
 const App: React.FC = () => {
@@ -25,11 +27,17 @@ const App: React.FC = () => {
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); // Default true until checked
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
 
-  // Load Persistence & Listen to Supabase Auth Changes
+  // Initial checks
   useEffect(() => {
+    // 1. Age Verification Check
+    const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
+    setIsAgeVerified(verified === 'true');
+
+    // 2. Auth Session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -63,7 +71,6 @@ const App: React.FC = () => {
         setMovies(prev => {
           const initialIds = new Set(INITIAL_MOVIES.map(m => m.id));
           const filteredPrev = prev.filter(m => initialIds.has(m.id));
-          // Newest cloud videos first
           return [...cloudVideos, ...filteredPrev];
         });
       } catch (err) {
@@ -77,6 +84,11 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleVerifyAge = () => {
+    localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
+    setIsAgeVerified(true);
+  };
 
   const handleLogout = async () => {
     try {
@@ -140,7 +152,9 @@ const App: React.FC = () => {
   }, [filteredMovies]);
 
   return (
-    <div className="relative min-h-screen pb-20 overflow-x-hidden">
+    <div className={`relative min-h-screen pb-20 overflow-x-hidden ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
+      {!isAgeVerified && <AgeDisclaimer onVerify={handleVerifyAge} />}
+
       <Navbar 
         user={user}
         onUploadClick={() => user ? setShowUploadModal(true) : setShowLoginModal(true)} 
