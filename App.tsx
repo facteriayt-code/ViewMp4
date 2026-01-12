@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
 import MovieRow from './components/MovieRow.tsx';
@@ -31,6 +32,9 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  
+  // Track if we've already handled the initial deep link to prevent double-opening
+  const deepLinkProcessed = useRef(false);
 
   useEffect(() => {
     // 1. Verification and Initial State
@@ -115,6 +119,24 @@ const App: React.FC = () => {
       supabase.removeChannel(moviesChannel);
     };
   }, [selectedMovie?.id]);
+
+  // Handle Deep Linking (?v=movie_id)
+  useEffect(() => {
+    if (deepLinkProcessed.current || movies.length === 0) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const videoId = params.get('v');
+
+    if (videoId) {
+      const targetMovie = movies.find(m => m.id === videoId);
+      if (targetMovie) {
+        setSelectedMovie(targetMovie);
+        deepLinkProcessed.current = true;
+        // Optionally clear the query param without refreshing to keep URL clean
+        // window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [movies]);
 
   const handleLogout = async () => {
     try {
