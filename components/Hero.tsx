@@ -6,9 +6,10 @@ import { Movie } from '../types.ts';
 interface HeroProps {
   movie: Movie;
   onInfoClick: (movie: Movie) => void;
+  onPlay: (movie: Movie) => void;
 }
 
-const Hero: React.FC<HeroProps> = ({ movie, onInfoClick }) => {
+const Hero: React.FC<HeroProps> = ({ movie, onInfoClick, onPlay }) => {
   return (
     <div className="relative h-[85vh] w-full">
       <img 
@@ -25,12 +26,15 @@ const Hero: React.FC<HeroProps> = ({ movie, onInfoClick }) => {
         </p>
         
         <div className="flex space-x-4 pt-4">
-          <button className="bg-white text-black px-8 py-3 rounded flex items-center font-bold text-lg hover:bg-gray-200 transition">
+          <button 
+            onClick={() => onPlay(movie)}
+            className="bg-white text-black px-8 py-3 rounded flex items-center font-bold text-lg hover:bg-gray-200 transition active:scale-95"
+          >
             <Play className="w-6 h-6 mr-2 fill-black" /> Play
           </button>
           <button 
             onClick={() => onInfoClick(movie)}
-            className="bg-gray-500/50 text-white px-8 py-3 rounded flex items-center font-bold text-lg hover:bg-gray-500/70 transition"
+            className="bg-gray-500/50 text-white px-8 py-3 rounded flex items-center font-bold text-lg hover:bg-gray-500/70 transition active:scale-95"
           >
             <Info className="w-6 h-6 mr-2" /> More Info
           </button>

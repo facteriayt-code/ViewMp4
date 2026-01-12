@@ -5,12 +5,14 @@ import Hero from './components/Hero.tsx';
 import MovieRow from './components/MovieRow.tsx';
 import MovieDetails from './components/MovieDetails.tsx';
 import UploadModal from './components/UploadModal.tsx';
-import { INITIAL_MOVIES, CATEGORIES } from './constants.ts';
+import VideoPlayer from './components/VideoPlayer.tsx';
+import { INITIAL_MOVIES } from './constants.ts';
 import { Movie } from './types.ts';
 
 const App: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -40,14 +42,25 @@ const App: React.FC = () => {
     setMovies(prev => [newMovie, ...prev]);
   };
 
+  const handlePlay = (movie: Movie) => {
+    setSelectedMovie(null);
+    setPlayingMovie(movie);
+  };
+
   return (
-    <div className="relative min-h-screen pb-20">
+    <div className="relative min-h-screen pb-20 overflow-x-hidden">
       <Navbar 
         onUploadClick={() => setShowUploadModal(true)} 
         onSearch={setSearchTerm}
       />
       
-      {!searchTerm && <Hero movie={featuredMovie} onInfoClick={setSelectedMovie} />}
+      {!searchTerm && (
+        <Hero 
+          movie={featuredMovie} 
+          onInfoClick={setSelectedMovie} 
+          onPlay={handlePlay}
+        />
+      )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
         {searchTerm && (
@@ -77,6 +90,14 @@ const App: React.FC = () => {
         <MovieDetails 
           movie={selectedMovie} 
           onClose={() => setSelectedMovie(null)} 
+          onPlay={handlePlay}
+        />
+      )}
+
+      {playingMovie && (
+        <VideoPlayer 
+          movie={playingMovie} 
+          onClose={() => setPlayingMovie(null)} 
         />
       )}
 

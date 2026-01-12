@@ -26,28 +26,26 @@ const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onSearch }) => {
   };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-colors duration-300 px-4 md:px-12 py-4 flex items-center justify-between ${isScrolled ? 'bg-[#141414]' : 'bg-transparent'}`}>
-      <div className="flex items-center space-x-8">
-        <div className="flex items-center space-x-2">
-           <Film className="w-8 h-8 text-red-600 fill-red-600" />
-           <h1 className="text-red-600 font-black text-2xl tracking-tighter uppercase">GeminiStream</h1>
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-4 md:px-12 py-3 md:py-4 flex items-center justify-between ${isScrolled ? 'bg-[#141414] shadow-lg' : 'bg-transparent'}`}>
+      <div className="flex items-center space-x-4 md:space-x-8">
+        <div className="flex items-center space-x-2 shrink-0">
+           <Film className="w-6 h-6 md:w-8 md:h-8 text-red-600 fill-red-600" />
+           <h1 className="text-red-600 font-black text-lg md:text-2xl tracking-tighter uppercase hidden xs:block">GeminiStream</h1>
         </div>
         <div className="hidden lg:flex space-x-6 text-sm font-medium text-gray-200">
           <button className="hover:text-white transition">Home</button>
-          <button className="hover:text-white transition">TV Shows</button>
           <button className="hover:text-white transition">Movies</button>
-          <button className="hover:text-white transition">New & Popular</button>
           <button className="hover:text-white transition">My List</button>
         </div>
       </div>
 
-      <div className="flex items-center space-x-6">
-        <div className="relative flex items-center bg-black/40 border border-white/20 rounded-full px-3 py-1">
-          <Search className="w-5 h-5 text-gray-300" />
+      <div className="flex items-center space-x-3 md:space-x-6">
+        <div className="relative flex items-center bg-black/40 border border-white/10 rounded-full px-2 md:px-3 py-1 hover:border-white/30 transition-colors">
+          <Search className="w-4 h-4 md:w-5 md:h-5 text-gray-300" />
           <input 
             type="text" 
-            placeholder="Titles, people, genres"
-            className="bg-transparent border-none focus:outline-none text-sm ml-2 w-32 md:w-64 placeholder:text-gray-500"
+            placeholder="Search"
+            className="bg-transparent border-none focus:outline-none text-xs md:text-sm ml-2 w-20 md:w-48 lg:w-64 placeholder:text-gray-500"
             value={searchTerm}
             onChange={handleSearchChange}
           />
@@ -55,14 +53,17 @@ const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onSearch }) => {
         
         <button 
           onClick={onUploadClick}
-          className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition flex items-center space-x-2 px-4"
+          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full md:rounded-lg transition flex items-center space-x-2 px-3 md:px-4 shadow-lg active:scale-95"
+          aria-label="Upload Video"
         >
           <Plus className="w-5 h-5" />
           <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Upload</span>
         </button>
 
-        <Bell className="w-6 h-6 text-gray-300 cursor-pointer hidden md:block" />
-        <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center cursor-pointer">
+        <div className="hidden md:block">
+          <Bell className="w-6 h-6 text-gray-300 cursor-pointer" />
+        </div>
+        <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center cursor-pointer border border-white/10 overflow-hidden">
           <User className="w-5 h-5 text-white" />
         </div>
       </div>

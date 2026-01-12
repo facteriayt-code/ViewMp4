@@ -41,14 +41,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
     }
 
     setIsUploading(true);
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 1500));
+    // Simulate API/Processing delay
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Create a playable local URL for the video
+    const videoUrl = URL.createObjectURL(videoFile);
 
     const newMovie: Movie = {
       id: Math.random().toString(36).substring(2, 9),
       title,
       description,
       thumbnail: thumbnailPreview,
+      videoUrl: videoUrl,
       genre,
       year: new Date().getFullYear(),
       rating: 'NR',
@@ -61,8 +65,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#181818] w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#181818] w-full max-w-xl my-auto rounded-2xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center">
             <Upload className="w-5 h-5 mr-2 text-red-600" />
@@ -83,6 +87,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-600 outline-none transition"
                 placeholder="The Future Awakens..."
+                required
               />
             </div>
             
@@ -108,6 +113,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                     <option>Action</option>
                     <option>Documentary</option>
                     <option>Vlog</option>
+                    <option>Comedy</option>
+                    <option>Horror</option>
                   </select>
                </div>
                <div>
@@ -118,13 +125,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32">
                   <Film className={`w-8 h-8 ${videoFile ? 'text-green-500' : 'text-gray-500 group-hover:text-red-500'}`} />
-                  <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500">
-                    {videoFile ? videoFile.name : 'Select Video'}
+                  <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500 text-center">
+                    {videoFile ? videoFile.name : 'Select Video File'}
                   </span>
-                  <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} />
+                  <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
                </label>
 
                <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32 overflow-hidden">
@@ -134,9 +141,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                     <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-red-500" />
                   )}
                   <span className="relative text-[10px] mt-2 font-bold uppercase tracking-widest text-white shadow-sm">
-                    {thumbnailFile ? 'Thumbnail Ready' : 'Select Poster'}
+                    {thumbnailFile ? 'Thumbnail Ready' : 'Select Poster Image'}
                   </span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} required />
                </label>
             </div>
           </div>
@@ -144,15 +151,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
           <button 
             type="submit" 
             disabled={isUploading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 flex items-center justify-center"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center shadow-lg active:scale-95"
           >
             {isUploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Uploading to Cloud...
+                Processing your video...
               </>
             ) : (
-              'Publish Content'
+              'Publish to GeminiStream'
             )}
           </button>
         </form>

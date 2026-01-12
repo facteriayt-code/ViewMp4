@@ -7,9 +7,10 @@ import { getMovieAIInsight } from '../services/geminiService.ts';
 interface MovieDetailsProps {
   movie: Movie;
   onClose: () => void;
+  onPlay: (movie: Movie) => void;
 }
 
-const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose }) => {
+const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) => {
   const [aiInsight, setAiInsight] = useState<string>('Summoning Gemini intelligence...');
   const [loadingAi, setLoadingAi] = useState(true);
 
@@ -43,7 +44,10 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose }) => {
           <div className="absolute bottom-8 left-8">
             <h2 className="text-3xl md:text-5xl font-black mb-4">{movie.title}</h2>
             <div className="flex space-x-4">
-              <button className="bg-white text-black px-8 py-2 rounded flex items-center font-bold hover:bg-gray-200 transition">
+              <button 
+                onClick={() => onPlay(movie)}
+                className="bg-white text-black px-8 py-2 rounded flex items-center font-bold hover:bg-gray-200 transition active:scale-95"
+              >
                 <Play className="w-5 h-5 mr-2 fill-black" /> Play
               </button>
               <button className="bg-gray-500/50 p-2 rounded-full border-2 border-white/20 hover:border-white transition">
