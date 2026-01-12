@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
@@ -180,13 +179,12 @@ const App: React.FC = () => {
         )}
 
         {rows.map((row, idx) => (
-          <React.Fragment key={row.title + idx}>
-            <MovieRow 
-              title={row.title}
-              movies={row.movies}
-              onMovieClick={setSelectedMovie}
-            />
-          </React.Fragment>
+          <MovieRow 
+            key={row.title + idx}
+            title={row.title}
+            movies={row.movies}
+            onMovieClick={setSelectedMovie}
+          />
         ))}
       </div>
 

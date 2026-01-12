@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Play, Plus, ThumbsUp, Sparkles, User } from 'lucide-react';
 import { Movie } from '../types.ts';
