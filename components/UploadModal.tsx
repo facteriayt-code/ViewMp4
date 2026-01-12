@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Film, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
+import { saveVideoToDB } from '../services/storageService.ts';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -41,38 +42,49 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
     }
 
     setIsUploading(true);
-    // Simulate API/Processing delay
-    await new Promise(r => setTimeout(r, 2000));
+    
+    try {
+      // Create a playable local URL for immediate state update
+      const videoUrl = URL.createObjectURL(videoFile);
+      const movieId = Math.random().toString(36).substring(2, 9);
 
-    // Create a playable local URL for the video
-    const videoUrl = URL.createObjectURL(videoFile);
+      const newMovie: Movie = {
+        id: movieId,
+        title,
+        description,
+        thumbnail: thumbnailPreview,
+        videoUrl: videoUrl,
+        genre,
+        year: new Date().getFullYear(),
+        rating: 'NR',
+        isUserUploaded: true
+      };
 
-    const newMovie: Movie = {
-      id: Math.random().toString(36).substring(2, 9),
-      title,
-      description,
-      thumbnail: thumbnailPreview,
-      videoUrl: videoUrl,
-      genre,
-      year: new Date().getFullYear(),
-      rating: 'NR',
-      isUserUploaded: true
-    };
+      // Save to IndexedDB for cross-session persistence (simulated cloud)
+      await saveVideoToDB(newMovie, videoFile);
 
-    onUpload(newMovie);
-    setIsUploading(false);
-    onClose();
+      // Processing delay for UX
+      await new Promise(r => setTimeout(r, 2000));
+
+      onUpload(newMovie);
+      setIsUploading(false);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload video to local cloud storage.");
+      setIsUploading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181818] w-full max-w-xl my-auto rounded-2xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center">
+          <h2 className="text-xl font-bold flex items-center text-white">
             <Upload className="w-5 h-5 mr-2 text-red-600" />
             Upload Your Content
           </h2>
-          <button onClick={onClose} className="hover:text-red-500 transition">
+          <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -85,7 +97,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                 type="text" 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-600 outline-none transition"
+                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition"
                 placeholder="The Future Awakens..."
                 required
               />
@@ -96,7 +108,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
               <textarea 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 h-24 focus:ring-2 focus:ring-red-600 outline-none transition resize-none"
+                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white h-24 focus:ring-2 focus:ring-red-600 outline-none transition resize-none"
                 placeholder="Describe your masterpiece..."
               />
             </div>
@@ -107,7 +119,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                   <select 
                     value={genre}
                     onChange={(e) => setGenre(e.target.value)}
-                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-600 outline-none transition appearance-none"
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition appearance-none"
                   >
                     <option>Sci-Fi</option>
                     <option>Action</option>
@@ -136,7 +148,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
 
                <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32 overflow-hidden">
                   {thumbnailPreview ? (
-                    <img src={thumbnailPreview} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                    <img src={thumbnailPreview} className="absolute inset-0 w-full h-full object-cover opacity-60" alt="" />
                   ) : (
                     <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-red-500" />
                   )}
@@ -156,7 +168,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
             {isUploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing your video...
+                Uploading to Gemini Cloud...
               </>
             ) : (
               'Publish to GeminiStream'

@@ -9,9 +9,9 @@ import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
+import { getAllVideosFromDB } from './services/storageService.ts';
 
 const STORAGE_KEYS = {
-  UPLOADS: 'gemini_stream_uploads',
   HISTORY: 'gemini_stream_history',
   USER: 'gemini_stream_user'
 };
@@ -25,20 +25,33 @@ const App: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSyncing, setIsSyncing] = useState(true);
 
   // Initial Load from Persistence
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
     if (savedUser) setUser(JSON.parse(savedUser));
 
-    const savedUploads = localStorage.getItem(STORAGE_KEYS.UPLOADS);
-    if (savedUploads) {
-      const parsedUploads = JSON.parse(savedUploads);
-      setMovies(prev => [...parsedUploads, ...prev]);
-    }
-
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     if (savedHistory) setHistoryIds(JSON.parse(savedHistory));
+
+    const syncCommunityContent = async () => {
+      try {
+        const communityVideos = await getAllVideosFromDB();
+        setMovies(prev => {
+          // Merge initial movies with community videos, avoiding duplicates
+          const initialIds = new Set(INITIAL_MOVIES.map(m => m.id));
+          const filteredPrev = prev.filter(m => initialIds.has(m.id));
+          return [...communityVideos, ...filteredPrev];
+        });
+      } catch (err) {
+        console.error("Sync Error:", err);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    syncCommunityContent();
   }, []);
 
   const handleLogin = (newUser: User) => {
@@ -53,7 +66,6 @@ const App: React.FC = () => {
   };
 
   const handleUpload = (newMovie: Movie) => {
-    // Attach user info if logged in
     const uploadedMovie = {
       ...newMovie,
       uploaderId: user?.id,
@@ -61,19 +73,14 @@ const App: React.FC = () => {
     };
     
     setMovies(prev => [uploadedMovie, ...prev]);
-    
-    // Save to "Global" local library
-    const currentUploads = JSON.parse(localStorage.getItem(STORAGE_KEYS.UPLOADS) || '[]');
-    localStorage.setItem(STORAGE_KEYS.UPLOADS, JSON.stringify([uploadedMovie, ...currentUploads]));
   };
 
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
     setPlayingMovie(movie);
     
-    // Add to Watch History
     if (!historyIds.includes(movie.id)) {
-      const newHistory = [movie.id, ...historyIds].slice(0, 20); // Keep last 20
+      const newHistory = [movie.id, ...historyIds].slice(0, 20);
       setHistoryIds(newHistory);
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(newHistory));
     }
@@ -104,12 +111,12 @@ const App: React.FC = () => {
     const othersUploads = userCreated.filter(m => m.uploaderId !== user?.id);
 
     return [
-      { title: 'Trending Now', movies: filteredMovies.slice(0, 6) },
-      { title: 'Community Uploads', movies: othersUploads },
-      { title: 'Sci-Fi & Fantasy', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
-      { title: 'My Watch History', movies: historyMovies },
-      { title: 'My Uploads', movies: myUploads },
-      { title: 'Action Packed', movies: filteredMovies.filter(m => m.genre === 'Action') },
+      { title: 'Trending Now', movies: filteredMovies.slice(0, 10) },
+      { title: 'Shared by Community', movies: othersUploads },
+      { title: 'Continue Watching', movies: historyMovies },
+      { title: 'My Studio Uploads', movies: myUploads },
+      { title: 'Sci-Fi Universe', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
+      { title: 'Pure Action', movies: filteredMovies.filter(m => m.genre === 'Action') },
     ];
   }, [filteredMovies, historyMovies, user]);
 
@@ -132,6 +139,13 @@ const App: React.FC = () => {
       )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
+        {isSyncing && (
+           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-red-500 animate-pulse">
+              <div className="w-2 h-2 bg-red-500 rounded-full" />
+              <span>Syncing Community Cloud...</span>
+           </div>
+        )}
+
         {searchTerm && (
           <div className="px-4 md:px-12 mb-8">
             <h2 className="text-3xl font-bold mb-2">Search results for "{searchTerm}"</h2>
@@ -150,7 +164,7 @@ const App: React.FC = () => {
 
         {filteredMovies.length === 0 && (
            <div className="flex flex-col items-center justify-center py-40 opacity-50">
-              <p className="text-2xl font-light">No titles match your search.</p>
+              <p className="text-2xl font-light">No matches found in our galaxy.</p>
            </div>
         )}
       </div>
@@ -202,7 +216,7 @@ const App: React.FC = () => {
             <span className="hover:underline cursor-pointer">Contact Us</span>
           </div>
         </div>
-        <p className="mt-12 text-center text-xs tracking-widest uppercase">© 2024 GeminiStream Inc. (Powered by Gemini AI)</p>
+        <p className="mt-12 text-center text-xs tracking-widest uppercase">© 2024 GeminiStream. Authenticated via Google. Global community sync active.</p>
       </footer>
     </div>
   );
