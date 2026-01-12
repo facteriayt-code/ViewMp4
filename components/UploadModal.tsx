@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, ExternalLink } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, ExternalLink, RefreshCw } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -80,10 +80,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181818] w-full max-w-xl my-auto rounded-2xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center text-white uppercase italic">
-            <Cloud className="w-5 h-5 mr-2 text-red-600" />
-            Supabase Cloud Upload
-          </h2>
+          <div className="flex flex-col">
+            <h2 className="text-xl font-bold flex items-center text-white uppercase italic">
+              <Cloud className="w-5 h-5 mr-2 text-red-600" />
+              Cloud Stream Upload
+            </h2>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Supabase Realtime Platform</p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition">
             <X className="w-6 h-6" />
           </button>
@@ -94,30 +97,36 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
             <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl space-y-3 text-red-500 text-sm">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold">Upload Error</p>
-                  <p className="opacity-90">{uploadError}</p>
+                <div className="space-y-1 flex-1">
+                  <p className="font-bold">Database Out of Sync</p>
+                  <p className="opacity-90 leading-relaxed">{uploadError}</p>
                 </div>
               </div>
               
-              {uploadError.includes('Permission Denied') && (
-                <div className="bg-black/20 p-3 rounded-lg border border-red-500/20 text-[10px] space-y-2">
-                   <p className="font-bold text-gray-300 uppercase tracking-widest">How to fix:</p>
-                   <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                      <li>Go to your Supabase Dashboard</li>
-                      <li>Select "Storage" -> "Policies"</li>
-                      <li>Add an "INSERT" policy for 'thumbnails' and 'videos' buckets</li>
-                      <li>Set target to "Authenticated" users</li>
-                   </ol>
-                   <a 
-                    href="https://supabase.com/dashboard/project/diurandrwkqhefhwclyv/storage/policies" 
-                    target="_blank" 
-                    className="flex items-center text-red-400 hover:text-red-300 font-bold"
-                   >
-                     Open Policies Dashboard <ExternalLink className="w-3 h-3 ml-1" />
-                   </a>
-                </div>
-              )}
+              <div className="bg-black/20 p-3 rounded-lg border border-red-500/20 text-[10px] space-y-2">
+                 <p className="font-bold text-gray-300 uppercase tracking-widest">Solutions:</p>
+                 <ul className="list-disc list-inside space-y-1 text-gray-400">
+                    <li>Run the <b>SQL Setup Script</b> provided in the chat.</li>
+                    <li>If you just ran the script, click <b>Refresh Page</b> to clear the cache.</li>
+                    <li>Verify the <b>movies</b> table has a <b>views</b> column.</li>
+                 </ul>
+                 <div className="flex items-center space-x-4 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="flex items-center text-red-400 hover:text-red-300 font-bold"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" /> Refresh App
+                    </button>
+                    <a 
+                      href="https://supabase.com/dashboard/project/diurandrwkqhefhwclyv/sql/new" 
+                      target="_blank" 
+                      className="flex items-center text-red-400 hover:text-red-300 font-bold"
+                    >
+                      Open SQL Editor <ExternalLink className="w-3 h-3 ml-1" />
+                    </a>
+                 </div>
+              </div>
             </div>
           )}
 
@@ -127,7 +136,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
                 Uploader: <span className="text-white font-bold">{user.name}</span>
               </p>
               <div className="bg-red-600/10 text-red-500 px-2 py-0.5 rounded text-[10px] font-bold border border-red-600/20">
-                SUPABASE STORAGE
+                ACTIVE PIPELINE
               </div>
             </div>
 
@@ -159,7 +168,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
                </div>
                <div className="flex flex-col justify-end">
                   <div className="w-full bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-center">
-                    Cloud Storage Ready
+                    Auto-Indexing
                   </div>
                </div>
             </div>

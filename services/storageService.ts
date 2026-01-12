@@ -26,7 +26,7 @@ export const saveVideoToCloud = async (
 
     if (error) {
       if (error.message.includes('row-level security')) {
-        throw new Error(`Permission Denied: You must enable 'INSERT' RLS policies for the '${bucket}' bucket in your Supabase Storage settings.`);
+        throw new Error(`Permission Denied: You must enable 'INSERT' RLS policies for the '${bucket}' bucket in Supabase Storage.`);
       }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
@@ -48,27 +48,34 @@ export const saveVideoToCloud = async (
     if (onProgress) onProgress(100);
 
     // 3. Insert metadata into 'movies' table
+    // Ensure all keys match the Snake Case columns in Supabase
+    const payload = {
+      title: movieMetadata.title,
+      description: movieMetadata.description || '',
+      thumbnail: thumbnailUrl,
+      video_url: videoUrl,
+      genre: movieMetadata.genre,
+      year: movieMetadata.year || new Date().getFullYear(),
+      rating: movieMetadata.rating || 'NR',
+      views: 0,
+      is_user_uploaded: true,
+      uploader_id: movieMetadata.uploaderId,
+      uploader_name: movieMetadata.uploaderName
+    };
+
     const { data, error: dbError } = await supabase
       .from('movies')
-      .insert([{
-        title: movieMetadata.title,
-        description: movieMetadata.description,
-        thumbnail: thumbnailUrl,
-        video_url: videoUrl,
-        genre: movieMetadata.genre,
-        year: movieMetadata.year,
-        rating: movieMetadata.rating,
-        views: 0,
-        is_user_uploaded: true,
-        uploader_id: movieMetadata.uploaderId,
-        uploader_name: movieMetadata.uploaderName
-      }])
+      .insert([payload])
       .select()
       .single();
 
     if (dbError) {
-      if (dbError.message.includes('row-level security')) {
-         throw new Error("Database Permission Denied: Ensure RLS is configured to allow 'INSERT' on the 'movies' table.");
+      console.error("Database Insert Error details:", dbError);
+      if (dbError.message.includes('column')) {
+         throw new Error(`Database Schema Error: The column '${dbError.message.split("'")[1]}' is missing. Please run the SQL setup script in your Supabase dashboard.`);
+      }
+      if (dbError.message.includes('schema cache')) {
+         throw new Error("Supabase Schema Cache error: You just updated the database! Please wait 30 seconds and refresh the page.");
       }
       throw new Error(`Database Error: ${dbError.message}`);
     }
@@ -81,7 +88,7 @@ export const saveVideoToCloud = async (
 };
 
 /**
- * Increments movie views in Supabase.
+ * Increments movie views in Supabase using the RPC function.
  */
 export const incrementMovieView = async (movieId: string) => {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
@@ -91,9 +98,10 @@ export const incrementMovieView = async (movieId: string) => {
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
     
     if (rpcError) {
+      // Fallback manual update if RPC is missing
       const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
       if (current) {
-        await supabase.from('movies').update({ views: (current.views || 0) + 1 }).eq('id', movieId);
+        await supabase.from('movies').update({ views: (Number(current.views) || 0) + 1 }).eq('id', movieId);
       }
     }
   } catch (err) {
@@ -124,7 +132,7 @@ const mapDbToMovie = (item: any): Movie => ({
   genre: item.genre,
   year: item.year,
   rating: item.rating,
-  views: item.views || 0,
+  views: Number(item.views) || 0,
   isUserUploaded: item.is_user_uploaded,
   uploaderId: item.uploader_id,
   uploaderName: item.uploader_name
