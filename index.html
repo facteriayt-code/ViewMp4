@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Adcash Library - Step 1: Placed as high as possible -->
+    <!-- Step 1: Adcash Library - Placed as high as possible -->
     <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
     
-    <!-- Adcash Tag - Step 2: Placed below the library script -->
+    <!-- Step 2: Adcash Tag - Placed immediately below the library script -->
     <script type="text/javascript">
         aclib.runVideoSlider({
             zoneId: '10801030',
         });
     </script>
 
-    <!-- Supplemental Adcash AutoTag if needed -->
+    <!-- Supplemental Adcash AutoTag -->
     <script type="text/javascript">
         aclib.runAutoTag({
             zoneId: 'paqafikwyg',
         });
     </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeminiStream - The Future of Entertainment</title>
     
     <!-- Video.js and VAST/IMA Requirements -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
@@ -26,12 +30,6 @@
     <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-ads@7.3.2/dist/videojs-contrib-ads.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/videojs-ima@2.1.0/dist/videojs.ima.min.js"></script>
 
-    <script src="https://3nbf4.com/act/files/tag.min.js?z=10452294" data-cfasync="false" async></script>
-    <script src="https://quge5.com/88/tag.min.js" data-zone="201237" async data-cfasync="false"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="monetag" content="d95c6394aea78dc6818f85cb5bbeaa9d">
-    <title>GeminiStream - The Future of Entertainment</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -67,7 +65,7 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        /* Video.js UI Overrides to match platform theme */
+        /* Video.js UI Overrides */
         .video-js {
             width: 100%;
             height: 100%;
@@ -94,9 +92,9 @@
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
     "@aws-sdk/client-s3": "https://esm.sh/@aws-sdk/client-s3@3.637.0",
     "@aws-sdk/lib-storage": "https://esm.sh/@aws-sdk/lib-storage@3.637.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "firebase/": "https://esm.sh/firebase@^12.7.0/"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
@@ -105,6 +103,7 @@
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
     <script type="text/javascript">
+        // Secondary auto-tag for broad monetization
         aclib.runAutoTag({
             zoneId: 'ijtil5queq',
         });

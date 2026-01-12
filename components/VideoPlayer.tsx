@@ -20,7 +20,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // 1. Initialize Video.js with the ref and required options
+    // 1. Initialize Video.js with the provided ID and source
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
@@ -35,8 +35,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    // 2. Setup IMA with your specific VAST Tag
-    // adTagUrl corresponds to your provided link
+    // 2. Plug in the IMA VAST script logic
     try {
       if (player.ima) {
         player.ima({
@@ -46,7 +45,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         });
       }
     } catch (e) {
-      console.warn("IMA Plugin initialization failed. Pre-rolls may not play.", e);
+      console.warn("VAST Pre-roll initialization failed:", e);
     }
 
     // 3. Increment views when movie starts
@@ -58,7 +57,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       setError("Unable to load video stream.");
     });
 
-    // 4. Handle auto-close/cleanup
+    // 4. Cleanup on unmount
     return () => {
       if (playerRef.current) {
         playerRef.current.dispose();
@@ -92,7 +91,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </h2>
           <div className="flex items-center justify-center space-x-2">
             <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded font-black text-white uppercase tracking-widest">Live</span>
-            <p className="text-xs md:text-sm text-gray-400">VAST Enabled Stream</p>
+            <p className="text-xs md:text-sm text-gray-400">VAST Integrated Player</p>
           </div>
         </div>
 
@@ -144,17 +143,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        /* Ensure the ad container stays on top and manages its own UI */
+        /* Ads UI layering */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
         .vjs-ima-ad-container {
           z-index: 205 !important;
         }
-        /* Style the video component to be responsive */
         .video-js {
           width: 100%;
           height: 100%;
+          background-color: black;
         }
       `}</style>
     </div>
