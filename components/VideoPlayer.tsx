@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
 
@@ -16,16 +16,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const playerRef = useRef<any>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adPlaying, setAdPlaying] = useState(false);
 
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // 1. Initialize Video.js with the provided ID and source
+    // 1. Initialize Video.js
+    // We use the 'my-video' ID specifically as requested for the VAST player
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
       responsive: true,
       fluid: true,
+      preload: 'auto',
       poster: movie.thumbnail,
       sources: movie.videoUrl ? [{
         src: movie.videoUrl,
@@ -35,20 +38,55 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    // 2. Plug in the IMA VAST script logic
+    // 2. Configure IMA with the provided VAST Tag
+    const imaOptions = {
+      id: 'my-video',
+      adTagUrl: 'https://youradexchange.com/video/select.php?r=10801026',
+      showCountdown: true,
+      debug: false,
+      // Prevents the content from playing behind the ad
+      adWillAutoPlay: true,
+      adWillPlayMuted: false
+    };
+
     try {
       if (player.ima) {
-        player.ima({
-          adTagUrl: 'https://youradexchange.com/video/select.php?r=10801026',
-          showCountdown: true,
-          debug: false
+        player.ima(imaOptions);
+
+        // Critical: Initialize the ad container on the first user interaction (play)
+        // This bypasses browser autoplay/audio restrictions
+        const startAds = () => {
+          player.ima.initializeAdDisplayContainer();
+          player.ima.requestAds();
+          player.off('play', startAds);
+        };
+        player.on('play', startAds);
+
+        // Track ad states for UI
+        player.on('ads-ad-started', () => {
+          setAdPlaying(true);
+          console.log('Pre-roll ad started');
+        });
+
+        player.on('ads-ad-ended', () => {
+          setAdPlaying(false);
+        });
+
+        player.on('ads-loader-error', (event: any) => {
+          console.warn('IMA Ads Loader Error (Ad might be blocked or empty):', event.adsManagerLoadedEvent?.getError());
+          setAdPlaying(false);
+        });
+
+        player.on('ads-error', (event: any) => {
+          console.warn('IMA Ads Error:', event.adsManagerLoadedEvent?.getError());
+          setAdPlaying(false);
         });
       }
     } catch (e) {
-      console.warn("VAST Pre-roll initialization failed:", e);
+      console.error("IMA Plugin initialization failed:", e);
     }
 
-    // 3. Increment views when movie starts
+    // 3. Analytics: Increment views when movie starts
     player.on('play', () => {
       if (movie.id) incrementMovieView(movie.id);
     });
@@ -57,7 +95,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       setError("Unable to load video stream.");
     });
 
-    // 4. Cleanup on unmount
+    // 4. Cleanup
     return () => {
       if (playerRef.current) {
         playerRef.current.dispose();
@@ -76,23 +114,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   return (
     <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500 overflow-hidden">
       {/* Top Header Overlay */}
-      <div className="absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-30 bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
+      <div className="absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-[220] bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
         <button 
           onClick={onClose}
           className="flex items-center text-white hover:text-gray-300 transition-colors group pointer-events-auto"
         >
           <ArrowLeft className="w-8 h-8 mr-2 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-xl font-bold hidden md:inline tracking-tight">Back to Browsing</span>
+          <span className="text-xl font-bold hidden md:inline tracking-tight">Back</span>
         </button>
         
         <div className="text-center">
           <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md">
-            {movie.title}
+            {adPlaying ? 'Advertisement' : movie.title}
           </h2>
-          <div className="flex items-center justify-center space-x-2">
-            <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded font-black text-white uppercase tracking-widest">Live</span>
-            <p className="text-xs md:text-sm text-gray-400">VAST Integrated Player</p>
-          </div>
+          {adPlaying && (
+            <div className="flex items-center justify-center space-x-2 animate-pulse">
+              <span className="text-[10px] bg-amber-500 px-1.5 py-0.5 rounded font-black text-black uppercase tracking-widest">Sponsored</span>
+            </div>
+          )}
         </div>
 
         <button 
@@ -111,13 +150,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             </div>
             <h3 className="text-2xl font-black uppercase tracking-tighter">Playback Error</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-              We encountered an issue streaming "{movie.title}". Please verify the source URL or your network connection.
+              Stream initialization failed. Please check your ad-blocker or connection.
             </p>
             <button 
               onClick={onClose} 
-              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition active:scale-95"
+              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition"
             >
-              Close Player
+              Go Back
             </button>
           </div>
         ) : (
@@ -131,8 +170,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
-        {/* Custom Mute Control Layer */}
-        {!error && (
+        {/* Custom Mute Control (hidden during ads as IMA provides its own) */}
+        {!error && !adPlaying && (
           <button 
             onClick={toggleMute}
             className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95 opacity-0 group-hover:opacity-100"
@@ -143,17 +182,31 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        /* Ads UI layering */
+        /* Essential layering for IMA VAST container */
+        .vjs-ima-ad-container {
+          z-index: 215 !important;
+        }
+        
+        /* Ensure ad container fills the player area */
+        #my-video_ima-ad-container,
+        .vjs-ima-ad-container {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Hide control bar while ad is playing */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
-        .vjs-ima-ad-container {
-          z-index: 205 !important;
-        }
-        .video-js {
-          width: 100%;
-          height: 100%;
-          background-color: black;
+
+        /* Netflix theme customizations for Video.js */
+        .vjs-theme-netflix .vjs-big-play-button {
+            background-color: #e50914 !important;
+            border: none !important;
+            width: 2em !important;
+            height: 2em !important;
+            line-height: 2em !important;
+            border-radius: 50% !important;
         }
       `}</style>
     </div>
