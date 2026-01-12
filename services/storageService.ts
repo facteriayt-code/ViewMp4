@@ -48,19 +48,18 @@ export const saveVideoToCloud = async (
     if (onProgress) onProgress(100);
 
     // 3. Insert metadata into 'movies' table
-    // Ensure all keys match the Snake Case columns in Supabase
     const payload = {
-      title: movieMetadata.title,
+      title: movieMetadata.title || 'Untitled Video',
       description: movieMetadata.description || '',
       thumbnail: thumbnailUrl,
       video_url: videoUrl,
-      genre: movieMetadata.genre,
+      genre: movieMetadata.genre || 'General',
       year: movieMetadata.year || new Date().getFullYear(),
       rating: movieMetadata.rating || 'NR',
       views: 0,
       is_user_uploaded: true,
       uploader_id: movieMetadata.uploaderId,
-      uploader_name: movieMetadata.uploaderName
+      uploader_name: movieMetadata.uploaderName || 'Anonymous'
     };
 
     const { data, error: dbError } = await supabase
@@ -71,13 +70,20 @@ export const saveVideoToCloud = async (
 
     if (dbError) {
       console.error("Database Insert Error details:", dbError);
-      if (dbError.message.includes('column')) {
-         throw new Error(`Database Schema Error: The column '${dbError.message.split("'")[1]}' is missing. Please run the SQL setup script in your Supabase dashboard.`);
+      
+      // Extract column name from error message if possible
+      const missingColumnMatch = dbError.message.match(/column "(.+?)"/);
+      const columnName = missingColumnMatch ? missingColumnMatch[1] : null;
+
+      if (columnName) {
+         throw new Error(`Database Schema Error: The column '${columnName}' is missing from your 'movies' table. Please run the ALTER TABLE script in your Supabase SQL Editor.`);
       }
+      
       if (dbError.message.includes('schema cache')) {
-         throw new Error("Supabase Schema Cache error: You just updated the database! Please wait 30 seconds and refresh the page.");
+         throw new Error("Supabase Schema Cache error: Database updated, but API is still using old definition. Please wait 10 seconds and refresh the page.");
       }
-      throw new Error(`Database Error: ${dbError.message}`);
+      
+      throw new Error(`Database Error: ${dbError.message} (Code: ${dbError.code})`);
     }
 
     return mapDbToMovie(data);
@@ -95,13 +101,16 @@ export const incrementMovieView = async (movieId: string) => {
   if (!isUuid) return;
 
   try {
+    // Attempt RPC first (best practice)
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
     
     if (rpcError) {
-      // Fallback manual update if RPC is missing
-      const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
-      if (current) {
-        await supabase.from('movies').update({ views: (Number(current.views) || 0) + 1 }).eq('id', movieId);
+      console.warn("RPC increment failed, falling back to manual update", rpcError);
+      // Fallback manual update if RPC is missing or failing
+      const { data: current, error: fetchError } = await supabase.from('movies').select('views').eq('id', movieId).single();
+      if (!fetchError && current) {
+        const nextViews = (Number(current.views) || 0) + 1;
+        await supabase.from('movies').update({ views: nextViews }).eq('id', movieId);
       }
     }
   } catch (err) {
