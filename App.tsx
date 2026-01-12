@@ -9,7 +9,7 @@ import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
-import { getAllVideosFromDB } from './services/storageService.ts';
+import { getAllVideosFromCloud } from './services/storageService.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
 
-  // Initial Load from Persistence
+  // Load persistence
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
     if (savedUser) setUser(JSON.parse(savedUser));
@@ -35,23 +35,22 @@ const App: React.FC = () => {
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     if (savedHistory) setHistoryIds(JSON.parse(savedHistory));
 
-    const syncCommunityContent = async () => {
+    const syncCloudData = async () => {
       try {
-        const communityVideos = await getAllVideosFromDB();
+        const cloudVideos = await getAllVideosFromCloud();
         setMovies(prev => {
-          // Merge initial movies with community videos, avoiding duplicates
           const initialIds = new Set(INITIAL_MOVIES.map(m => m.id));
           const filteredPrev = prev.filter(m => initialIds.has(m.id));
-          return [...communityVideos, ...filteredPrev];
+          return [...cloudVideos, ...filteredPrev];
         });
       } catch (err) {
-        console.error("Sync Error:", err);
+        console.error("Fetch Error:", err);
       } finally {
         setIsSyncing(false);
       }
     };
 
-    syncCommunityContent();
+    syncCloudData();
   }, []);
 
   const handleLogin = (newUser: User) => {
@@ -66,6 +65,7 @@ const App: React.FC = () => {
   };
 
   const handleUpload = (newMovie: Movie) => {
+    // Add user info as uploader
     const uploadedMovie = {
       ...newMovie,
       uploaderId: user?.id,
@@ -111,12 +111,11 @@ const App: React.FC = () => {
     const othersUploads = userCreated.filter(m => m.uploaderId !== user?.id);
 
     return [
+      { title: 'Global Community Feed', movies: othersUploads },
       { title: 'Trending Now', movies: filteredMovies.slice(0, 10) },
-      { title: 'Shared by Community', movies: othersUploads },
+      { title: 'My Cloud Uploads', movies: myUploads },
       { title: 'Continue Watching', movies: historyMovies },
-      { title: 'My Studio Uploads', movies: myUploads },
-      { title: 'Sci-Fi Universe', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
-      { title: 'Pure Action', movies: filteredMovies.filter(m => m.genre === 'Action') },
+      { title: 'Space & Beyond', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
     ];
   }, [filteredMovies, historyMovies, user]);
 
@@ -140,19 +139,12 @@ const App: React.FC = () => {
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
         {isSyncing && (
-           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-red-500 animate-pulse">
-              <div className="w-2 h-2 bg-red-500 rounded-full" />
-              <span>Syncing Community Cloud...</span>
+           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-blue-500 animate-pulse">
+              <div className="w-2 h-2 bg-blue-500 rounded-full" />
+              <span>Fetching Global Data...</span>
            </div>
         )}
 
-        {searchTerm && (
-          <div className="px-4 md:px-12 mb-8">
-            <h2 className="text-3xl font-bold mb-2">Search results for "{searchTerm}"</h2>
-            <p className="text-gray-500">{filteredMovies.length} items found</p>
-          </div>
-        )}
-        
         {rows.map((row, idx) => (
           <MovieRow 
             key={row.title + idx}
@@ -161,62 +153,22 @@ const App: React.FC = () => {
             onMovieClick={setSelectedMovie}
           />
         ))}
-
-        {filteredMovies.length === 0 && (
-           <div className="flex flex-col items-center justify-center py-40 opacity-50">
-              <p className="text-2xl font-light">No matches found in our galaxy.</p>
-           </div>
-        )}
       </div>
 
       {selectedMovie && (
-        <MovieDetails 
-          movie={selectedMovie} 
-          onClose={() => setSelectedMovie(null)} 
-          onPlay={handlePlay}
-        />
+        <MovieDetails movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
       )}
 
       {playingMovie && (
-        <VideoPlayer 
-          movie={playingMovie} 
-          onClose={() => setPlayingMovie(null)} 
-        />
+        <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />
       )}
 
-      {showUploadModal && (
-        <UploadModal 
-          onClose={() => setShowUploadModal(false)} 
-          onUpload={handleUpload}
-        />
-      )}
+      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} onUpload={handleUpload} />}
 
-      {showLoginModal && (
-        <LoginModal 
-          onLogin={handleLogin}
-          onClose={() => setShowLoginModal(false)}
-        />
-      )}
+      {showLoginModal && <LoginModal onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
 
-      <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
-          <div className="flex flex-col space-y-3">
-            <span className="hover:underline cursor-pointer">Audio Description</span>
-            <span className="hover:underline cursor-pointer">Help Center</span>
-          </div>
-          <div className="flex flex-col space-y-3">
-            <span className="hover:underline cursor-pointer">Media Center</span>
-            <span className="hover:underline cursor-pointer">Jobs</span>
-          </div>
-          <div className="flex flex-col space-y-3">
-            <span className="hover:underline cursor-pointer">Terms of Use</span>
-            <span className="hover:underline cursor-pointer">Privacy</span>
-          </div>
-          <div className="flex flex-col space-y-3">
-            <span className="hover:underline cursor-pointer">Contact Us</span>
-          </div>
-        </div>
-        <p className="mt-12 text-center text-xs tracking-widest uppercase">© 2024 GeminiStream. Authenticated via Google. Global community sync active.</p>
+      <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
+        <p>© 2024 GeminiStream. Powered by Vercel Cloud Architecture.</p>
       </footer>
     </div>
   );

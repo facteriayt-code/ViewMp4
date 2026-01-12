@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Film, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
-import { saveVideoToDB } from '../services/storageService.ts';
+import { saveVideoToCloud } from '../services/storageService.ts';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -36,7 +36,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !videoFile || !thumbnailPreview) {
+    if (!title || !videoFile || !thumbnailFile) {
       alert("Please provide at least a title, video, and thumbnail.");
       return;
     }
@@ -44,34 +44,24 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
     setIsUploading(true);
     
     try {
-      // Create a playable local URL for immediate state update
-      const videoUrl = URL.createObjectURL(videoFile);
-      const movieId = Math.random().toString(36).substring(2, 9);
-
-      const newMovie: Movie = {
-        id: movieId,
+      const metadata = {
         title,
         description,
-        thumbnail: thumbnailPreview,
-        videoUrl: videoUrl,
         genre,
         year: new Date().getFullYear(),
         rating: 'NR',
         isUserUploaded: true
       };
 
-      // Save to IndexedDB for cross-session persistence (simulated cloud)
-      await saveVideoToDB(newMovie, videoFile);
+      // Sends real files to Vercel via Fetch Multipart
+      const savedMovie = await saveVideoToCloud(metadata, videoFile, thumbnailFile);
 
-      // Processing delay for UX
-      await new Promise(r => setTimeout(r, 2000));
-
-      onUpload(newMovie);
+      onUpload(savedMovie);
       setIsUploading(false);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to upload video to local cloud storage.");
+      alert("Upload failed. Make sure your /api/movies/upload route is ready on Vercel.");
       setIsUploading(false);
     }
   };
@@ -82,7 +72,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center text-white">
             <Upload className="w-5 h-5 mr-2 text-red-600" />
-            Upload Your Content
+            Cloud Publish
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition">
             <X className="w-6 h-6" />
@@ -91,6 +81,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="space-y-4">
+            <p className="text-xs text-gray-500">Content will be uploaded to Vercel Blob and shared globally.</p>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Movie Title</label>
               <input 
@@ -123,16 +114,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                   >
                     <option>Sci-Fi</option>
                     <option>Action</option>
-                    <option>Documentary</option>
                     <option>Vlog</option>
                     <option>Comedy</option>
-                    <option>Horror</option>
                   </select>
                </div>
                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Rating</label>
-                  <div className="w-full bg-black/20 text-gray-500 border border-white/5 rounded-lg px-4 py-2 italic text-xs">
-                    Auto-set: NR (Not Rated)
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+                  <div className="w-full bg-black/20 text-green-500 border border-white/5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-widest">
+                    Ready to Stream
                   </div>
                </div>
             </div>
@@ -141,7 +130,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32">
                   <Film className={`w-8 h-8 ${videoFile ? 'text-green-500' : 'text-gray-500 group-hover:text-red-500'}`} />
                   <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500 text-center">
-                    {videoFile ? videoFile.name : 'Select Video File'}
+                    {videoFile ? videoFile.name : 'Choose Video'}
                   </span>
                   <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
                </label>
@@ -153,7 +142,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                     <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-red-500" />
                   )}
                   <span className="relative text-[10px] mt-2 font-bold uppercase tracking-widest text-white shadow-sm">
-                    {thumbnailFile ? 'Thumbnail Ready' : 'Select Poster Image'}
+                    {thumbnailFile ? 'Poster Ready' : 'Choose Poster'}
                   </span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} required />
                </label>
@@ -168,10 +157,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
             {isUploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Uploading to Gemini Cloud...
+                Streaming to Server...
               </>
             ) : (
-              'Publish to GeminiStream'
+              'Publish to Global Feed'
             )}
           </button>
         </form>
