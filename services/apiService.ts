@@ -1,31 +1,6 @@
 
-/**
- * API Service for GeminiStream
- * Used to communicate with Vercel Serverless Functions for DB operations
- */
-
-const BASE_URL = '/api';
-
+// This file is no longer required as we are using the Supabase Client directly in our services.
+// If you have other internal APIs, you can keep it, but for Auth and Storage, Supabase is now the source of truth.
 export const api = {
-  async get(endpoint: string) {
-    const response = await fetch(`${BASE_URL}${endpoint}`);
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `API Error: ${response.status}`);
-    }
-    return response.json();
-  },
-
-  async post(endpoint: string, data: any) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `API Error: ${response.status}`);
-    }
-    return response.json();
-  }
+  // Placeholder if needed for future non-Supabase endpoints
 };
