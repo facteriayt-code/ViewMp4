@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
 
@@ -17,11 +17,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || isInitialized) return;
 
-    // 1. Initialize Video.js with the ID 'my-video' as required for the VAST script logic
+    // 1. Initialize Video.js with the specific ID 'my-video'
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
@@ -36,47 +37,57 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    // 2. Plug in the IMA logic exactly as requested in the script snippet
-    const imaOptions = {
-      id: 'my-video',
-      adTagUrl: 'https://youradexchange.com/video/select.php?r=10801106',
-      showCountdown: true,
-      debug: false
-    };
-
-    try {
+    // 2. Configure IMA following the requested VAST logic
+    player.ready(() => {
       if (player.ima) {
-        player.ima(imaOptions);
-
-        // Standard requirement: Initialize the ad display container on a user gesture (play)
-        const initAdContainer = () => {
-          player.ima.initializeAdDisplayContainer();
-          player.ima.requestAds();
-          player.off('play', initAdContainer);
+        const imaOptions = {
+          id: 'my-video',
+          adTagUrl: 'https://youradexchange.com/video/select.php?r=10801106',
+          showCountdown: true,
+          debug: false,
+          adWillAutoPlay: true,
+          adWillPlayMuted: false
         };
-        
-        player.on('play', initAdContainer);
 
-        // Tracking ad state for UI feedback
-        player.on('ads-ad-started', () => {
-          setIsAdPlaying(true);
-        });
+        try {
+          // Initialize the IMA plugin
+          player.ima(imaOptions);
 
-        player.on('ads-ad-ended', () => {
-          setIsAdPlaying(false);
-        });
+          // Standard IMA Requirement: Initialize container and request ads on first user interaction
+          const startAds = () => {
+            player.ima.initializeAdDisplayContainer();
+            player.ima.requestAds();
+            player.off('play', startAds);
+          };
+          player.on('play', startAds);
 
-        player.on('ads-error', (event: any) => {
-          console.warn('IMA Ads Error:', event.adsManagerLoadedEvent?.getError());
-          setIsAdPlaying(false); // Resume content if ad fails
-        });
+          // Event Listeners for UI state
+          player.on('ads-ad-started', () => {
+            setIsAdPlaying(true);
+            console.log('VAST Ad Started');
+          });
+
+          player.on('ads-ad-ended', () => {
+            setIsAdPlaying(false);
+            console.log('VAST Ad Ended - Content Resuming');
+          });
+
+          player.on('ads-error', (event: any) => {
+            console.warn('IMA Ads Error (Ad blocked or VAST empty):', event.adsManagerLoadedEvent?.getError());
+            setIsAdPlaying(false); // Ensure content plays if ad fails
+          });
+
+          player.on('ads-loader-error', (event: any) => {
+             setIsAdPlaying(false);
+          });
+        } catch (e) {
+          console.error("IMA Plugin failed to initialize:", e);
+        }
       }
-    } catch (e) {
-      console.error("IMA Plugin initialization failed. Check if libraries are loaded.", e);
-    }
+    });
 
-    // 3. Increment views when movie starts
-    player.on('play', () => {
+    // 3. Increment views when movie content actually starts
+    player.on('contentplay', () => {
       if (movie.id) incrementMovieView(movie.id);
     });
 
@@ -84,13 +95,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       setError("Unable to load video stream.");
     });
 
-    // 4. Cleanup
+    setIsInitialized(true);
+
+    // 4. Cleanup on unmount
     return () => {
       if (playerRef.current) {
         playerRef.current.dispose();
       }
     };
-  }, [movie]);
+  }, [movie, isInitialized]);
 
   const toggleMute = () => {
     if (playerRef.current) {
@@ -118,7 +131,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </h2>
           {isAdPlaying && (
             <div className="flex items-center justify-center space-x-2">
-              <span className="text-[10px] bg-amber-500 px-1.5 py-0.5 rounded font-black text-black uppercase tracking-widest animate-pulse">Sponsored</span>
+              <span className="text-[10px] bg-amber-500 px-2 py-0.5 rounded font-black text-black uppercase tracking-widest animate-pulse">Sponsored</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pre-roll</span>
             </div>
           )}
         </div>
@@ -139,13 +153,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             </div>
             <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Error</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-              We couldn't initialize the secure stream. Please disable any content blockers and try again.
+              Secure stream initialization failed. Please check your connection or ad-blocker settings.
             </p>
             <button 
               onClick={onClose} 
               className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition active:scale-95"
             >
-              Close Player
+              Back to Catalog
             </button>
           </div>
         ) : (
@@ -171,19 +185,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        /* Essential layering for IMA VAST container */
+        /* Crucial layering for the IMA Ad Container */
         .vjs-ima-ad-container {
           z-index: 215 !important;
         }
         
-        /* Ensure ad container fills the player area */
+        /* Ensure the ad container expands to full size */
         #my-video_ima-ad-container,
         .vjs-ima-ad-container {
             width: 100% !important;
             height: 100% !important;
         }
 
-        /* Hide standard control bar while ad is playing */
+        /* Prevent standard controls from overlapping the ad */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
@@ -192,6 +206,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           width: 100%;
           height: 100%;
           background-color: black;
+        }
+
+        /* Netflix branding for play button */
+        .vjs-theme-netflix .vjs-big-play-button {
+            background-color: #e50914 !important;
+            border: none !important;
         }
       `}</style>
     </div>
