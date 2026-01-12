@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react';
+import { X, ArrowLeft, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
 
@@ -16,19 +16,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const playerRef = useRef<any>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [adPlaying, setAdPlaying] = useState(false);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
 
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // 1. Initialize Video.js
-    // We use the 'my-video' ID specifically as requested for the VAST player
+    // 1. Initialize Video.js with the ID 'my-video' as required for the VAST script logic
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
       responsive: true,
       fluid: true,
-      preload: 'auto',
       poster: movie.thumbnail,
       sources: movie.videoUrl ? [{
         src: movie.videoUrl,
@@ -38,55 +36,46 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    // 2. Configure IMA with the provided VAST Tag
+    // 2. Plug in the IMA logic exactly as requested in the script snippet
     const imaOptions = {
       id: 'my-video',
-      adTagUrl: 'https://youradexchange.com/video/select.php?r=10801026',
+      adTagUrl: 'https://youradexchange.com/video/select.php?r=10801106',
       showCountdown: true,
-      debug: false,
-      // Prevents the content from playing behind the ad
-      adWillAutoPlay: true,
-      adWillPlayMuted: false
+      debug: false
     };
 
     try {
       if (player.ima) {
         player.ima(imaOptions);
 
-        // Critical: Initialize the ad container on the first user interaction (play)
-        // This bypasses browser autoplay/audio restrictions
-        const startAds = () => {
+        // Standard requirement: Initialize the ad display container on a user gesture (play)
+        const initAdContainer = () => {
           player.ima.initializeAdDisplayContainer();
           player.ima.requestAds();
-          player.off('play', startAds);
+          player.off('play', initAdContainer);
         };
-        player.on('play', startAds);
+        
+        player.on('play', initAdContainer);
 
-        // Track ad states for UI
+        // Tracking ad state for UI feedback
         player.on('ads-ad-started', () => {
-          setAdPlaying(true);
-          console.log('Pre-roll ad started');
+          setIsAdPlaying(true);
         });
 
         player.on('ads-ad-ended', () => {
-          setAdPlaying(false);
-        });
-
-        player.on('ads-loader-error', (event: any) => {
-          console.warn('IMA Ads Loader Error (Ad might be blocked or empty):', event.adsManagerLoadedEvent?.getError());
-          setAdPlaying(false);
+          setIsAdPlaying(false);
         });
 
         player.on('ads-error', (event: any) => {
           console.warn('IMA Ads Error:', event.adsManagerLoadedEvent?.getError());
-          setAdPlaying(false);
+          setIsAdPlaying(false); // Resume content if ad fails
         });
       }
     } catch (e) {
-      console.error("IMA Plugin initialization failed:", e);
+      console.error("IMA Plugin initialization failed. Check if libraries are loaded.", e);
     }
 
-    // 3. Analytics: Increment views when movie starts
+    // 3. Increment views when movie starts
     player.on('play', () => {
       if (movie.id) incrementMovieView(movie.id);
     });
@@ -125,11 +114,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         
         <div className="text-center">
           <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md">
-            {adPlaying ? 'Advertisement' : movie.title}
+            {isAdPlaying ? 'Advertisement' : movie.title}
           </h2>
-          {adPlaying && (
-            <div className="flex items-center justify-center space-x-2 animate-pulse">
-              <span className="text-[10px] bg-amber-500 px-1.5 py-0.5 rounded font-black text-black uppercase tracking-widest">Sponsored</span>
+          {isAdPlaying && (
+            <div className="flex items-center justify-center space-x-2">
+              <span className="text-[10px] bg-amber-500 px-1.5 py-0.5 rounded font-black text-black uppercase tracking-widest animate-pulse">Sponsored</span>
             </div>
           )}
         </div>
@@ -148,15 +137,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             <div className="w-20 h-20 bg-red-600/10 border-2 border-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter">Playback Error</h3>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Error</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-              Stream initialization failed. Please check your ad-blocker or connection.
+              We couldn't initialize the secure stream. Please disable any content blockers and try again.
             </p>
             <button 
               onClick={onClose} 
-              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition"
+              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition active:scale-95"
             >
-              Go Back
+              Close Player
             </button>
           </div>
         ) : (
@@ -170,8 +159,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
-        {/* Custom Mute Control (hidden during ads as IMA provides its own) */}
-        {!error && !adPlaying && (
+        {/* Custom Mute Control Layer - Only visible when ad is NOT playing */}
+        {!error && !isAdPlaying && (
           <button 
             onClick={toggleMute}
             className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95 opacity-0 group-hover:opacity-100"
@@ -194,19 +183,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             height: 100% !important;
         }
 
-        /* Hide control bar while ad is playing */
+        /* Hide standard control bar while ad is playing */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
 
-        /* Netflix theme customizations for Video.js */
-        .vjs-theme-netflix .vjs-big-play-button {
-            background-color: #e50914 !important;
-            border: none !important;
-            width: 2em !important;
-            height: 2em !important;
-            line-height: 2em !important;
-            border-radius: 50% !important;
+        .video-js {
+          width: 100%;
+          height: 100%;
+          background-color: black;
         }
       `}</style>
     </div>
