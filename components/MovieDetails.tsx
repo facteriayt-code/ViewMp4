@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, ThumbsUp, Sparkles } from 'lucide-react';
+import { X, Play, Plus, ThumbsUp, Sparkles, User } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
 
@@ -26,7 +26,7 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative bg-[#181818] w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+      <div className="relative bg-[#181818] w-full max-w-4xl my-8 rounded-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 z-10 bg-black/60 p-2 rounded-full hover:bg-black/80 transition"
@@ -68,6 +68,14 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
               <span>{movie.year}</span>
               <span className="border border-gray-500 px-1 text-[10px] rounded">HD</span>
             </div>
+            
+            {movie.uploaderName && (
+              <div className="flex items-center space-x-2 text-sm text-gray-400 bg-white/5 w-fit px-3 py-1 rounded-full border border-white/10">
+                <User className="w-4 h-4" />
+                <span>Uploaded by <span className="text-white font-bold">{movie.uploaderName}</span></span>
+              </div>
+            )}
+
             <p className="text-gray-200 text-lg leading-relaxed">
               {movie.description}
             </p>

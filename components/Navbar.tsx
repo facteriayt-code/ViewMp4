@@ -1,15 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, Plus, Film } from 'lucide-react';
+import { Search, Bell, User as UserIcon, Plus, Film, LogOut } from 'lucide-react';
+import { User } from '../types.ts';
 
 interface NavbarProps {
+  user: User | null;
   onUploadClick: () => void;
+  onLoginClick: () => void;
+  onLogout: () => void;
   onSearch: (term: string) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onSearch }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLogout, onSearch }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,7 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onSearch }) => {
         <div className="hidden lg:flex space-x-6 text-sm font-medium text-gray-200">
           <button className="hover:text-white transition">Home</button>
           <button className="hover:text-white transition">Movies</button>
-          <button className="hover:text-white transition">My List</button>
+          <button className="hover:text-white transition">New & Popular</button>
         </div>
       </div>
 
@@ -61,11 +66,43 @@ const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onSearch }) => {
         </button>
 
         <div className="hidden md:block">
-          <Bell className="w-6 h-6 text-gray-300 cursor-pointer" />
+          <Bell className="w-6 h-6 text-gray-300 cursor-pointer hover:text-white transition" />
         </div>
-        <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center cursor-pointer border border-white/10 overflow-hidden">
-          <User className="w-5 h-5 text-white" />
-        </div>
+
+        {user ? (
+          <div className="relative">
+            <button 
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="flex items-center space-x-2 group focus:outline-none"
+            >
+              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full border border-white/20 group-hover:border-white transition" />
+            </button>
+            
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-[#181818] border border-white/10 rounded-lg shadow-2xl py-2 animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-2 border-b border-white/10 mb-2">
+                  <p className="text-sm font-bold truncate">{user.name}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                </div>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition">Account</button>
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition">Help Center</button>
+                <button 
+                  onClick={onLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition flex items-center"
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button 
+            onClick={onLoginClick}
+            className="bg-white text-black text-xs md:text-sm font-bold px-4 py-2 rounded transition hover:bg-gray-200 active:scale-95"
+          >
+            Sign In
+          </button>
+        )}
       </div>
     </nav>
   );

@@ -1,4 +1,11 @@
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
 export interface Movie {
   id: string;
   title: string;
@@ -9,6 +16,8 @@ export interface Movie {
   year: number;
   rating: string;
   isUserUploaded?: boolean;
+  uploaderId?: string;
+  uploaderName?: string;
 }
 
 export interface UserUpload {
