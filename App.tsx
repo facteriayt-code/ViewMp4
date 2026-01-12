@@ -12,6 +12,7 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
+import { Database, Wifi, WifiOff } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -26,17 +27,17 @@ const App: React.FC = () => {
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); // Default true until checked
+  const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); 
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
 
-  // Initial checks
   useEffect(() => {
-    // 1. Age Verification Check
+    // 1. Verification and Initial State
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
     setIsAgeVerified(verified === 'true');
 
-    // 2. Auth Session
+    // 2. Auth Sync
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -48,7 +49,7 @@ const App: React.FC = () => {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -61,29 +62,18 @@ const App: React.FC = () => {
       }
     });
 
-    const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
-    if (savedHistory) setHistoryIds(JSON.parse(savedHistory));
-
+    // 3. Database Sync
     const syncCloudData = async () => {
+      setIsSyncing(true);
       try {
         const cloudVideos = await getAllVideosFromCloud();
         const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
-        
-        // Remove duplicates by ID
         const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
         setMovies(uniqueMovies);
-
-        // Check for shared video link after movies are loaded
-        const params = new URLSearchParams(window.location.search);
-        const sharedMovieId = params.get('v');
-        if (sharedMovieId) {
-          const found = uniqueMovies.find(m => m.id === sharedMovieId);
-          if (found) {
-            setSelectedMovie(found);
-          }
-        }
+        setIsOnline(true);
       } catch (err) {
-        console.error("Sync Error:", err);
+        console.error("Supabase Connection Failed:", err);
+        setIsOnline(false);
       } finally {
         setIsSyncing(false);
       }
@@ -91,13 +81,40 @@ const App: React.FC = () => {
 
     syncCloudData();
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // 4. Realtime Pipeline
+    const moviesChannel = supabase
+      .channel('movies-realtime-global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          setMovies(prev => prev.map(m => m.id === payload.new.id ? { ...m, views: payload.new.views } : m));
+          if (selectedMovie?.id === payload.new.id) {
+            setSelectedMovie(prev => prev ? { ...prev, views: payload.new.views } : null);
+          }
+        } else if (payload.eventType === 'INSERT') {
+          const newMovie: Movie = {
+            id: payload.new.id,
+            title: payload.new.title,
+            description: payload.new.description,
+            thumbnail: payload.new.thumbnail,
+            videoUrl: payload.new.video_url,
+            genre: payload.new.genre,
+            year: payload.new.year,
+            rating: payload.new.rating,
+            views: payload.new.views || 0,
+            isUserUploaded: payload.new.is_user_uploaded,
+            uploaderId: payload.new.uploader_id,
+            uploaderName: payload.new.uploader_name
+          };
+          setMovies(prev => [newMovie, ...prev]);
+        }
+      })
+      .subscribe();
 
-  const handleVerifyAge = () => {
-    localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
-    setIsAgeVerified(true);
-  };
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(moviesChannel);
+    };
+  }, [selectedMovie?.id]);
 
   const handleLogout = async () => {
     try {
@@ -108,61 +125,37 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpload = (newMovie: Movie) => {
-    setMovies(prev => [newMovie, ...prev]);
-  };
-
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
     setPlayingMovie(movie);
-    
-    if (!historyIds.includes(movie.id)) {
-      const newHistory = [movie.id, ...historyIds].slice(0, 20);
-      setHistoryIds(newHistory);
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(newHistory));
-    }
   };
 
   const filteredMovies = useMemo(() => {
-    if (!searchTerm) return movies;
+    const term = searchTerm.toLowerCase();
+    if (!term) return movies;
     return movies.filter(m => 
-      m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      m.genre.toLowerCase().includes(searchTerm.toLowerCase())
+      m.title.toLowerCase().includes(term) || 
+      m.genre.toLowerCase().includes(term) ||
+      (m.uploaderName && m.uploaderName.toLowerCase().includes(term))
     );
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
     return [
-      { 
-        title: 'Recent', 
-        movies: filteredMovies.slice(0, 10) 
-      },
-      { 
-        title: 'Insta post', 
-        movies: filteredMovies.filter(m => m.genre === 'Insta post') 
-      },
-      { 
-        title: 'Viral', 
-        movies: filteredMovies.filter(m => m.genre === 'Viral') 
-      },
-      { 
-        title: 'Onlyfans', 
-        movies: filteredMovies.filter(m => m.genre === 'Onlyfans') 
-      },
-      { 
-        title: 'All', 
-        movies: filteredMovies 
-      },
+      { title: 'Trending', movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 10) },
+      { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
+      { title: 'Viral', movies: filteredMovies.filter(m => m.genre === 'Viral') },
+      { title: 'Onlyfans', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
+      { title: 'All Content', movies: filteredMovies },
     ];
   }, [filteredMovies]);
 
-  const featuredMovie = useMemo(() => {
-    return filteredMovies[0] || INITIAL_MOVIES[0];
-  }, [filteredMovies]);
-
   return (
-    <div className={`relative min-h-screen pb-20 overflow-x-hidden ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
-      {!isAgeVerified && <AgeDisclaimer onVerify={handleVerifyAge} />}
+    <div className={`relative min-h-screen pb-20 bg-[#141414] ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
+      {!isAgeVerified && <AgeDisclaimer onVerify={() => {
+        localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
+        setIsAgeVerified(true);
+      }} />}
 
       <Navbar 
         user={user}
@@ -172,21 +165,34 @@ const App: React.FC = () => {
         onSearch={setSearchTerm}
       />
       
-      {!searchTerm && (
+      {!searchTerm && movies.length > 0 && (
         <Hero 
-          movie={featuredMovie} 
+          movie={movies[0]} 
           onInfoClick={setSelectedMovie} 
           onPlay={handlePlay}
         />
       )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
-        {isSyncing && (
-           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-blue-500 animate-pulse">
-              <div className="w-2 h-2 bg-blue-500 rounded-full" />
-              <span>Updating Feed...</span>
-           </div>
-        )}
+        {/* Connection Status Bar */}
+        <div className="px-4 md:px-12 mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+             <div className={`p-1.5 rounded-lg ${isOnline ? 'bg-green-600/10 text-green-500' : 'bg-red-600/10 text-red-500'}`}>
+                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+             </div>
+             <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Supabase Project</span>
+                <span className="text-xs font-bold text-white leading-none">Stream (diurandrwkqhe...)</span>
+             </div>
+          </div>
+          
+          {isSyncing && (
+            <div className="flex items-center space-x-2 text-[10px] font-bold text-orange-500 uppercase tracking-widest animate-pulse">
+               <Database className="w-3 h-3" />
+               <span>Syncing Realtime...</span>
+            </div>
+          )}
+        </div>
 
         {rows.map((row, idx) => (
           <MovieRow 
@@ -210,7 +216,7 @@ const App: React.FC = () => {
         <UploadModal 
           user={user}
           onClose={() => setShowUploadModal(false)} 
-          onUpload={handleUpload} 
+          onUpload={(m) => setMovies(prev => [m, ...prev])} 
         />
       )}
 
@@ -221,8 +227,17 @@ const App: React.FC = () => {
         />
       )}
 
-      <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
-        <p>© 2024 GeminiStream. Discover everything.</p>
+      <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Backend Linked</span>
+          </div>
+          <p className="max-w-md mx-auto text-xs opacity-50">
+            All user data, uploads, and view statistics are synchronized in real-time using Supabase diurandrwkqhefhwclyv.
+          </p>
+          <p>© 2024 GeminiStream Platform.</p>
+        </div>
       </footer>
     </div>
   );

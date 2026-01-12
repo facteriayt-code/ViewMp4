@@ -1,4 +1,3 @@
-
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 import { s3Client, BUCKET_NAME, PUBLIC_URL_BASE } from './s3Client.ts';
@@ -6,6 +5,7 @@ import { Upload } from "@aws-sdk/lib-storage";
 
 /**
  * Handles Large File Uploads via Multi-part S3 Upload
+ * Stores metadata in the user's provided Supabase instance.
  */
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
@@ -69,33 +69,31 @@ export const saveVideoToCloud = async (
 
     if (dbError) throw new Error(`DB Error: ${dbError.message}`);
 
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      thumbnail: data.thumbnail,
-      videoUrl: data.video_url,
-      genre: data.genre,
-      year: data.year,
-      rating: data.rating,
-      views: data.views || 0,
-      isUserUploaded: data.is_user_uploaded,
-      uploaderId: data.uploader_id,
-      uploaderName: data.uploader_name
-    };
+    return mapDbToMovie(data);
   } catch (error: any) {
     console.error("S3/R2 Upload Failure:", error);
     throw error;
   }
 };
 
+/**
+ * Increments movie views in Supabase.
+ * Only works for movies stored in the database.
+ */
 export const incrementMovieView = async (movieId: string) => {
-  // Use Postgres function or direct increment if available
-  // Conceptually: UPDATE movies SET views = views + 1 WHERE id = movieId
+  // Simple regex to check if it's likely a UUID from Supabase vs a string '1' from INITIAL_MOVIES
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
+  if (!isUuid) return;
+
   try {
-    const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
-    if (current) {
-      await supabase.from('movies').update({ views: (current.views || 0) + 1 }).eq('id', movieId);
+    const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
+    
+    if (rpcError) {
+      // Fallback: Manual increment if RPC function hasn't been created yet
+      const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
+      if (current) {
+        await supabase.from('movies').update({ views: (current.views || 0) + 1 }).eq('id', movieId);
+      }
     }
   } catch (err) {
     console.error("Failed to increment view:", err);
@@ -108,20 +106,25 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error("Supabase Fetch Error:", error);
+    return [];
+  }
 
-  return (data || []).map((item: any) => ({
-    id: item.id,
-    title: item.title,
-    description: item.description,
-    thumbnail: item.thumbnail,
-    videoUrl: item.video_url,
-    genre: item.genre,
-    year: item.year,
-    rating: item.rating,
-    views: item.views || 0,
-    isUserUploaded: item.is_user_uploaded,
-    uploaderId: item.uploader_id,
-    uploaderName: item.uploader_name
-  }));
+  return (data || []).map(mapDbToMovie);
 };
+
+const mapDbToMovie = (item: any): Movie => ({
+  id: item.id,
+  title: item.title,
+  description: item.description,
+  thumbnail: item.thumbnail,
+  videoUrl: item.video_url,
+  genre: item.genre,
+  year: item.year,
+  rating: item.rating,
+  views: item.views || 0,
+  isUserUploaded: item.is_user_uploaded,
+  uploaderId: item.uploader_id,
+  uploaderName: item.uploader_name
+});
