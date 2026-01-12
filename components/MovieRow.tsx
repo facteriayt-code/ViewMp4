@@ -1,5 +1,6 @@
+
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
@@ -7,6 +8,12 @@ interface MovieRowProps {
   movies: Movie[];
   onMovieClick: (movie: Movie) => void;
 }
+
+const formatViews = (views: number) => {
+  if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M';
+  if (views >= 1000) return (views / 1000).toFixed(1) + 'K';
+  return views.toString();
+};
 
 const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -61,13 +68,17 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
                 className="w-full h-full object-cover"
               />
               
-              {/* Share Button on Card */}
               <button 
                 onClick={(e) => handleShare(e, movie)}
                 className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
               >
                 {copiedId === movie.id ? <Check className="w-3 h-3 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4 text-white" />}
               </button>
+
+              <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-0 group-hover/card:opacity-100 transition-opacity">
+                <Eye className="w-3 h-3 mr-1" />
+                {formatViews(movie.views)}
+              </div>
 
               {copiedId === movie.id && (
                 <div className="absolute top-10 right-2 z-40 bg-green-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-in fade-in slide-in-from-top-1 uppercase tracking-tighter">

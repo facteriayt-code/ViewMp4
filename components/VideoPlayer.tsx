@@ -2,13 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ArrowLeft, SkipForward, Info, Volume2, VolumeX } from 'lucide-react';
 import { Movie } from '../types.ts';
+import { incrementMovieView } from '../services/storageService.ts';
 
 interface VideoPlayerProps {
   movie: Movie;
   onClose: () => void;
 }
 
-// Sample high-quality ad videos
 const AD_VIDEOS = [
   'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
   'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
@@ -20,6 +20,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [adUrl] = useState(() => AD_VIDEOS[Math.floor(Math.random() * AD_VIDEOS.length)]);
   const [skipTimer, setSkipTimer] = useState(5);
   const [isMuted, setIsMuted] = useState(false);
+  const [viewTracked, setViewTracked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -31,6 +32,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     }
     return () => clearInterval(timer);
   }, [isAdPlaying, skipTimer]);
+
+  useEffect(() => {
+    if (!isAdPlaying && !viewTracked && movie.id) {
+      incrementMovieView(movie.id);
+      setViewTracked(true);
+    }
+  }, [isAdPlaying, viewTracked, movie.id]);
 
   const handleAdEnd = () => {
     setIsAdPlaying(false);
@@ -52,7 +60,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500">
-      {/* Header Overlay */}
       <div className="absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-30 bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
         <button 
           onClick={onClose}
@@ -79,9 +86,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </button>
       </div>
 
-      {/* Video Surface */}
       <div className="w-full h-full flex items-center justify-center bg-black relative">
-        {/* Ad Badge */}
         {isAdPlaying && (
           <div className="absolute top-24 left-8 z-40 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1 rounded flex items-center space-x-2">
             <Info className="w-4 h-4 text-yellow-500" />
@@ -89,7 +94,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
-        {/* Volume Control */}
         <button 
           onClick={toggleMute}
           className="absolute bottom-10 left-10 z-40 p-3 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95"
@@ -97,7 +101,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
         </button>
 
-        {/* Skip Button Overlay */}
         {isAdPlaying && (
           <div className="absolute bottom-10 right-10 z-40">
             <button
@@ -122,7 +125,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             ref={videoRef}
             key={isAdPlaying ? 'ad' : 'movie'}
             src={isAdPlaying ? adUrl : movie.videoUrl} 
-            className={`w-full h-full max-h-screen object-contain transition-opacity duration-700 ${isAdPlaying ? 'opacity-100' : 'opacity-100'}`}
+            className="w-full h-full max-h-screen object-contain"
             controls={!isAdPlaying}
             autoPlay
             onEnded={isAdPlaying ? handleAdEnd : undefined}
@@ -137,19 +140,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             </div>
             <h3 className="text-2xl font-bold">No Playable Video Found</h3>
             <p className="text-gray-400 max-w-md mx-auto">
-              This demo video ("{movie.title}") doesn't have a direct URL. Please upload a real video!
+              This movie ("{movie.title}") doesn't have a direct video stream.
             </p>
-            <button 
-              onClick={onClose}
-              className="bg-white text-black px-8 py-2 rounded font-bold hover:bg-gray-200 transition"
-            >
-              Go Back
-            </button>
+            <button onClick={onClose} className="bg-white text-black px-8 py-2 rounded font-bold">Go Back</button>
           </div>
         )}
       </div>
 
-      {/* Ad Progress Bar (Fake) */}
       {isAdPlaying && (
         <div className="absolute bottom-0 left-0 w-full h-1 bg-white/10 z-50">
            <div className="h-full bg-yellow-500 transition-all duration-1000 animate-ad-progress" style={{ width: '0%' }} />
@@ -157,13 +154,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       )}
       
       <style>{`
-        @keyframes ad-progress {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
-        .animate-ad-progress {
-          animation: ad-progress 30s linear forwards;
-        }
+        @keyframes ad-progress { from { width: 0%; } to { width: 100%; } }
+        .animate-ad-progress { animation: ad-progress 30s linear forwards; }
       `}</style>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 import { s3Client, BUCKET_NAME, PUBLIC_URL_BASE } from './s3Client.ts';
@@ -22,7 +23,6 @@ export const saveVideoToCloud = async (
         Body: file,
         ContentType: file.type,
       },
-      // Important for large files:
       queueSize: 4, 
       partSize: 1024 * 1024 * 5, // 5MB chunks
       leavePartsOnError: false,
@@ -44,13 +44,11 @@ export const saveVideoToCloud = async (
     const videoKey = `videos/${timestamp}-${videoFile.name.replace(/\s+/g, '_')}`;
     const thumbKey = `thumbnails/${timestamp}-${thumbnailFile.name.replace(/\s+/g, '_')}`;
 
-    // 1. Concurrent Upload to S3/R2
     const [videoUrl, thumbnailUrl] = await Promise.all([
       performUpload(videoFile, videoKey),
       performUpload(thumbnailFile, thumbKey)
     ]);
 
-    // 2. Metadata storage in Supabase
     const { data, error: dbError } = await supabase
       .from('movies')
       .insert([{
@@ -61,6 +59,7 @@ export const saveVideoToCloud = async (
         genre: movieMetadata.genre,
         year: movieMetadata.year,
         rating: movieMetadata.rating,
+        views: 0,
         is_user_uploaded: true,
         uploader_id: movieMetadata.uploaderId,
         uploader_name: movieMetadata.uploaderName
@@ -79,6 +78,7 @@ export const saveVideoToCloud = async (
       genre: data.genre,
       year: data.year,
       rating: data.rating,
+      views: data.views || 0,
       isUserUploaded: data.is_user_uploaded,
       uploaderId: data.uploader_id,
       uploaderName: data.uploader_name
@@ -86,6 +86,19 @@ export const saveVideoToCloud = async (
   } catch (error: any) {
     console.error("S3/R2 Upload Failure:", error);
     throw error;
+  }
+};
+
+export const incrementMovieView = async (movieId: string) => {
+  // Use Postgres function or direct increment if available
+  // Conceptually: UPDATE movies SET views = views + 1 WHERE id = movieId
+  try {
+    const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
+    if (current) {
+      await supabase.from('movies').update({ views: (current.views || 0) + 1 }).eq('id', movieId);
+    }
+  } catch (err) {
+    console.error("Failed to increment view:", err);
   }
 };
 
@@ -106,6 +119,7 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     genre: item.genre,
     year: item.year,
     rating: item.rating,
+    views: item.views || 0,
     isUserUploaded: item.is_user_uploaded,
     uploaderId: item.uploader_id,
     uploaderName: item.uploader_name

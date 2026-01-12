@@ -15,6 +15,7 @@ export interface Movie {
   genre: string;
   year: number;
   rating: string;
+  views: number;
   isUserUploaded?: boolean;
   uploaderId?: string;
   uploaderName?: string;

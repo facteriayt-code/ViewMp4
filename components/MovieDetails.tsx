@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check } from 'lucide-react';
+import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
 
@@ -8,6 +9,10 @@ interface MovieDetailsProps {
   onClose: () => void;
   onPlay: (movie: Movie) => void;
 }
+
+const formatViews = (views: number) => {
+  return new Intl.NumberFormat('en-US').format(views);
+};
 
 const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) => {
   const [aiInsight, setAiInsight] = useState<string>('Summoning Gemini intelligence...');
@@ -89,6 +94,10 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
               <span className="text-green-500">98% Match</span>
               <span className="border border-gray-500 px-1 text-xs">{movie.rating}</span>
               <span>{movie.year}</span>
+              <span className="flex items-center text-gray-400">
+                <Eye className="w-4 h-4 mr-1" />
+                {formatViews(movie.views)} views
+              </span>
               <span className="border border-gray-500 px-1 text-[10px] rounded">HD</span>
             </div>
             

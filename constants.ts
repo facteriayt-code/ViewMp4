@@ -9,7 +9,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2094&auto=format&fit=crop',
     genre: 'Sci-Fi',
     year: 2014,
-    rating: 'PG-13'
+    rating: 'PG-13',
+    views: 1254300
   },
   {
     id: '2',
@@ -18,7 +19,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=2070&auto=format&fit=crop',
     genre: 'Action',
     year: 2008,
-    rating: 'PG-13'
+    rating: 'PG-13',
+    views: 4500200
   },
   {
     id: '3',
@@ -27,7 +29,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=2054&auto=format&fit=crop',
     genre: 'Sci-Fi',
     year: 2010,
-    rating: 'PG-13'
+    rating: 'PG-13',
+    views: 3200150
   },
   {
     id: '4',
@@ -36,7 +39,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop',
     genre: 'Action',
     year: 1999,
-    rating: 'R'
+    rating: 'R',
+    views: 8900400
   },
   {
     id: '5',
@@ -45,7 +49,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2068&auto=format&fit=crop',
     genre: 'Adventure',
     year: 2009,
-    rating: 'PG-13'
+    rating: 'PG-13',
+    views: 5600780
   },
   {
     id: '6',
@@ -54,7 +59,8 @@ export const INITIAL_MOVIES: Movie[] = [
     thumbnail: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
     genre: 'Sci-Fi',
     year: 2017,
-    rating: 'R'
+    rating: 'R',
+    views: 1890320
   }
 ];
 
