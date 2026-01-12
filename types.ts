@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   avatar: string;
+  role?: 'admin' | 'user'; // Distinguish between viewer and content manager
 }
 
 export interface Movie {
@@ -18,6 +19,7 @@ export interface Movie {
   isUserUploaded?: boolean;
   uploaderId?: string;
   uploaderName?: string;
+  isFeatured?: boolean; // Admin can set a movie as featured
 }
 
 export interface UserUpload {

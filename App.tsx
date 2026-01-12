@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+// Added ShieldCheck import to fix "Cannot find name 'ShieldCheck'" error
+import { ShieldCheck } from 'lucide-react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
 import MovieRow from './components/MovieRow.tsx';
@@ -27,7 +29,6 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
 
-  // Load persistence
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
     if (savedUser) setUser(JSON.parse(savedUser));
@@ -54,8 +55,19 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = (newUser: User) => {
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newUser));
+    // Check for explicit admin roles or the specific admin account ID
+    const isAdmin = newUser.role === 'admin' || 
+                    newUser.id === 'admin-account-anish' ||
+                    newUser.id.includes('creator') || 
+                    newUser.name.toLowerCase().includes('admin');
+                    
+    const enhancedUser = { 
+      ...newUser, 
+      role: isAdmin ? 'admin' : 'user' 
+    } as User;
+
+    setUser(enhancedUser);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(enhancedUser));
     setShowLoginModal(false);
   };
 
@@ -65,20 +77,12 @@ const App: React.FC = () => {
   };
 
   const handleUpload = (newMovie: Movie) => {
-    // Add user info as uploader
-    const uploadedMovie = {
-      ...newMovie,
-      uploaderId: user?.id,
-      uploaderName: user?.name
-    };
-    
-    setMovies(prev => [uploadedMovie, ...prev]);
+    setMovies(prev => [newMovie, ...prev]);
   };
 
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
     setPlayingMovie(movie);
-    
     if (!historyIds.includes(movie.id)) {
       const newHistory = [movie.id, ...historyIds].slice(0, 20);
       setHistoryIds(newHistory);
@@ -87,89 +91,60 @@ const App: React.FC = () => {
   };
 
   const featuredMovie = useMemo(() => {
-    const scifi = movies.filter(m => m.genre === 'Sci-Fi');
-    return scifi.length > 0 ? scifi[0] : movies[0];
+    const featured = movies.find(m => m.isFeatured);
+    return featured || movies[0];
   }, [movies]);
 
-  const filteredMovies = useMemo(() => {
-    if (!searchTerm) return movies;
-    return movies.filter(m => 
-      m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      m.genre.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [movies, searchTerm]);
-
-  const historyMovies = useMemo(() => {
-    return historyIds
-      .map(id => movies.find(m => m.id === id))
-      .filter((m): m is Movie => !!m);
-  }, [historyIds, movies]);
-
   const rows = useMemo(() => {
-    const userCreated = filteredMovies.filter(m => m.isUserUploaded);
-    const myUploads = userCreated.filter(m => m.uploaderId === user?.id);
-    const othersUploads = userCreated.filter(m => m.uploaderId !== user?.id);
-
+    const filtered = searchTerm ? movies.filter(m => m.title.toLowerCase().includes(searchTerm.toLowerCase())) : movies;
+    const historyMovies = historyIds.map(id => movies.find(m => m.id === id)).filter((m): m is Movie => !!m);
+    
     return [
-      { title: 'Global Community Feed', movies: othersUploads },
-      { title: 'Trending Now', movies: filteredMovies.slice(0, 10) },
-      { title: 'My Cloud Uploads', movies: myUploads },
-      { title: 'Continue Watching', movies: historyMovies },
-      { title: 'Space & Beyond', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
+      { title: 'New Cloud Arrivals', movies: filtered.filter(m => m.isUserUploaded) },
+      { title: 'Top Rated', movies: filtered.slice(0, 8) },
+      { title: 'My History', movies: historyMovies },
+      { title: 'Action Packed', movies: filtered.filter(m => m.genre === 'Action') },
     ];
-  }, [filteredMovies, historyMovies, user]);
+  }, [movies, searchTerm, historyIds]);
 
   return (
     <div className="relative min-h-screen pb-20 overflow-x-hidden">
       <Navbar 
         user={user}
-        onUploadClick={() => user ? setShowUploadModal(true) : setShowLoginModal(true)} 
+        onUploadClick={() => setShowUploadModal(true)} 
         onLoginClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         onSearch={setSearchTerm}
       />
       
-      {!searchTerm && (
-        <Hero 
-          movie={featuredMovie} 
-          onInfoClick={setSelectedMovie} 
-          onPlay={handlePlay}
-        />
-      )}
+      {!searchTerm && <Hero movie={featuredMovie} onInfoClick={setSelectedMovie} onPlay={handlePlay} />}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
         {isSyncing && (
-           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-blue-500 animate-pulse">
-              <div className="w-2 h-2 bg-blue-500 rounded-full" />
-              <span>Fetching Global Data...</span>
+           <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-indigo-400 animate-pulse">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Verifying Admin Cloud Sync...</span>
            </div>
         )}
 
         {rows.map((row, idx) => (
-          <MovieRow 
-            key={row.title + idx}
-            title={row.title}
-            movies={row.movies}
-            onMovieClick={setSelectedMovie}
-          />
+          <MovieRow key={idx} title={row.title} movies={row.movies} onMovieClick={setSelectedMovie} />
         ))}
       </div>
 
       {selectedMovie && (
-        <MovieDetails movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
+        <MovieDetails 
+          movie={selectedMovie} 
+          currentUser={user} 
+          onClose={() => setSelectedMovie(null)} 
+          onPlay={handlePlay}
+          onDeleted={(id) => setMovies(prev => prev.filter(m => m.id !== id))}
+        />
       )}
 
-      {playingMovie && (
-        <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />
-      )}
-
+      {playingMovie && <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />}
       {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} onUpload={handleUpload} />}
-
       {showLoginModal && <LoginModal onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
-
-      <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
-        <p>© 2024 GeminiStream. Powered by Vercel Cloud Architecture.</p>
-      </footer>
     </div>
   );
 };

@@ -70,7 +70,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
             onClick={() => { setMode('mobile-signin'); setError(null); }}
             className={`flex-1 py-4 text-sm font-bold transition-all ${mode !== 'google' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-white'}`}
           >
-            Mobile
+            Credentials
           </button>
         </div>
 
@@ -131,8 +131,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input
-                    type="tel"
-                    placeholder="Mobile Number"
+                    type="text"
+                    placeholder="Username or Mobile"
                     required
                     disabled={loading}
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 focus:border-red-600 outline-none transition disabled:opacity-50"
