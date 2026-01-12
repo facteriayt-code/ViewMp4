@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { X, Upload, Film, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { Movie } from '../types';
+import { Movie } from '../types.ts';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -45,7 +45,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
     await new Promise(r => setTimeout(r, 1500));
 
     const newMovie: Movie = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 9),
       title,
       description,
       thumbnail: thumbnailPreview,

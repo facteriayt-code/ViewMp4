@@ -1,5 +1,5 @@
 
-import { Movie } from './types';
+import { Movie } from './types.ts';
 
 export const INITIAL_MOVIES: Movie[] = [
   {

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Play, Plus, ThumbsUp, Sparkles } from 'lucide-react';
-import { Movie } from '../types';
-import { getMovieAIInsight } from '../services/geminiService';
+import { Movie } from '../types.ts';
+import { getMovieAIInsight } from '../services/geminiService.ts';
 
 interface MovieDetailsProps {
   movie: Movie;

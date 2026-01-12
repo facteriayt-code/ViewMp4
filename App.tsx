@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import MovieRow from './components/MovieRow';
-import MovieDetails from './components/MovieDetails';
-import UploadModal from './components/UploadModal';
-import { INITIAL_MOVIES, CATEGORIES } from './constants';
-import { Movie } from './types';
+import Navbar from './components/Navbar.tsx';
+import Hero from './components/Hero.tsx';
+import MovieRow from './components/MovieRow.tsx';
+import MovieDetails from './components/MovieDetails.tsx';
+import UploadModal from './components/UploadModal.tsx';
+import { INITIAL_MOVIES, CATEGORIES } from './constants.ts';
+import { Movie } from './types.ts';
 
 const App: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);

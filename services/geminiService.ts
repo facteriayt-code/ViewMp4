@@ -1,11 +1,9 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
 export const getMovieAIInsight = async (movieTitle: string): Promise<string> => {
   try {
-    const ai = getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Provide a short, 2-sentence fascinating fact about the movie "${movieTitle}". Keep it engaging for a streaming platform audience.`,
@@ -19,7 +17,7 @@ export const getMovieAIInsight = async (movieTitle: string): Promise<string> => 
 
 export const getAIPersonalizedRecommendations = async (userHistory: string[]): Promise<string> => {
   try {
-    const ai = getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const historyText = userHistory.length > 0 ? userHistory.join(", ") : "Action and Sci-Fi";
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
