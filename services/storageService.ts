@@ -11,26 +11,36 @@ export const saveVideoToCloud = async (
   videoFile: File, 
   thumbnailFile: File
 ): Promise<Movie> => {
-  const fileExtVideo = videoFile.name.split('.').pop();
-  const fileExtThumb = thumbnailFile.name.split('.').pop();
-  const fileName = `${Math.random().toString(36).substring(2, 15)}`;
-  
-  const videoPath = `uploads/${fileName}.${fileExtVideo}`;
-  const thumbPath = `uploads/${fileName}.${fileExtThumb}`;
+  // Generate unique file paths
+  const timestamp = Date.now();
+  const videoPath = `videos/${timestamp}-${videoFile.name.replace(/\s+/g, '_')}`;
+  const thumbPath = `thumbnails/${timestamp}-${thumbnailFile.name.replace(/\s+/g, '_')}`;
 
   // 1. Upload Video to 'media' bucket
   const { error: videoError } = await supabase.storage
     .from('media')
-    .upload(videoPath, videoFile);
+    .upload(videoPath, videoFile, {
+      cacheControl: '3600',
+      upsert: false
+    });
 
-  if (videoError) throw new Error(`Video upload failed: ${videoError.message}`);
+  if (videoError) {
+    console.error("Video Upload Error:", videoError);
+    throw new Error(`Video upload failed: ${videoError.message}. Make sure the 'media' bucket exists and is public.`);
+  }
 
   // 2. Upload Thumbnail to 'media' bucket
   const { error: thumbError } = await supabase.storage
     .from('media')
-    .upload(thumbPath, thumbnailFile);
+    .upload(thumbPath, thumbnailFile, {
+      cacheControl: '3600',
+      upsert: false
+    });
 
-  if (thumbError) throw new Error(`Thumbnail upload failed: ${thumbError.message}`);
+  if (thumbError) {
+    console.error("Thumbnail Upload Error:", thumbError);
+    throw new Error(`Thumbnail upload failed: ${thumbError.message}`);
+  }
 
   // 3. Get Public URLs
   const { data: { publicUrl: videoUrl } } = supabase.storage.from('media').getPublicUrl(videoPath);
@@ -54,7 +64,10 @@ export const saveVideoToCloud = async (
     .select()
     .single();
 
-  if (dbError) throw new Error(`Database error: ${dbError.message}`);
+  if (dbError) {
+    console.error("Database Insert Error:", dbError);
+    throw new Error(`Database error: ${dbError.message}`);
+  }
 
   return {
     id: data.id,
@@ -82,7 +95,7 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     return [];
   }
 
-  return data.map((item: any) => ({
+  return (data || []).map((item: any) => ({
     id: item.id,
     title: item.title,
     description: item.description,
