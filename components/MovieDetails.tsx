@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Play, Plus, ThumbsUp, Sparkles, User } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
+import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -103,6 +104,11 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
                <p className="text-xs text-gray-500 italic">User Content? {movie.isUserUploaded ? 'Yes' : 'Original Selection'}</p>
             </div>
           </div>
+        </div>
+
+        {/* Ad inside Detailed View */}
+        <div className="p-8 border-t border-white/5">
+           <AdBanner />
         </div>
       </div>
     </div>

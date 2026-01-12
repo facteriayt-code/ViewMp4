@@ -8,6 +8,8 @@ import UploadModal from './components/UploadModal.tsx';
 import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
+import AdBanner from './components/AdBanner.tsx';
+import InFeedAd from './components/InFeedAd.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -180,14 +182,20 @@ const App: React.FC = () => {
         )}
 
         {rows.map((row, idx) => (
-          <MovieRow 
-            key={row.title + idx}
-            title={row.title}
-            movies={row.movies}
-            onMovieClick={setSelectedMovie}
-          />
+          <React.Fragment key={row.title + idx}>
+            <MovieRow 
+              title={row.title}
+              movies={row.movies}
+              onMovieClick={setSelectedMovie}
+            />
+            {/* Inject an In-Feed Ad every 2 rows */}
+            {(idx + 1) % 2 === 0 && <InFeedAd />}
+          </React.Fragment>
         ))}
       </div>
+
+      {/* Persistent Ad Banner */}
+      <AdBanner />
 
       {selectedMovie && (
         <MovieDetails movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
