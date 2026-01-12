@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
 import { X, Upload, Film, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { Movie } from '../types.ts';
+import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
 interface UploadModalProps {
+  user: User;
   onClose: () => void;
   onUpload: (newMovie: Movie) => void;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('Sci-Fi');
@@ -50,10 +51,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
         genre,
         year: new Date().getFullYear(),
         rating: 'NR',
-        isUserUploaded: true
+        isUserUploaded: true,
+        uploaderId: user.id,
+        uploaderName: user.name
       };
 
-      // Sends real files to Vercel via Fetch Multipart
+      // Sends real files to Supabase via the storage service
       const savedMovie = await saveVideoToCloud(metadata, videoFile, thumbnailFile);
 
       onUpload(savedMovie);
@@ -61,7 +64,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
       onClose();
     } catch (err: any) {
       console.error(err);
-      alert("Upload failed. Make sure your /api/movies/upload route is ready on Vercel.");
+      alert(err.message || "Upload failed. Please try again.");
       setIsUploading(false);
     }
   };
@@ -81,7 +84,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="space-y-4">
-            <p className="text-xs text-gray-500">Content will be uploaded to Vercel Blob and shared globally.</p>
+            <p className="text-xs text-gray-500">Authenticated as: <span className="text-white font-bold">{user.name}</span>. Your content will be shared globally.</p>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Movie Title</label>
               <input 
@@ -116,11 +119,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
                     <option>Action</option>
                     <option>Vlog</option>
                     <option>Comedy</option>
+                    <option>Documentary</option>
                   </select>
                </div>
                <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
-                  <div className="w-full bg-black/20 text-green-500 border border-white/5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-widest">
+                  <div className="w-full bg-black/20 text-green-500 border border-white/5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-widest text-center">
                     Ready to Stream
                   </div>
                </div>
@@ -129,7 +133,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32">
                   <Film className={`w-8 h-8 ${videoFile ? 'text-green-500' : 'text-gray-500 group-hover:text-red-500'}`} />
-                  <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500 text-center">
+                  <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500 text-center truncate w-full px-2">
                     {videoFile ? videoFile.name : 'Choose Video'}
                   </span>
                   <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
@@ -157,7 +161,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUpload }) => {
             {isUploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Streaming to Server...
+                Uploading to Supabase...
               </>
             ) : (
               'Publish to Global Feed'

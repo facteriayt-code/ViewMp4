@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
 import { User as UserType } from '../types.ts';
-import { User, ChevronRight, Phone, Lock, UserPlus, LogIn, ArrowLeft, Loader2 } from 'lucide-react';
-import { signUpMobile, loginMobile } from '../services/authService.ts';
+import { Mail, ChevronRight, Phone, Lock, UserPlus, LogIn, ArrowLeft, Loader2, Globe } from 'lucide-react';
+import { signUpEmail, loginEmail, signInWithGoogle } from '../services/authService.ts';
 
 interface LoginModalProps {
   onLogin: (user: UserType) => void;
   onClose: () => void;
 }
 
-type AuthMode = 'google' | 'mobile-signin' | 'mobile-signup';
+type AuthMode = 'google' | 'email-signin' | 'email-signup';
 
 const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
   const [mode, setMode] = useState<AuthMode>('google');
@@ -17,41 +17,40 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleMobileSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
       let user;
-      if (mode === 'mobile-signup') {
-        user = await signUpMobile(name, mobile, password);
+      if (mode === 'email-signup') {
+        user = await signUpEmail(name, email, password);
       } else {
-        user = await loginMobile(mobile, password);
+        user = await loginEmail(email, password);
       }
       onLogin(user);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "An error occurred during authentication.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleMock = (user: UserType) => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      onLogin(user);
+    setError(null);
+    try {
+      await signInWithGoogle();
+      // Supabase OAuth redirects away, so loading state handles the wait
+    } catch (err: any) {
+      setError(err.message || "Google Sign-In failed.");
       setLoading(false);
-    }, 1000);
+    }
   };
-
-  const mockGoogleAccounts = [
-    { name: 'Google User', email: 'user@gmail.com', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop' },
-    { name: 'Creative Mind', email: 'creator@gmail.com', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop' }
-  ];
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
@@ -67,10 +66,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
           </button>
           <button 
             disabled={loading}
-            onClick={() => { setMode('mobile-signin'); setError(null); }}
+            onClick={() => { setMode('email-signin'); setError(null); }}
             className={`flex-1 py-4 text-sm font-bold transition-all ${mode !== 'google' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-white'}`}
           >
-            Mobile
+            Email
           </button>
         </div>
 
@@ -78,33 +77,37 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
           {mode === 'google' ? (
             <div className="space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">Sign in with Google</h2>
-                <p className="text-sm text-gray-400">Sync with your device account</p>
+                <h2 className="text-2xl font-bold text-white flex items-center justify-center">
+                  <Globe className="w-6 h-6 mr-2 text-blue-500" />
+                  Real-time Sync
+                </h2>
+                <p className="text-sm text-gray-400">Continue with your Google Account</p>
               </div>
 
-              <div className="space-y-2">
-                {mockGoogleAccounts.map((acc) => (
-                  <button
-                    key={acc.email}
+              <div className="space-y-4">
+                 <button
                     disabled={loading}
-                    onClick={() => handleGoogleMock({ id: acc.email, ...acc })}
-                    className="w-full flex items-center p-3 bg-white/5 hover:bg-white/10 transition rounded-xl border border-white/5 disabled:opacity-50"
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center p-4 bg-white text-black hover:bg-gray-200 transition rounded-xl font-bold shadow-lg shadow-white/5 active:scale-95 disabled:opacity-50"
                   >
-                    <img src={acc.avatar} className="w-10 h-10 rounded-full mr-4 border border-white/10" alt="" />
-                    <div className="flex-1 text-left overflow-hidden">
-                      <p className="text-sm font-bold truncate">{acc.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{acc.email}</p>
-                    </div>
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4 text-gray-600" />}
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    ) : (
+                      <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-3" alt="G" />
+                    )}
+                    {loading ? 'Redirecting to Google...' : 'Sign in with Google'}
                   </button>
-                ))}
+                  
+                  <p className="text-[10px] text-gray-500 text-center leading-relaxed px-4">
+                    By choosing Google, you'll be redirected to Supabase's secure login portal to complete your authentication.
+                  </p>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleMobileSubmit} className="space-y-6">
+            <form onSubmit={handleEmailSubmit} className="space-y-6">
               <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">{mode === 'mobile-signin' ? 'Welcome Back' : 'Join GeminiStream'}</h2>
-                <p className="text-sm text-gray-400">{mode === 'mobile-signin' ? 'Signing into Cloud Database' : 'Connecting to Global Server'}</p>
+                <h2 className="text-2xl font-bold">{mode === 'email-signin' ? 'Welcome Back' : 'Join GeminiStream'}</h2>
+                <p className="text-sm text-gray-400">Powered by Supabase Secure Auth</p>
               </div>
 
               {error && (
@@ -114,9 +117,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
               )}
 
               <div className="space-y-4">
-                {mode === 'mobile-signup' && (
+                {mode === 'email-signup' && (
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input
                       type="text"
                       placeholder="Full Name"
@@ -129,15 +132,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
                   </div>
                 )}
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input
-                    type="tel"
-                    placeholder="Mobile Number"
+                    type="email"
+                    placeholder="Email Address"
                     required
                     disabled={loading}
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 focus:border-red-600 outline-none transition disabled:opacity-50"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="relative">
@@ -159,18 +162,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
                 disabled={loading}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition flex items-center justify-center space-x-2 active:scale-[0.98] shadow-lg shadow-red-600/20 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === 'mobile-signin' ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />)}
-                <span>{loading ? 'Processing...' : (mode === 'mobile-signin' ? 'Sign In' : 'Sign Up Now')}</span>
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === 'email-signin' ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />)}
+                <span>{loading ? 'Authenticating...' : (mode === 'email-signin' ? 'Sign In' : 'Sign Up Now')}</span>
               </button>
 
               <div className="text-center pt-2">
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => { setMode(mode === 'mobile-signin' ? 'mobile-signup' : 'mobile-signin'); setError(null); }}
+                  onClick={() => { setMode(mode === 'email-signin' ? 'email-signup' : 'email-signin'); setError(null); }}
                   className="text-sm text-gray-400 hover:text-white transition disabled:opacity-50"
                 >
-                  {mode === 'mobile-signin' ? "New here? Sign up now." : "Already have an account? Sign in."}
+                  {mode === 'email-signin' ? "New here? Sign up now." : "Already have an account? Sign in."}
                 </button>
               </div>
             </form>
@@ -179,7 +182,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
           <div className="mt-8 flex justify-center">
             <button 
               onClick={onClose}
-              className="flex items-center text-xs text-gray-500 hover:text-white transition group"
+              disabled={loading}
+              className="flex items-center text-xs text-gray-500 hover:text-white transition group disabled:opacity-50"
             >
               <ArrowLeft className="w-3 h-3 mr-1 group-hover:-translate-x-1 transition-transform" />
               Cancel and go back

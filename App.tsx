@@ -10,10 +10,11 @@ import LoginModal from './components/LoginModal.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
+import { supabase } from './services/supabaseClient.ts';
+import { signOut } from './services/authService.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
-  USER: 'gemini_stream_user'
 };
 
 const App: React.FC = () => {
@@ -27,14 +28,39 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
 
-  // Load persistence
+  // Load Persistence & Listen to Supabase Auth Changes
   useEffect(() => {
-    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    if (savedUser) setUser(JSON.parse(savedUser));
+    // 1. Initial Session Check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+        });
+      }
+    });
 
+    // 2. Auth State Listener (Handles Google Redirect & Manual Login)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    // 3. Load Watch History
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     if (savedHistory) setHistoryIds(JSON.parse(savedHistory));
 
+    // 4. Sync Cloud Data
     const syncCloudData = async () => {
       try {
         const cloudVideos = await getAllVideosFromCloud();
@@ -44,35 +70,28 @@ const App: React.FC = () => {
           return [...cloudVideos, ...filteredPrev];
         });
       } catch (err) {
-        console.error("Fetch Error:", err);
+        console.error("Sync Error:", err);
       } finally {
         setIsSyncing(false);
       }
     };
 
     syncCloudData();
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (newUser: User) => {
-    setUser(newUser);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newUser));
-    setShowLoginModal(false);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUser(null);
+    } catch (err) {
+      console.error("Logout error", err);
+    }
   };
 
   const handleUpload = (newMovie: Movie) => {
-    // Add user info as uploader
-    const uploadedMovie = {
-      ...newMovie,
-      uploaderId: user?.id,
-      uploaderName: user?.name
-    };
-    
-    setMovies(prev => [uploadedMovie, ...prev]);
+    setMovies(prev => [newMovie, ...prev]);
   };
 
   const handlePlay = (movie: Movie) => {
@@ -141,7 +160,7 @@ const App: React.FC = () => {
         {isSyncing && (
            <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-blue-500 animate-pulse">
               <div className="w-2 h-2 bg-blue-500 rounded-full" />
-              <span>Fetching Global Data...</span>
+              <span>Connecting to Supabase...</span>
            </div>
         )}
 
@@ -163,12 +182,23 @@ const App: React.FC = () => {
         <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />
       )}
 
-      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} onUpload={handleUpload} />}
+      {showUploadModal && user && (
+        <UploadModal 
+          user={user}
+          onClose={() => setShowUploadModal(false)} 
+          onUpload={handleUpload} 
+        />
+      )}
 
-      {showLoginModal && <LoginModal onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
+      {showLoginModal && (
+        <LoginModal 
+          onLogin={() => setShowLoginModal(false)} 
+          onClose={() => setShowLoginModal(false)} 
+        />
+      )}
 
       <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
-        <p>© 2024 GeminiStream. Powered by Vercel Cloud Architecture.</p>
+        <p>© 2024 GeminiStream. Powered by Supabase & Vercel.</p>
       </footer>
     </div>
   );
