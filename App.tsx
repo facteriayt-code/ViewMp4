@@ -30,7 +30,6 @@ const App: React.FC = () => {
 
   // Load Persistence & Listen to Supabase Auth Changes
   useEffect(() => {
-    // 1. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -42,7 +41,6 @@ const App: React.FC = () => {
       }
     });
 
-    // 2. Auth State Listener (Handles Google Redirect & Manual Login)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
@@ -56,17 +54,16 @@ const App: React.FC = () => {
       }
     });
 
-    // 3. Load Watch History
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     if (savedHistory) setHistoryIds(JSON.parse(savedHistory));
 
-    // 4. Sync Cloud Data
     const syncCloudData = async () => {
       try {
         const cloudVideos = await getAllVideosFromCloud();
         setMovies(prev => {
           const initialIds = new Set(INITIAL_MOVIES.map(m => m.id));
           const filteredPrev = prev.filter(m => initialIds.has(m.id));
+          // Newest cloud videos first
           return [...cloudVideos, ...filteredPrev];
         });
       } catch (err) {
@@ -105,11 +102,6 @@ const App: React.FC = () => {
     }
   };
 
-  const featuredMovie = useMemo(() => {
-    const scifi = movies.filter(m => m.genre === 'Sci-Fi');
-    return scifi.length > 0 ? scifi[0] : movies[0];
-  }, [movies]);
-
   const filteredMovies = useMemo(() => {
     if (!searchTerm) return movies;
     return movies.filter(m => 
@@ -118,25 +110,34 @@ const App: React.FC = () => {
     );
   }, [movies, searchTerm]);
 
-  const historyMovies = useMemo(() => {
-    return historyIds
-      .map(id => movies.find(m => m.id === id))
-      .filter((m): m is Movie => !!m);
-  }, [historyIds, movies]);
-
   const rows = useMemo(() => {
-    const userCreated = filteredMovies.filter(m => m.isUserUploaded);
-    const myUploads = userCreated.filter(m => m.uploaderId === user?.id);
-    const othersUploads = userCreated.filter(m => m.uploaderId !== user?.id);
-
     return [
-      { title: 'Global Community Feed', movies: othersUploads },
-      { title: 'Trending Now', movies: filteredMovies.slice(0, 10) },
-      { title: 'My Cloud Uploads', movies: myUploads },
-      { title: 'Continue Watching', movies: historyMovies },
-      { title: 'Space & Beyond', movies: filteredMovies.filter(m => m.genre === 'Sci-Fi') },
+      { 
+        title: 'Recent', 
+        movies: filteredMovies.slice(0, 10) 
+      },
+      { 
+        title: 'Insta post', 
+        movies: filteredMovies.filter(m => m.genre === 'Insta post') 
+      },
+      { 
+        title: 'Viral', 
+        movies: filteredMovies.filter(m => m.genre === 'Viral') 
+      },
+      { 
+        title: 'Onlyfans', 
+        movies: filteredMovies.filter(m => m.genre === 'Onlyfans') 
+      },
+      { 
+        title: 'All', 
+        movies: filteredMovies 
+      },
     ];
-  }, [filteredMovies, historyMovies, user]);
+  }, [filteredMovies]);
+
+  const featuredMovie = useMemo(() => {
+    return filteredMovies[0] || INITIAL_MOVIES[0];
+  }, [filteredMovies]);
 
   return (
     <div className="relative min-h-screen pb-20 overflow-x-hidden">
@@ -160,7 +161,7 @@ const App: React.FC = () => {
         {isSyncing && (
            <div className="px-4 md:px-12 mb-4 flex items-center space-x-2 text-xs text-blue-500 animate-pulse">
               <div className="w-2 h-2 bg-blue-500 rounded-full" />
-              <span>Connecting to Supabase...</span>
+              <span>Updating Feed...</span>
            </div>
         )}
 
@@ -198,7 +199,7 @@ const App: React.FC = () => {
       )}
 
       <footer className="px-4 md:px-12 py-12 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
-        <p>© 2024 GeminiStream. Powered by Supabase & Vercel.</p>
+        <p>© 2024 GeminiStream. Discover everything.</p>
       </footer>
     </div>
   );

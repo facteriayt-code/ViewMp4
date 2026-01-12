@@ -13,7 +13,7 @@ interface UploadModalProps {
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [genre, setGenre] = useState('Sci-Fi');
+  const [genre, setGenre] = useState('Viral');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -96,13 +96,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
               Authenticated as: <span className="text-white font-bold">{user.name}</span>
             </p>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Movie Title</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Video Title</label>
               <input 
                 type="text" 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition"
-                placeholder="The Future Awakens..."
+                placeholder="Title your post..."
                 required
               />
             </div>
@@ -113,23 +113,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white h-24 focus:ring-2 focus:ring-red-600 outline-none transition resize-none"
-                placeholder="Describe your video..."
+                placeholder="Add a caption..."
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Genre</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
                   <select 
                     value={genre}
                     onChange={(e) => setGenre(e.target.value)}
                     className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition appearance-none"
                   >
-                    <option>Sci-Fi</option>
-                    <option>Action</option>
-                    <option>Vlog</option>
-                    <option>Comedy</option>
-                    <option>Documentary</option>
+                    <option value="Viral">Viral</option>
+                    <option value="Insta post">Insta post</option>
+                    <option value="Onlyfans">Onlyfans</option>
+                    <option value="Sci-Fi">Sci-Fi</option>
+                    <option value="Action">Action</option>
                   </select>
                </div>
                <div className="flex flex-col justify-end">
@@ -170,10 +170,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
             {isUploading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing Upload...
+                Publishing...
               </>
             ) : (
-              'Publish to Community Feed'
+              'Share Post'
             )}
           </button>
         </form>
