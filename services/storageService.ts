@@ -1,3 +1,4 @@
+
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 import { s3Client, BUCKET_NAME, PUBLIC_URL_BASE } from './s3Client.ts';
@@ -78,40 +79,51 @@ export const saveVideoToCloud = async (
 
 /**
  * Increments movie views in Supabase.
- * Only works for movies stored in the database.
+ * Optimized for the 'increment_views' SQL function.
  */
 export const incrementMovieView = async (movieId: string) => {
-  // Simple regex to check if it's likely a UUID from Supabase vs a string '1' from INITIAL_MOVIES
+  // Check if it's a valid UUID (Supabase ID) or a local ID (like '1', '2')
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
   if (!isUuid) return;
 
   try {
+    // Attempt RPC call first (Atomic increment)
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
     
     if (rpcError) {
-      // Fallback: Manual increment if RPC function hasn't been created yet
-      const { data: current } = await supabase.from('movies').select('views').eq('id', movieId).single();
+      console.warn("RPC failed, falling back to manual update. Make sure to run the SQL setup script.", rpcError);
+      // Fallback: Manual increment
+      const { data: current } = await supabase
+        .from('movies')
+        .select('views')
+        .eq('id', movieId)
+        .single();
+        
       if (current) {
-        await supabase.from('movies').update({ views: (current.views || 0) + 1 }).eq('id', movieId);
+        await supabase
+          .from('movies')
+          .update({ views: (Number(current.views) || 0) + 1 })
+          .eq('id', movieId);
       }
     }
   } catch (err) {
-    console.error("Failed to increment view:", err);
+    console.error("View tracking error:", err);
   }
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
-  const { data, error } = await supabase
-    .from('movies')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error("Supabase Fetch Error:", error);
+    if (error) throw error;
+    return (data || []).map(mapDbToMovie);
+  } catch (err) {
+    console.error("Fetch Cloud Videos Error:", err);
     return [];
   }
-
-  return (data || []).map(mapDbToMovie);
 };
 
 const mapDbToMovie = (item: any): Movie => ({
@@ -123,7 +135,7 @@ const mapDbToMovie = (item: any): Movie => ({
   genre: item.genre,
   year: item.year,
   rating: item.rating,
-  views: item.views || 0,
+  views: Number(item.views) || 0,
   isUserUploaded: item.is_user_uploaded,
   uploaderId: item.uploader_id,
   uploaderName: item.uploader_name

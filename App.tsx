@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
@@ -33,11 +34,9 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    // 1. Verification and Initial State
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
     setIsAgeVerified(verified === 'true');
 
-    // 2. Auth Sync
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -62,7 +61,6 @@ const App: React.FC = () => {
       }
     });
 
-    // 3. Database Sync
     const syncCloudData = async () => {
       setIsSyncing(true);
       try {
@@ -81,40 +79,47 @@ const App: React.FC = () => {
 
     syncCloudData();
 
-    // 4. Realtime Pipeline
-    const moviesChannel = supabase
-      .channel('movies-realtime-global')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          setMovies(prev => prev.map(m => m.id === payload.new.id ? { ...m, views: payload.new.views } : m));
-          if (selectedMovie?.id === payload.new.id) {
-            setSelectedMovie(prev => prev ? { ...prev, views: payload.new.views } : null);
+    // Setup Realtime Subscription
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'movies',
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            setMovies(current => 
+              current.map(m => m.id === payload.new.id ? { ...m, views: Number(payload.new.views) || 0 } : m)
+            );
+          } else if (payload.eventType === 'INSERT') {
+            const newMovie: Movie = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description,
+              thumbnail: payload.new.thumbnail,
+              videoUrl: payload.new.video_url,
+              genre: payload.new.genre,
+              year: payload.new.year,
+              rating: payload.new.rating,
+              views: Number(payload.new.views) || 0,
+              isUserUploaded: payload.new.is_user_uploaded,
+              uploaderId: payload.new.uploader_id,
+              uploaderName: payload.new.uploader_name
+            };
+            setMovies(current => [newMovie, ...current]);
           }
-        } else if (payload.eventType === 'INSERT') {
-          const newMovie: Movie = {
-            id: payload.new.id,
-            title: payload.new.title,
-            description: payload.new.description,
-            thumbnail: payload.new.thumbnail,
-            videoUrl: payload.new.video_url,
-            genre: payload.new.genre,
-            year: payload.new.year,
-            rating: payload.new.rating,
-            views: payload.new.views || 0,
-            isUserUploaded: payload.new.is_user_uploaded,
-            uploaderId: payload.new.uploader_id,
-            uploaderName: payload.new.uploader_name
-          };
-          setMovies(prev => [newMovie, ...prev]);
         }
-      })
+      )
       .subscribe();
 
     return () => {
       authSub.unsubscribe();
-      supabase.removeChannel(moviesChannel);
+      supabase.removeChannel(channel);
     };
-  }, [selectedMovie?.id]);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -135,18 +140,17 @@ const App: React.FC = () => {
     if (!term) return movies;
     return movies.filter(m => 
       m.title.toLowerCase().includes(term) || 
-      m.genre.toLowerCase().includes(term) ||
-      (m.uploaderName && m.uploaderName.toLowerCase().includes(term))
+      m.genre.toLowerCase().includes(term)
     );
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
     return [
-      { title: 'Trending', movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 10) },
+      { title: 'Trending Now', movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 10) },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
-      { title: 'Viral', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Onlyfans', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
-      { title: 'All Content', movies: filteredMovies },
+      { title: 'Viral Hits', movies: filteredMovies.filter(m => m.genre === 'Viral') },
+      { title: 'Onlyfans Originals', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
+      { title: 'Full Library', movies: filteredMovies },
     ];
   }, [filteredMovies]);
 
@@ -167,22 +171,21 @@ const App: React.FC = () => {
       
       {!searchTerm && movies.length > 0 && (
         <Hero 
-          movie={movies[0]} 
+          movie={movies.find(m => m.id === '1') || movies[0]} 
           onInfoClick={setSelectedMovie} 
           onPlay={handlePlay}
         />
       )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
-        {/* Connection Status Bar */}
         <div className="px-4 md:px-12 mb-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
              <div className={`p-1.5 rounded-lg ${isOnline ? 'bg-green-600/10 text-green-500' : 'bg-red-600/10 text-red-500'}`}>
                 {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
              </div>
              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Supabase Project</span>
-                <span className="text-xs font-bold text-white leading-none">Stream (diurandrwkqhe...)</span>
+                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Cloud Status</span>
+                <span className="text-xs font-bold text-white leading-none">Stream Project Online</span>
              </div>
           </div>
           
@@ -231,11 +234,8 @@ const App: React.FC = () => {
         <div className="flex flex-col items-center space-y-4">
           <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Backend Linked</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Views Enabled</span>
           </div>
-          <p className="max-w-md mx-auto text-xs opacity-50">
-            All user data, uploads, and view statistics are synchronized in real-time using Supabase diurandrwkqhefhwclyv.
-          </p>
           <p>© 2024 GeminiStream Platform.</p>
         </div>
       </footer>
