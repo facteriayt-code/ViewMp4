@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check, Eye } from 'lucide-react';
+import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check, Eye, Zap } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
 
@@ -17,7 +17,7 @@ const formatViews = (views: number) => {
 const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) => {
   const [aiInsight, setAiInsight] = useState<string>('Summoning Gemini intelligence...');
   const [loadingAi, setLoadingAi] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'info' | 'play' | null>(null);
 
   useEffect(() => {
     const fetchAI = async () => {
@@ -29,12 +29,12 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
     fetchAI();
   }, [movie]);
 
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}?v=${movie.id}`;
+  const handleShare = async (directPlay: boolean = false) => {
+    const shareUrl = `${window.location.origin}?v=${movie.id}${directPlay ? '&autoplay=true' : ''}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(directPlay ? 'play' : 'info');
+      setTimeout(() => setCopied(null), 2000);
     } catch (err) {
       console.error('Failed to copy link:', err);
     }
@@ -59,30 +59,44 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
           <div className="absolute inset-0 bg-gradient-to-t from-[#181818] to-transparent" />
           <div className="absolute bottom-8 left-8">
             <h2 className="text-3xl md:text-5xl font-black mb-4">{movie.title}</h2>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 items-center">
               <button 
                 onClick={() => onPlay(movie)}
                 className="bg-white text-black px-8 py-2 rounded flex items-center font-bold hover:bg-gray-200 transition active:scale-95"
               >
                 <Play className="w-5 h-5 mr-2 fill-black" /> Play
               </button>
-              <button className="bg-gray-500/50 p-2 rounded-full border-2 border-white/20 hover:border-white transition">
-                <Plus className="w-6 h-6" />
-              </button>
-              <button className="bg-gray-500/50 p-2 rounded-full border-2 border-white/20 hover:border-white transition">
-                <ThumbsUp className="w-6 h-6" />
-              </button>
+              
+              <div className="h-10 w-px bg-white/10 mx-2" />
+
               <button 
-                onClick={handleShare}
-                className={`p-2 rounded-full border-2 transition flex items-center justify-center relative ${copied ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-500/50 border-white/20 hover:border-white text-white'}`}
-                title="Copy Share Link"
+                onClick={() => handleShare(false)}
+                className={`p-2 rounded-full border-2 transition flex items-center justify-center relative ${copied === 'info' ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-500/50 border-white/20 hover:border-white text-white'}`}
+                title="Share Info Page"
               >
-                {copied ? <Check className="w-6 h-6" /> : <Share2 className="w-6 h-6" />}
-                {copied && (
+                {copied === 'info' ? <Check className="w-6 h-6" /> : <Share2 className="w-6 h-6" />}
+                {copied === 'info' && (
                   <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg animate-in fade-in slide-in-from-bottom-1 uppercase tracking-widest whitespace-nowrap">
-                    Link Copied!
+                    Info Link Copied!
                   </span>
                 )}
+              </button>
+
+              <button 
+                onClick={() => handleShare(true)}
+                className={`p-2 rounded-full border-2 transition flex items-center justify-center relative ${copied === 'play' ? 'bg-orange-600 border-orange-600 text-white' : 'bg-gray-500/50 border-white/20 hover:border-orange-500 text-white'}`}
+                title="Share Direct Play Link"
+              >
+                {copied === 'play' ? <Check className="w-6 h-6" /> : <Zap className="w-6 h-6" />}
+                {copied === 'play' && (
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg animate-in fade-in slide-in-from-bottom-1 uppercase tracking-widest whitespace-nowrap">
+                    Play Link Copied!
+                  </span>
+                )}
+              </button>
+
+              <button className="bg-gray-500/50 p-2 rounded-full border-2 border-white/20 hover:border-white transition">
+                <ThumbsUp className="w-6 h-6" />
               </button>
             </div>
           </div>

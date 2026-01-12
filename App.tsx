@@ -13,7 +13,7 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2 } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -23,7 +23,6 @@ const STORAGE_KEYS = {
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
-  const [historyIds, setHistoryIds] = useState<string[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -32,9 +31,10 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const [isDeepLinking, setIsDeepLinking] = useState(false);
   
-  // Track if we've already handled the initial deep link to prevent double-opening
-  const deepLinkProcessed = useRef(false);
+  // Track the ID from URL to show loading state if needed
+  const pendingVideoId = useRef<string | null>(new URLSearchParams(window.location.search).get('v'));
 
   useEffect(() => {
     // 1. Verification and Initial State
@@ -72,6 +72,7 @@ const App: React.FC = () => {
       try {
         const cloudVideos = await getAllVideosFromCloud();
         const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
+        // Ensure uniqueness by ID
         const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
         setMovies(uniqueMovies);
         setIsOnline(true);
@@ -120,22 +121,39 @@ const App: React.FC = () => {
     };
   }, [selectedMovie?.id]);
 
-  // Handle Deep Linking (?v=movie_id)
+  // Robust Deep Linking Handler
   useEffect(() => {
-    if (deepLinkProcessed.current || movies.length === 0) return;
+    const processDeepLink = () => {
+      const params = new URLSearchParams(window.location.search);
+      const videoId = params.get('v');
+      const autoplay = params.get('autoplay') === 'true';
 
-    const params = new URLSearchParams(window.location.search);
-    const videoId = params.get('v');
-
-    if (videoId) {
-      const targetMovie = movies.find(m => m.id === videoId);
-      if (targetMovie) {
-        setSelectedMovie(targetMovie);
-        deepLinkProcessed.current = true;
-        // Optionally clear the query param without refreshing to keep URL clean
-        // window.history.replaceState({}, '', window.location.pathname);
+      if (videoId) {
+        const target = movies.find(m => m.id === videoId);
+        if (target) {
+          setIsDeepLinking(false);
+          pendingVideoId.current = null;
+          if (autoplay) {
+            setPlayingMovie(target);
+            setSelectedMovie(null);
+          } else {
+            setSelectedMovie(target);
+            setPlayingMovie(null);
+          }
+        } else {
+          // If we have a videoId in URL but it's not in our list yet
+          setIsDeepLinking(true);
+        }
+      } else {
+        setIsDeepLinking(false);
       }
-    }
+    };
+
+    processDeepLink();
+
+    // Listen for manual URL changes (back/forward or replaceState)
+    window.addEventListener('popstate', processDeepLink);
+    return () => window.removeEventListener('popstate', processDeepLink);
   }, [movies]);
 
   const handleLogout = async () => {
@@ -175,6 +193,7 @@ const App: React.FC = () => {
   return (
     <div className={`relative min-h-screen pb-20 bg-[#141414] ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
       {!isAgeVerified && <AgeDisclaimer onVerify={() => {
+        // Fix: Use STORAGE_KEYS.AGE_VERIFIED instead of the undefined STORAGE_KEYS_AGE_VERIFIED
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
         setIsAgeVerified(true);
       }} />}
@@ -187,6 +206,14 @@ const App: React.FC = () => {
         onSearch={setSearchTerm}
       />
       
+      {/* Loading Overlay for shared links if data hasn't arrived yet */}
+      {isDeepLinking && isSyncing && (
+        <div className="fixed inset-0 z-[80] bg-black/90 flex flex-col items-center justify-center space-y-4">
+           <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+           <p className="text-white font-bold uppercase tracking-widest text-sm animate-pulse">Fetching shared content...</p>
+        </div>
+      )}
+
       {!searchTerm && movies.length > 0 && (
         <Hero 
           movie={movies[0]} 
@@ -256,7 +283,7 @@ const App: React.FC = () => {
             <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Backend Linked</span>
           </div>
           <p className="max-w-md mx-auto text-xs opacity-50">
-            All user data, uploads, and view statistics are synchronized in real-time using Supabase diurandrwkqhefhwclyv.
+            All user data, uploads, and view statistics are synchronized in real-time using Supabase.
           </p>
           <p>© 2024 GeminiStream Platform.</p>
         </div>
