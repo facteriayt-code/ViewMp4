@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Adcash Library - Placed as high as possible -->
+    <!-- Adcash Library - Step 1: Placed as high as possible -->
     <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+    
+    <!-- Adcash Tag - Step 2: Placed below the library script -->
+    <script type="text/javascript">
+        aclib.runVideoSlider({
+            zoneId: '10801030',
+        });
+    </script>
+
+    <!-- Supplemental Adcash AutoTag if needed -->
     <script type="text/javascript">
         aclib.runAutoTag({
             zoneId: 'paqafikwyg',
-        });
-        aclib.runVideoSlider({
-            zoneId: '10801030',
         });
     </script>
     

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { X, ArrowLeft, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
 
@@ -20,7 +20,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // 1. Initialize Video.js
+    // 1. Initialize Video.js with the ref and required options
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
@@ -35,7 +35,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    // 2. Setup IMA with your VAST Tag
+    // 2. Setup IMA with your specific VAST Tag
+    // adTagUrl corresponds to your provided link
     try {
       if (player.ima) {
         player.ima({
@@ -123,6 +124,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         ) : (
           <div data-vjs-player className="w-full h-full">
             <video 
+              id="my-video"
               ref={videoRef} 
               className="video-js vjs-big-play-centered vjs-theme-netflix" 
               playsInline
@@ -142,12 +144,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        /* Hide native UI parts during ads if needed */
+        /* Ensure the ad container stays on top and manages its own UI */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
         .vjs-ima-ad-container {
           z-index: 205 !important;
+        }
+        /* Style the video component to be responsive */
+        .video-js {
+          width: 100%;
+          height: 100%;
         }
       `}</style>
     </div>
