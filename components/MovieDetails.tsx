@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, ThumbsUp, Sparkles, User } from 'lucide-react';
+import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
 
@@ -12,6 +12,7 @@ interface MovieDetailsProps {
 const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) => {
   const [aiInsight, setAiInsight] = useState<string>('Summoning Gemini intelligence...');
   const [loadingAi, setLoadingAi] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchAI = async () => {
@@ -22,6 +23,17 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
     };
     fetchAI();
   }, [movie]);
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}?v=${movie.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -54,6 +66,18 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
               </button>
               <button className="bg-gray-500/50 p-2 rounded-full border-2 border-white/20 hover:border-white transition">
                 <ThumbsUp className="w-6 h-6" />
+              </button>
+              <button 
+                onClick={handleShare}
+                className={`p-2 rounded-full border-2 transition flex items-center justify-center relative ${copied ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-500/50 border-white/20 hover:border-white text-white'}`}
+                title="Copy Share Link"
+              >
+                {copied ? <Check className="w-6 h-6" /> : <Share2 className="w-6 h-6" />}
+                {copied && (
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg animate-in fade-in slide-in-from-bottom-1 uppercase tracking-widest whitespace-nowrap">
+                    Link Copied!
+                  </span>
+                )}
               </button>
             </div>
           </div>

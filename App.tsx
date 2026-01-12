@@ -67,11 +67,21 @@ const App: React.FC = () => {
     const syncCloudData = async () => {
       try {
         const cloudVideos = await getAllVideosFromCloud();
-        setMovies(prev => {
-          const initialIds = new Set(INITIAL_MOVIES.map(m => m.id));
-          const filteredPrev = prev.filter(m => initialIds.has(m.id));
-          return [...cloudVideos, ...filteredPrev];
-        });
+        const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
+        
+        // Remove duplicates by ID
+        const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
+        setMovies(uniqueMovies);
+
+        // Check for shared video link after movies are loaded
+        const params = new URLSearchParams(window.location.search);
+        const sharedMovieId = params.get('v');
+        if (sharedMovieId) {
+          const found = uniqueMovies.find(m => m.id === sharedMovieId);
+          if (found) {
+            setSelectedMovie(found);
+          }
+        }
       } catch (err) {
         console.error("Sync Error:", err);
       } finally {

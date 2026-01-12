@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { X, Upload, Film, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -18,6 +17,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,12 +39,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !videoFile || !thumbnailFile) {
-      setUploadError("Please provide a title, video file, and thumbnail image.");
+      setUploadError("Missing required fields.");
       return;
     }
 
     setIsUploading(true);
     setUploadError(null);
+    setUploadProgress(0);
     
     try {
       const metadata = {
@@ -58,13 +59,17 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
         uploaderName: user.name
       };
 
-      const savedMovie = await saveVideoToCloud(metadata, videoFile, thumbnailFile);
+      const savedMovie = await saveVideoToCloud(
+        metadata, 
+        videoFile, 
+        thumbnailFile,
+        (progress) => setUploadProgress(progress)
+      );
 
       onUpload(savedMovie);
       onClose();
     } catch (err: any) {
-      console.error("Upload process failed:", err);
-      setUploadError(err.message || "An unexpected error occurred during upload.");
+      setUploadError(err.message || "Upload failed. Check CORS and S3 credentials.");
     } finally {
       setIsUploading(false);
     }
@@ -74,9 +79,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#181818] w-full max-w-xl my-auto rounded-2xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center text-white">
-            <Upload className="w-5 h-5 mr-2 text-red-600" />
-            Cloud Publish
+          <h2 className="text-xl font-bold flex items-center text-white uppercase italic">
+            <Database className="w-5 h-5 mr-2 text-orange-500" />
+            S3-Compatible Upload
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition">
             <X className="w-6 h-6" />
@@ -92,88 +97,98 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
           )}
 
           <div className="space-y-4">
-            <p className="text-xs text-gray-500">
-              Authenticated as: <span className="text-white font-bold">{user.name}</span>
-            </p>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-gray-500">
+                Uploader: <span className="text-white font-bold">{user.name}</span>
+              </p>
+              <div className="bg-orange-600/10 text-orange-500 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-600/20">
+                0 EGRESS COST
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Video Title</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Movie Title</label>
               <input 
                 type="text" 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition"
-                placeholder="Title your post..."
+                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-600 outline-none transition"
+                placeholder="Ex: Cinematic Masterpiece"
                 required
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
-              <textarea 
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white h-24 focus:ring-2 focus:ring-red-600 outline-none transition resize-none"
-                placeholder="Add a caption..."
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
                   <select 
                     value={genre}
                     onChange={(e) => setGenre(e.target.value)}
-                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition appearance-none"
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-600 outline-none transition appearance-none"
                   >
                     <option value="Viral">Viral</option>
                     <option value="Insta post">Insta post</option>
                     <option value="Onlyfans">Onlyfans</option>
-                    <option value="Sci-Fi">Sci-Fi</option>
                     <option value="Action">Action</option>
                   </select>
                </div>
                <div className="flex flex-col justify-end">
-                  <div className="w-full bg-black/20 text-green-500 border border-white/5 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-center">
-                    Ready to Stream
+                  <div className="w-full bg-orange-600/10 text-orange-400 border border-orange-600/20 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-center">
+                    Multi-part Pipeline
                   </div>
                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32 relative overflow-hidden">
-                  <Film className={`w-8 h-8 ${videoFile ? 'text-green-500' : 'text-gray-500 group-hover:text-red-500'}`} />
+               <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-orange-600 transition group h-32 relative overflow-hidden">
+                  <Film className={`w-8 h-8 ${videoFile ? 'text-orange-500' : 'text-gray-500 group-hover:text-orange-500'}`} />
                   <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500 text-center truncate w-full px-2">
-                    {videoFile ? videoFile.name : 'Choose Video'}
+                    {videoFile ? videoFile.name : 'Choose Huge Video'}
                   </span>
                   <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
                </label>
 
-               <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32 overflow-hidden">
+               <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-orange-600 transition group h-32 overflow-hidden">
                   {thumbnailPreview ? (
                     <img src={thumbnailPreview} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="" />
                   ) : (
-                    <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-red-500" />
+                    <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-orange-500" />
                   )}
                   <span className="relative text-[10px] mt-2 font-bold uppercase tracking-widest text-white">
-                    {thumbnailFile ? 'Poster Selected' : 'Choose Poster'}
+                    {thumbnailFile ? 'Poster Ready' : 'Choose Thumbnail'}
                   </span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} required />
                </label>
             </div>
           </div>
 
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span>Multi-part Stream</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
+                <div 
+                  className="h-full bg-orange-600 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <button 
             type="submit" 
             disabled={isUploading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center shadow-lg active:scale-95"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-lg transition disabled:opacity-50 flex flex-col items-center justify-center shadow-lg active:scale-95 uppercase tracking-widest"
           >
             {isUploading ? (
-              <>
+              <div className="flex items-center">
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Publishing...
-              </>
+                <span>Buffering to S3/R2...</span>
+              </div>
             ) : (
-              'Share Post'
+              'Push to Cloud'
             )}
           </button>
         </form>

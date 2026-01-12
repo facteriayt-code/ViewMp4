@@ -1,87 +1,92 @@
-
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
+import { s3Client, BUCKET_NAME, PUBLIC_URL_BASE } from './s3Client.ts';
+import { Upload } from "@aws-sdk/lib-storage";
 
 /**
- * Handles Global Cloud Storage via Supabase Storage & Database
+ * Handles Large File Uploads via Multi-part S3 Upload
  */
-
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
   videoFile: File, 
-  thumbnailFile: File
+  thumbnailFile: File,
+  onProgress?: (progress: number) => void
 ): Promise<Movie> => {
-  // Generate unique file paths
-  const timestamp = Date.now();
-  const videoPath = `videos/${timestamp}-${videoFile.name.replace(/\s+/g, '_')}`;
-  const thumbPath = `thumbnails/${timestamp}-${thumbnailFile.name.replace(/\s+/g, '_')}`;
-
-  // 1. Upload Video to 'media' bucket
-  const { error: videoError } = await supabase.storage
-    .from('media')
-    .upload(videoPath, videoFile, {
-      cacheControl: '3600',
-      upsert: false
+  
+  const performUpload = async (file: File, key: string) => {
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: file,
+        ContentType: file.type,
+      },
+      // Important for large files:
+      queueSize: 4, 
+      partSize: 1024 * 1024 * 5, // 5MB chunks
+      leavePartsOnError: false,
     });
 
-  if (videoError) {
-    console.error("Video Upload Error:", videoError);
-    throw new Error(`Video upload failed: ${videoError.message}. Make sure the 'media' bucket exists and is public.`);
-  }
-
-  // 2. Upload Thumbnail to 'media' bucket
-  const { error: thumbError } = await supabase.storage
-    .from('media')
-    .upload(thumbPath, thumbnailFile, {
-      cacheControl: '3600',
-      upsert: false
+    upload.on("httpUploadProgress", (progress) => {
+      if (onProgress && key.startsWith('videos/')) {
+        const percentage = Math.round((progress.loaded! / progress.total!) * 100);
+        onProgress(percentage);
+      }
     });
 
-  if (thumbError) {
-    console.error("Thumbnail Upload Error:", thumbError);
-    throw new Error(`Thumbnail upload failed: ${thumbError.message}`);
-  }
-
-  // 3. Get Public URLs
-  const { data: { publicUrl: videoUrl } } = supabase.storage.from('media').getPublicUrl(videoPath);
-  const { data: { publicUrl: thumbnailUrl } } = supabase.storage.from('media').getPublicUrl(thumbPath);
-
-  // 4. Insert Metadata into 'movies' table
-  const { data, error: dbError } = await supabase
-    .from('movies')
-    .insert([{
-      title: movieMetadata.title,
-      description: movieMetadata.description,
-      thumbnail: thumbnailUrl,
-      video_url: videoUrl,
-      genre: movieMetadata.genre,
-      year: movieMetadata.year,
-      rating: movieMetadata.rating,
-      is_user_uploaded: true,
-      uploader_id: movieMetadata.uploaderId,
-      uploader_name: movieMetadata.uploaderName
-    }])
-    .select()
-    .single();
-
-  if (dbError) {
-    console.error("Database Insert Error:", dbError);
-    throw new Error(`Database error: ${dbError.message}`);
-  }
-
-  return {
-    id: data.id,
-    title: data.title,
-    description: data.description,
-    thumbnail: data.thumbnail,
-    videoUrl: data.video_url,
-    genre: data.genre,
-    year: data.year,
-    rating: data.rating,
-    isUserUploaded: data.is_user_uploaded,
-    uploaderId: data.uploader_id,
-    uploaderName: data.uploader_name
+    await upload.done();
+    return `${PUBLIC_URL_BASE}/${key}`;
   };
+
+  try {
+    const timestamp = Date.now();
+    const videoKey = `videos/${timestamp}-${videoFile.name.replace(/\s+/g, '_')}`;
+    const thumbKey = `thumbnails/${timestamp}-${thumbnailFile.name.replace(/\s+/g, '_')}`;
+
+    // 1. Concurrent Upload to S3/R2
+    const [videoUrl, thumbnailUrl] = await Promise.all([
+      performUpload(videoFile, videoKey),
+      performUpload(thumbnailFile, thumbKey)
+    ]);
+
+    // 2. Metadata storage in Supabase
+    const { data, error: dbError } = await supabase
+      .from('movies')
+      .insert([{
+        title: movieMetadata.title,
+        description: movieMetadata.description,
+        thumbnail: thumbnailUrl,
+        video_url: videoUrl,
+        genre: movieMetadata.genre,
+        year: movieMetadata.year,
+        rating: movieMetadata.rating,
+        is_user_uploaded: true,
+        uploader_id: movieMetadata.uploaderId,
+        uploader_name: movieMetadata.uploaderName
+      }])
+      .select()
+      .single();
+
+    if (dbError) throw new Error(`DB Error: ${dbError.message}`);
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      thumbnail: data.thumbnail,
+      videoUrl: data.video_url,
+      genre: data.genre,
+      year: data.year,
+      rating: data.rating,
+      isUserUploaded: data.is_user_uploaded,
+      uploaderId: data.uploader_id,
+      uploaderName: data.uploader_name
+    };
+  } catch (error: any) {
+    console.error("S3/R2 Upload Failure:", error);
+    throw error;
+  }
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
@@ -90,10 +95,7 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error("Supabase Fetch Error:", error);
-    return [];
-  }
+  if (error) return [];
 
   return (data || []).map((item: any) => ({
     id: item.id,
