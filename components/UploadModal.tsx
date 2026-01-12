@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, ExternalLink } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -40,7 +40,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !videoFile || !thumbnailFile) {
-      setUploadError("Missing required fields.");
+      setUploadError("Please select both a video and a thumbnail.");
       return;
     }
 
@@ -70,7 +70,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
       onUpload(savedMovie);
       onClose();
     } catch (err: any) {
-      setUploadError(err.message || "Upload failed. Please ensure 'videos' and 'thumbnails' buckets exist in Supabase Storage and are set to Public.");
+      setUploadError(err.message || "An unexpected error occurred during upload.");
     } finally {
       setIsUploading(false);
     }
@@ -91,9 +91,33 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {uploadError && (
-            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start space-x-3 text-red-500 text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <span>{uploadError}</span>
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl space-y-3 text-red-500 text-sm">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold">Upload Error</p>
+                  <p className="opacity-90">{uploadError}</p>
+                </div>
+              </div>
+              
+              {uploadError.includes('Permission Denied') && (
+                <div className="bg-black/20 p-3 rounded-lg border border-red-500/20 text-[10px] space-y-2">
+                   <p className="font-bold text-gray-300 uppercase tracking-widest">How to fix:</p>
+                   <ol className="list-decimal list-inside space-y-1 text-gray-400">
+                      <li>Go to your Supabase Dashboard</li>
+                      <li>Select "Storage" -> "Policies"</li>
+                      <li>Add an "INSERT" policy for 'thumbnails' and 'videos' buckets</li>
+                      <li>Set target to "Authenticated" users</li>
+                   </ol>
+                   <a 
+                    href="https://supabase.com/dashboard/project/diurandrwkqhefhwclyv/storage/policies" 
+                    target="_blank" 
+                    className="flex items-center text-red-400 hover:text-red-300 font-bold"
+                   >
+                     Open Policies Dashboard <ExternalLink className="w-3 h-3 ml-1" />
+                   </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -113,8 +137,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
                 type="text" 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition"
-                placeholder="Ex: My Awesome Clip"
+                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition placeholder:text-gray-600"
+                placeholder="Name your video..."
                 required
               />
             </div>
@@ -135,7 +159,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
                </div>
                <div className="flex flex-col justify-end">
                   <div className="w-full bg-red-600/10 text-red-400 border border-red-600/20 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-center">
-                    Auto-Optimized
+                    Cloud Storage Ready
                   </div>
                </div>
             </div>
@@ -166,8 +190,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
           {isUploading && (
             <div className="space-y-2">
               <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                <span>Streaming to Supabase</span>
-                <span>{uploadProgress > 0 ? 'Processing...' : 'Starting...'}</span>
+                <span>Transmitting to Cloud</span>
+                <span>{uploadProgress > 0 ? 'Processing...' : 'Initializing...'}</span>
               </div>
               <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
                 <div 
@@ -185,7 +209,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
             {isUploading ? (
               <div className="flex items-center">
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                <span>Uploading to Cloud...</span>
+                <span>Uploading...</span>
               </div>
             ) : (
               'Start Upload'

@@ -24,7 +24,12 @@ export const saveVideoToCloud = async (
         upsert: false
       });
 
-    if (error) throw new Error(`Storage Error (${bucket}): ${error.message}`);
+    if (error) {
+      if (error.message.includes('row-level security')) {
+        throw new Error(`Permission Denied: You must enable 'INSERT' RLS policies for the '${bucket}' bucket in your Supabase Storage settings.`);
+      }
+      throw new Error(`Storage Error (${bucket}): ${error.message}`);
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
@@ -37,8 +42,8 @@ export const saveVideoToCloud = async (
     // 1. Upload Thumbnail
     const thumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
     
-    // 2. Upload Video (Note: Supabase client doesn't provide granular browser progress in standard upload)
-    if (onProgress) onProgress(50); // Indicating start of video upload
+    // 2. Upload Video
+    if (onProgress) onProgress(50);
     const videoUrl = await uploadFile('videos', videoFile);
     if (onProgress) onProgress(100);
 
@@ -61,11 +66,16 @@ export const saveVideoToCloud = async (
       .select()
       .single();
 
-    if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+    if (dbError) {
+      if (dbError.message.includes('row-level security')) {
+         throw new Error("Database Permission Denied: Ensure RLS is configured to allow 'INSERT' on the 'movies' table.");
+      }
+      throw new Error(`Database Error: ${dbError.message}`);
+    }
 
     return mapDbToMovie(data);
   } catch (error: any) {
-    console.error("Supabase Upload Failure:", error);
+    console.error("Supabase Operation Failed:", error);
     throw error;
   }
 };
