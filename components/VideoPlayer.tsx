@@ -27,7 +27,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
-      muted: true, // Required for reliable autoplay across browsers
+      muted: true, // Essential for modern browser autoplay compliance
       responsive: true,
       fluid: true,
       poster: movie.thumbnail,
@@ -40,7 +40,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     playerRef.current = player;
 
     const forceContentPlay = () => {
-      console.log('Forcing content playback fallback');
+      console.log('Ad failed or blocked - Bypassing to content.');
       if (adTimeoutRef.current) {
         clearTimeout(adTimeoutRef.current);
         adTimeoutRef.current = null;
@@ -48,24 +48,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       setIsAdPlaying(false);
       setAdLoading(false);
       
-      // Ensure the player UI reflects content state
-      if (player && !player.paused()) {
-        player.play().catch(() => {});
-      } else if (player) {
-        player.play().catch(() => {});
+      // Attempt to play content regardless of IMA state
+      if (player) {
+        player.play().catch((err: any) => {
+          console.warn('Playback resume failed:', err);
+        });
       }
     };
 
-    // 2. Setup IMA
+    // 2. Setup IMA with user-provided VAST tag
     player.ready(() => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          adTagUrl: 'https://youradexchange.com/video/select.php?r=10801106',
+          // UPDATED: User's requested VAST ad tag for pre-rolls
+          adTagUrl: 'https://youradexchange.com/video/select.php?r=10802842',
           showCountdown: true,
           debug: false,
           adWillAutoPlay: true,
-          adsResponseTimeout: 5000 // Internal IMA timeout
+          adsResponseTimeout: 5000 
         };
 
         try {
@@ -73,7 +74,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
           // Handle Ad Events
           player.on('ads-ad-started', () => {
-            console.log('Ad started playing');
+            console.log('Ad started');
             if (adTimeoutRef.current) {
               clearTimeout(adTimeoutRef.current);
               adTimeoutRef.current = null;
@@ -83,41 +84,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           });
 
           player.on('ads-ad-ended', () => {
-            console.log('Ad ended');
             forceContentPlay();
           });
 
-          // Standard IMA/Video.js Error Catchers
-          player.on('ads-error', (event: any) => {
-            console.warn('IMA Ads Error caught:', event.adsManagerLoadedEvent?.getError() || 'Unknown');
+          // Error handling for blocked ads
+          player.on('ads-error', () => {
+            console.warn('IMA Ads Error - Likely blocked');
             forceContentPlay();
           });
 
           player.on('ads-loader-error', () => {
-            console.warn('IMA Loader Error - Ad source unreachable');
             forceContentPlay();
           });
 
           player.on('aderror', () => {
-            console.warn('General Ad Error');
             forceContentPlay();
           });
 
           player.on('contentresumerequested', () => {
-            console.log('Content resume requested by IMA');
             forceContentPlay();
           });
 
-          // Safety net for stuck player
+          // Pre-roll Request Trigger
           const requestAdsOnPlay = () => {
-            console.log('Playback initiated - Requesting Ads');
+            console.log('Requesting pre-roll ads...');
             player.ima.initializeAdDisplayContainer();
             player.ima.requestAds();
             
-            // Set a 5-second safety timeout. If ads don't start, play content.
+            // Safety timeout: If no ad starts within 5 seconds, play the movie.
             adTimeoutRef.current = window.setTimeout(() => {
               if (adLoading) {
-                console.warn('Ad safety timeout triggered - No ad response received');
+                console.warn('Ad server timeout - Triggering content fallback.');
                 forceContentPlay();
               }
             }, 5000);
@@ -127,22 +124,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           player.on('play', requestAdsOnPlay);
 
         } catch (e) {
-          console.error("IMA Plugin failed initialization:", e);
+          console.error("IMA setup failure:", e);
           forceContentPlay();
         }
       } else {
-        console.warn('IMA plugin not found on player object');
         forceContentPlay();
       }
     });
 
-    // 3. Track View
+    // 3. Track View Analytics
     player.on('contentplay', () => {
       if (movie.id) incrementMovieView(movie.id);
     });
 
     player.on('error', () => {
-      setError("Unable to load video stream.");
+      setError("Stream could not be initialized.");
       setAdLoading(false);
     });
 
@@ -175,12 +171,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </button>
         
         <div className="text-center">
-          <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md">
+          <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md uppercase tracking-tighter">
             {isAdPlaying ? 'Advertisement' : movie.title}
           </h2>
           {(isAdPlaying || adLoading) && (
             <div className="flex items-center justify-center space-x-2">
-              <span className="text-[10px] bg-amber-500 px-2 py-0.5 rounded font-black text-black uppercase tracking-widest animate-pulse">
+              <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded font-black text-white uppercase tracking-widest animate-pulse">
                 {adLoading ? 'Verifying Stream...' : 'Sponsored'}
               </span>
             </div>
@@ -199,8 +195,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         {adLoading && !error && (
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
-            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Loading Secure Buffer...</p>
-            <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest">Ad check in progress</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Negotiating Stream...</p>
+            <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest">Ensuring secure playback</p>
           </div>
         )}
 
@@ -209,15 +205,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             <div className="w-20 h-20 bg-red-600/10 border-2 border-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Error</h3>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Interrupted</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed text-sm">
-              We encountered an issue initializing the secure stream. This can be caused by network instability or content blockers.
+              We couldn't initialize the secure stream. Please check your internet connection and disable any aggressive ad-blockers.
             </p>
             <button 
               onClick={onClose} 
               className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition active:scale-95"
             >
-              Close Player
+              Exit Player
             </button>
           </div>
         ) : (
@@ -232,7 +228,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         )}
 
         {/* Custom Mute Control Layer */}
-        {!error && !adLoading && !isAdPlaying && (
+        {!error && !adLoading && (
           <button 
             onClick={toggleMute}
             className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95 opacity-0 group-hover:opacity-100"
@@ -251,7 +247,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             width: 100% !important;
             height: 100% !important;
         }
-        /* Hide controls while ad is playing to prevent interaction issues */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
@@ -260,7 +255,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           height: 100%;
           background-color: black;
         }
-        /* Netflix-style loading spinner */
         .vjs-loading-spinner {
             border: 3px solid rgba(229, 9, 20, 0.3) !important;
             border-top-color: #e50914 !important;
