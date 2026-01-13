@@ -24,13 +24,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // 1. Initialize Video.js
+    // 1. Initialize Video.js with standard Netflix-like settings
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
-      muted: true, // Essential for modern browser autoplay compliance
+      muted: true,
       responsive: true,
       fluid: true,
+      playbackRates: [0.5, 1, 1.5, 2],
       poster: movie.thumbnail,
       sources: movie.videoUrl ? [{
         src: movie.videoUrl,
@@ -40,20 +41,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
+    // Critical fix: This function forces the UI to return to content mode
     const forceContentPlay = () => {
-      console.log('Ad failed or blocked - Bypassing to content.');
+      console.log('IMA: Forcing content playback and clearing UI block.');
       if (adTimeoutRef.current) {
         clearTimeout(adTimeoutRef.current);
         adTimeoutRef.current = null;
       }
+      
       setIsAdPlaying(false);
       setAdLoading(false);
       
-      // Attempt to play content regardless of IMA state
       if (player) {
-        player.play().catch((err: any) => {
-          console.warn('Playback resume failed:', err);
-        });
+        // Explicitly strip classes that hide controls
+        player.removeClass('vjs-ad-playing');
+        player.removeClass('vjs-ad-loading');
+        player.removeClass('vjs-ad-active');
+        
+        // Attempt to play content
+        const playPromise = player.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err: any) => {
+            console.warn('Playback resume handled:', err);
+          });
+        }
       }
     };
 
@@ -62,63 +73,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          // INTEGRATED: User's requested VAST ad tag domain for pre-rolls
           adTagUrl: 'https://onclickalgo.com/video/select.php?r=10802842',
           showCountdown: true,
           debug: false,
           adWillAutoPlay: true,
-          adsResponseTimeout: 8000 // Slightly longer timeout to ensure reliable loading
+          adsResponseTimeout: 5000 // Faster timeout for better UX
         };
 
         try {
           player.ima(imaOptions);
 
-          // Handle Ad Events
+          // Success Events
           player.on('ads-ad-started', () => {
-            console.log('Ad started');
-            if (adTimeoutRef.current) {
-              clearTimeout(adTimeoutRef.current);
-              adTimeoutRef.current = null;
-            }
+            if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
             setIsAdPlaying(true);
             setAdLoading(false);
           });
 
-          player.on('ads-ad-ended', () => {
+          // Completion Events
+          player.on('ads-ad-ended', forceContentPlay);
+          player.on('ads-all-ads-completed', forceContentPlay);
+
+          // Error/Blocker handling - ensures buttons don't stay "stuck"
+          player.on('ads-error', (event: any) => {
+            console.warn('IMA Ads Error:', event.error);
             forceContentPlay();
           });
 
-          // Error handling for blocked ads
-          player.on('ads-error', () => {
-            console.warn('IMA Ads Error - Likely blocked');
-            forceContentPlay();
-          });
+          player.on('aderror', forceContentPlay);
+          player.on('contentresumerequested', forceContentPlay);
 
-          player.on('ads-loader-error', () => {
-            forceContentPlay();
-          });
-
-          player.on('aderror', () => {
-            forceContentPlay();
-          });
-
-          player.on('contentresumerequested', () => {
-            forceContentPlay();
-          });
-
-          // Pre-roll Request Trigger
+          // Pre-roll Request Trigger on User Interaction
           const requestAdsOnPlay = () => {
-            console.log('Requesting pre-roll ads...');
             player.ima.initializeAdDisplayContainer();
             player.ima.requestAds();
             
-            // Safety timeout: If no ad starts within 8 seconds, play the movie.
+            // Fail-safe: If ad hasn't started in 6 seconds, just play the movie
             adTimeoutRef.current = window.setTimeout(() => {
-              if (adLoading) {
-                console.warn('Ad server timeout - Triggering content fallback.');
+              if (adLoading || isAdPlaying === false) {
+                console.warn('Ad Request Hang - Bypassing to movie.');
                 forceContentPlay();
               }
-            }, 8000);
+            }, 6000);
 
             player.off('play', requestAdsOnPlay);
           };
@@ -178,7 +174,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           {(isAdPlaying || adLoading) && (
             <div className="flex items-center justify-center space-x-2">
               <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded font-black text-white uppercase tracking-widest animate-pulse">
-                {adLoading ? 'Verifying Stream...' : 'Sponsored Content'}
+                {adLoading ? 'Authenticating...' : 'Sponsored Content'}
               </span>
             </div>
           )}
@@ -197,7 +193,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
             <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Negotiating Stream...</p>
-            <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest">Ensuring secure playback</p>
           </div>
         )}
 
@@ -206,13 +201,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             <div className="w-20 h-20 bg-red-600/10 border-2 border-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Interrupted</h3>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Error</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed text-sm">
-              We couldn't initialize the secure stream. Please check your internet connection and ensure ad-blockers are disabled for this site to view free content.
+              We couldn't initialize the secure stream. Please check your internet and disable any ad-blockers to view this content.
             </p>
             <button 
               onClick={onClose} 
-              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition active:scale-95"
+              className="bg-white text-black px-10 py-3 rounded-full font-black uppercase tracking-widest hover:bg-gray-200 transition"
             >
               Exit Player
             </button>
@@ -228,11 +223,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
-        {/* Custom Mute Control Layer */}
-        {!error && !adLoading && (
+        {/* Custom Mute Control */}
+        {!error && !adLoading && !isAdPlaying && (
           <button 
             onClick={toggleMute}
-            className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95 opacity-0 group-hover:opacity-100"
+            className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all opacity-0 group-hover:opacity-100"
           >
             {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
           </button>
@@ -240,25 +235,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
+        /* FIX: Ensure ad container doesn't steal clicks when inactive */
         .vjs-ima-ad-container {
           z-index: 215 !important;
+          pointer-events: none !important;
         }
-        #my-video_ima-ad-container,
-        .vjs-ima-ad-container {
+        /* Only allow clicks on ad container during active playback */
+        .vjs-ad-playing .vjs-ima-ad-container,
+        .vjs-ad-active .vjs-ima-ad-container {
+          pointer-events: auto !important;
+        }
+        
+        #my-video_ima-ad-container {
             width: 100% !important;
             height: 100% !important;
         }
+        
+        /* Ensure controls are visible when not playing ads */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
+          opacity: 0 !important;
         }
+        
         .video-js {
           width: 100%;
           height: 100%;
           background-color: black;
         }
-        .vjs-loading-spinner {
-            border: 3px solid rgba(229, 9, 20, 0.3) !important;
-            border-top-color: #e50914 !important;
+        
+        .video-js .vjs-control-bar {
+          z-index: 216 !important;
         }
       `}</style>
     </div>
