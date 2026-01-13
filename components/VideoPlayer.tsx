@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
@@ -68,16 +67,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       }
     };
 
-    // 2. Setup IMA with the Adcash/Onclickalgo VAST tag
+    // 2. Setup IMA with the provided VAST tag URL
     player.ready(() => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          adTagUrl: 'https://onclickalgo.com/video/select.php?r=10802842',
+          // Updated to the URL provided in the prompt
+          adTagUrl: 'https://youradexchange.com/video/select.php?r=10802842',
           showCountdown: true,
           debug: false,
           adWillAutoPlay: true,
-          adsResponseTimeout: 5000 // Faster timeout for better UX
+          adsResponseTimeout: 5000 
         };
 
         try {
@@ -94,7 +94,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           player.on('ads-ad-ended', forceContentPlay);
           player.on('ads-all-ads-completed', forceContentPlay);
 
-          // Error/Blocker handling - ensures buttons don't stay "stuck"
+          // Error/Blocker handling
           player.on('ads-error', (event: any) => {
             console.warn('IMA Ads Error:', event.error);
             forceContentPlay();
@@ -105,17 +105,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
           // Pre-roll Request Trigger on User Interaction
           const requestAdsOnPlay = () => {
-            player.ima.initializeAdDisplayContainer();
-            player.ima.requestAds();
-            
-            // Fail-safe: If ad hasn't started in 6 seconds, just play the movie
-            adTimeoutRef.current = window.setTimeout(() => {
-              if (adLoading || isAdPlaying === false) {
-                console.warn('Ad Request Hang - Bypassing to movie.');
-                forceContentPlay();
-              }
-            }, 6000);
-
+            // Only request ads if initialized and not already handled
+            if (player.ima && player.ima.initializeAdDisplayContainer) {
+              player.ima.initializeAdDisplayContainer();
+              player.ima.requestAds();
+              
+              // Fail-safe: If ad hasn't started in 6 seconds, just play the movie
+              adTimeoutRef.current = window.setTimeout(() => {
+                if (adLoading || isAdPlaying === false) {
+                  console.warn('Ad Request Hang - Bypassing to movie.');
+                  forceContentPlay();
+                }
+              }, 6000);
+            }
             player.off('play', requestAdsOnPlay);
           };
           player.on('play', requestAdsOnPlay);
@@ -174,7 +176,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           {(isAdPlaying || adLoading) && (
             <div className="flex items-center justify-center space-x-2">
               <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded font-black text-white uppercase tracking-widest animate-pulse">
-                {adLoading ? 'Authenticating...' : 'Sponsored Content'}
+                {adLoading ? 'Negotiating Ad...' : 'Sponsored Content'}
               </span>
             </div>
           )}
@@ -192,7 +194,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         {adLoading && !error && (
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
-            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Negotiating Stream...</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Loading Ad Experience...</p>
           </div>
         )}
 
@@ -235,12 +237,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        /* FIX: Ensure ad container doesn't steal clicks when inactive */
         .vjs-ima-ad-container {
           z-index: 215 !important;
           pointer-events: none !important;
         }
-        /* Only allow clicks on ad container during active playback */
         .vjs-ad-playing .vjs-ima-ad-container,
         .vjs-ad-active .vjs-ima-ad-container {
           pointer-events: auto !important;
@@ -251,7 +251,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             height: 100% !important;
         }
         
-        /* Ensure controls are visible when not playing ads */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
           opacity: 0 !important;

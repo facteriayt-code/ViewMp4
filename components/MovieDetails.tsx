@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle } from 'lucide-react';
 import { Movie } from '../types.ts';
+import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -113,6 +113,11 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, 
               {copied ? <Check className="w-6 h-6 mr-2" /> : <Share2 className="w-6 h-6 mr-2" />}
               {copied ? 'Link Copied' : 'Share Link'}
             </button>
+          </div>
+
+          {/* IN-MODAL AD PLACEMENT FOR HIGH ENGAGEMENT */}
+          <div className="py-2">
+            <AdBanner />
           </div>
 
           {/* 4. Recommendations Section */}
