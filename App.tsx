@@ -9,6 +9,7 @@ import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
 import AdBanner from './components/AdBanner.tsx';
+import NativeAd from './components/NativeAd.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -238,8 +239,9 @@ const App: React.FC = () => {
               movies={row.movies}
               onMovieClick={setSelectedMovie}
             />
-            {/* Display Ad Banner between some rows for visibility */}
+            {/* Display Ad Banners and Native Units between rows */}
             {idx === 1 && <AdBanner />}
+            {idx === 2 && <NativeAd />}
           </React.Fragment>
         ))}
       </div>
