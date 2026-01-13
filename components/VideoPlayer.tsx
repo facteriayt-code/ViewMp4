@@ -14,7 +14,8 @@ interface VideoPlayerProps {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
-  const [isMuted, setIsMuted] = useState(true); // Default to muted for reliable autoplay
+  const adTimeoutRef = useRef<number | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adLoading, setAdLoading] = useState(true);
@@ -26,7 +27,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     const player = videojs(videoRef.current, {
       autoplay: true,
       controls: true,
-      muted: true, // Crucial for modern browser autoplay with ads
+      muted: true, // Required for reliable autoplay across browsers
       responsive: true,
       fluid: true,
       poster: movie.thumbnail,
@@ -38,6 +39,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
+    const forceContentPlay = () => {
+      console.log('Forcing content playback fallback');
+      if (adTimeoutRef.current) {
+        clearTimeout(adTimeoutRef.current);
+        adTimeoutRef.current = null;
+      }
+      setIsAdPlaying(false);
+      setAdLoading(false);
+      
+      // Ensure the player UI reflects content state
+      if (player && !player.paused()) {
+        player.play().catch(() => {});
+      } else if (player) {
+        player.play().catch(() => {});
+      }
+    };
+
     // 2. Setup IMA
     player.ready(() => {
       if (player.ima) {
@@ -45,7 +63,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           id: 'my-video',
           adTagUrl: 'https://youradexchange.com/video/select.php?r=10801106',
           showCountdown: true,
-          debug: false
+          debug: false,
+          adWillAutoPlay: true,
+          adsResponseTimeout: 5000 // Internal IMA timeout
         };
 
         try {
@@ -53,46 +73,66 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
           // Handle Ad Events
           player.on('ads-ad-started', () => {
+            console.log('Ad started playing');
+            if (adTimeoutRef.current) {
+              clearTimeout(adTimeoutRef.current);
+              adTimeoutRef.current = null;
+            }
             setIsAdPlaying(true);
             setAdLoading(false);
           });
 
           player.on('ads-ad-ended', () => {
-            setIsAdPlaying(false);
-            setAdLoading(false);
+            console.log('Ad ended');
+            forceContentPlay();
           });
 
-          // CRITICAL: Handle errors to ensure content plays
-          const forceContentPlay = () => {
-            setIsAdPlaying(false);
-            setAdLoading(false);
-            player.play(); // Explicitly start content
-          };
-
+          // Standard IMA/Video.js Error Catchers
           player.on('ads-error', (event: any) => {
-            console.warn('IMA Ads Error:', event.adsManagerLoadedEvent?.getError());
+            console.warn('IMA Ads Error caught:', event.adsManagerLoadedEvent?.getError() || 'Unknown');
             forceContentPlay();
           });
 
           player.on('ads-loader-error', () => {
-            console.warn('IMA Loader Error');
+            console.warn('IMA Loader Error - Ad source unreachable');
             forceContentPlay();
           });
 
-          // Request ads on the first play event
+          player.on('aderror', () => {
+            console.warn('General Ad Error');
+            forceContentPlay();
+          });
+
+          player.on('contentresumerequested', () => {
+            console.log('Content resume requested by IMA');
+            forceContentPlay();
+          });
+
+          // Safety net for stuck player
           const requestAdsOnPlay = () => {
+            console.log('Playback initiated - Requesting Ads');
             player.ima.initializeAdDisplayContainer();
             player.ima.requestAds();
+            
+            // Set a 5-second safety timeout. If ads don't start, play content.
+            adTimeoutRef.current = window.setTimeout(() => {
+              if (adLoading) {
+                console.warn('Ad safety timeout triggered - No ad response received');
+                forceContentPlay();
+              }
+            }, 5000);
+
             player.off('play', requestAdsOnPlay);
           };
           player.on('play', requestAdsOnPlay);
 
         } catch (e) {
-          console.error("IMA Plugin failed:", e);
-          setAdLoading(false);
+          console.error("IMA Plugin failed initialization:", e);
+          forceContentPlay();
         }
       } else {
-        setAdLoading(false);
+        console.warn('IMA plugin not found on player object');
+        forceContentPlay();
       }
     });
 
@@ -103,9 +143,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     player.on('error', () => {
       setError("Unable to load video stream.");
+      setAdLoading(false);
     });
 
     return () => {
+      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
       if (playerRef.current) {
         playerRef.current.dispose();
       }
@@ -139,7 +181,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           {(isAdPlaying || adLoading) && (
             <div className="flex items-center justify-center space-x-2">
               <span className="text-[10px] bg-amber-500 px-2 py-0.5 rounded font-black text-black uppercase tracking-widest animate-pulse">
-                {adLoading ? 'Connecting...' : 'Sponsored'}
+                {adLoading ? 'Verifying Stream...' : 'Sponsored'}
               </span>
             </div>
           )}
@@ -157,7 +199,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         {adLoading && !error && (
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
-            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Negotiating Stream...</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Loading Secure Buffer...</p>
+            <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest">Ad check in progress</p>
           </div>
         )}
 
@@ -167,8 +210,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
               <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
             <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Error</h3>
-            <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
-              We couldn't initialize the secure stream. Please disable any content blockers and try again.
+            <p className="text-gray-400 max-w-md mx-auto leading-relaxed text-sm">
+              We encountered an issue initializing the secure stream. This can be caused by network instability or content blockers.
             </p>
             <button 
               onClick={onClose} 
@@ -189,7 +232,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         )}
 
         {/* Custom Mute Control Layer */}
-        {!error && (
+        {!error && !adLoading && !isAdPlaying && (
           <button 
             onClick={toggleMute}
             className="absolute bottom-10 left-10 z-[210] p-4 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 text-white transition-all active:scale-95 opacity-0 group-hover:opacity-100"
@@ -208,6 +251,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             width: 100% !important;
             height: 100% !important;
         }
+        /* Hide controls while ad is playing to prevent interaction issues */
         .vjs-ad-playing .vjs-control-bar {
           display: none !important;
         }
@@ -215,6 +259,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           width: 100%;
           height: 100%;
           background-color: black;
+        }
+        /* Netflix-style loading spinner */
+        .vjs-loading-spinner {
+            border: 3px solid rgba(229, 9, 20, 0.3) !important;
+            border-top-color: #e50914 !important;
         }
       `}</style>
     </div>
