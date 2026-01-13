@@ -7,6 +7,7 @@ import UploadModal from './components/UploadModal.tsx';
 import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
+import NativeAd from './components/NativeAd.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -248,6 +249,7 @@ const App: React.FC = () => {
               onMovieClick={setSelectedMovie}
               onPlay={handlePlay}
             />
+            {idx === 0 && <NativeAd />}
           </React.Fragment>
         ))}
       </div>
