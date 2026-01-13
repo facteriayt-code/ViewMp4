@@ -1,12 +1,13 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
   title: string;
   movies: Movie[];
   onMovieClick: (movie: Movie) => void;
+  onPlay: (movie: Movie) => void;
 }
 
 const formatViews = (views: number) => {
@@ -15,7 +16,7 @@ const formatViews = (views: number) => {
   return views.toString();
 };
 
-const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
+const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -39,35 +40,48 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
     }
   };
 
+  const handlePlayClick = (e: React.MouseEvent, movie: Movie) => {
+    e.stopPropagation();
+    onPlay(movie);
+  };
+
   if (movies.length === 0) return null;
 
   return (
     <div className="space-y-4 mb-8">
-      <h3 className="text-xl md:text-2xl font-bold px-4 md:px-12 text-gray-100">{title}</h3>
+      <h3 className="text-xl md:text-2xl font-bold px-4 md:px-12 text-gray-100 uppercase tracking-tighter">{title}</h3>
       <div className="group relative flex items-center">
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 z-10 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
+          className="absolute left-0 z-30 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
         >
           <ChevronLeft className="w-8 h-8" />
         </button>
 
         <div 
           ref={rowRef}
-          className="row-container flex space-x-2 md:space-x-4 overflow-x-auto px-4 md:px-12 scroll-smooth"
+          className="row-container flex space-x-2 md:space-x-4 overflow-x-auto px-4 md:px-12 scroll-smooth py-4"
         >
           {movies.map((movie) => (
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none w-40 h-24 md:w-64 md:h-36 cursor-pointer transition duration-300 hover:scale-110 hover:z-20 rounded-md overflow-hidden bg-zinc-900 group/card"
+              className="relative flex-none w-40 h-24 md:w-64 md:h-36 cursor-pointer transition duration-300 hover:scale-110 hover:z-20 rounded-md overflow-hidden bg-zinc-900 group/card shadow-lg hover:shadow-red-600/20"
             >
               <img 
                 src={movie.thumbnail} 
                 alt={movie.title} 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover brightness-[0.85] group-hover/card:brightness-50 transition-all duration-300"
               />
               
+              {/* Central Play Button on Hover */}
+              <button 
+                onClick={(e) => handlePlayClick(e, movie)}
+                className="absolute inset-0 m-auto w-10 h-10 md:w-14 md:h-14 bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-50 group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90"
+              >
+                <Play className="w-5 h-5 md:w-7 md:h-7 text-white fill-white ml-1" />
+              </button>
+
               <button 
                 onClick={(e) => handleShare(e, movie)}
                 className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
@@ -77,7 +91,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
 
               <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-0 group-hover/card:opacity-100 transition-opacity">
                 <Eye className="w-3 h-3 mr-1 text-red-500" />
-                <span className="tabular-nums transition-all duration-300">
+                <span className="tabular-nums">
                   {formatViews(movie.views)}
                 </span>
               </div>
@@ -88,12 +102,12 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
                 </div>
               )}
 
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col justify-end p-2 md:p-4">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity p-2 md:p-4">
                  <p className="text-xs md:text-sm font-bold text-white truncate pr-6">{movie.title}</p>
                  <div className="flex items-center space-x-2 text-[8px] md:text-[10px] text-green-400 font-bold mt-1">
                     <span>{movie.rating}</span>
                     <span>{movie.year}</span>
-                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter text-[7px] md:text-[8px]">Realtime User Content</span>}
+                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter text-[7px] md:text-[8px]">User Choice</span>}
                  </div>
               </div>
             </div>
@@ -102,7 +116,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
 
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 z-10 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
+          className="absolute right-0 z-30 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
         >
           <ChevronRight className="w-8 h-8" />
         </button>

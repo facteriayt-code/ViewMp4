@@ -197,7 +197,6 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
-    // UPDATED: Trending now exclusively shows user-uploaded videos
     const userUploads = filteredMovies.filter(m => m.isUserUploaded === true);
     
     return [
@@ -268,6 +267,7 @@ const App: React.FC = () => {
               title={row.title}
               movies={row.movies}
               onMovieClick={setSelectedMovie}
+              onPlay={handlePlay}
             />
             {/* IN-FEED ADS: Balanced distribution */}
             {idx === 0 && <AdBanner zoneId="10802910" className="opacity-80" />}
@@ -324,7 +324,6 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      {/* STICKY AD: Ensures ad visibility on all views */}
       <StickyFooterAd />
     </div>
   );
