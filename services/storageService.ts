@@ -81,46 +81,50 @@ export const saveVideoToCloud = async (
 };
 
 /**
- * Increments movie views in Supabase using the RPC function.
+ * Increments movie views in Supabase.
+ * It first tries the optimized RPC function, then falls back to a direct update.
  */
 export const incrementMovieView = async (movieId: string) => {
-  // Simple check to see if it's a UUID (Supabase default) or a numeric string (INITIAL_MOVIES)
+  // Regex to check if ID is a valid UUID (Supabase generated)
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
   
-  // We only increment views for cloud-stored movies (UUIDs)
   if (!isUuid) {
-    console.debug("Skipping view increment for local static movie.");
+    console.debug("Local movie detected. Skipping cloud view increment.");
     return;
   }
 
   try {
-    // 1. Try to use the RPC function (recommended)
+    // Attempt 1: Using RPC (Atomic increment on server)
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
     
-    if (rpcError) {
-      console.warn("RPC increment_views failed, attempting manual fallback:", rpcError.message);
+    if (!rpcError) {
+      console.log("View successfully counted (RPC)");
+      return;
+    }
+
+    // Attempt 2: Direct update fallback if RPC fails
+    console.warn("RPC failed, trying direct increment fallback...");
+    const { data: current, error: fetchError } = await supabase
+      .from('movies')
+      .select('views')
+      .eq('id', movieId)
+      .single();
       
-      // 2. Fallback: Manual update if RPC is not set up
-      const { data: current, error: fetchError } = await supabase
+    if (!fetchError && current) {
+      const nextViews = (Number(current.views) || 0) + 1;
+      const { error: updateError } = await supabase
         .from('movies')
-        .select('views')
-        .eq('id', movieId)
-        .single();
+        .update({ views: nextViews })
+        .eq('id', movieId);
         
-      if (!fetchError && current) {
-        const nextViews = (Number(current.views) || 0) + 1;
-        await supabase
-          .from('movies')
-          .update({ views: nextViews })
-          .eq('id', movieId);
+      if (updateError) {
+        console.error("Direct view update failed:", updateError.message);
       } else {
-        console.error("Manual fallback also failed:", fetchError);
+        console.log("View counted via Direct Update");
       }
-    } else {
-      console.log("View successfully incremented for:", movieId);
     }
   } catch (err) {
-    console.error("Critical failure during view increment:", err);
+    console.error("View increment system error:", err);
   }
 };
 

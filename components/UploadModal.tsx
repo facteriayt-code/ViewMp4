@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, ExternalLink, RefreshCw, Terminal } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, Terminal } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -78,38 +78,44 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-[#181818] w-full max-w-xl my-auto rounded-2xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+      <div className="bg-[#181818] w-full max-w-xl my-auto rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300">
+        
+        {/* Header */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex flex-col">
-            <h2 className="text-xl font-bold flex items-center text-white uppercase italic">
-              <Cloud className="w-5 h-5 mr-2 text-red-600" />
-              Cloud Stream Upload
+            <h2 className="text-xl font-black flex items-center text-white uppercase italic tracking-tighter">
+              <Cloud className="w-6 h-6 mr-2 text-red-600" />
+              Upload to Cloud
             </h2>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Supabase Realtime Platform</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Supabase Realtime Network</p>
           </div>
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => setShowSetup(!showSetup)}
-              className="p-2 text-gray-400 hover:text-white transition"
-              title="Database Setup Help"
+              className="p-2 text-gray-500 hover:text-white transition"
+              title="Fix View Counting"
             >
               <Terminal className="w-5 h-5" />
             </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition">
+            <button onClick={onClose} className="text-gray-500 hover:text-red-500 transition">
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
+        {/* Diagnostics Setup Panel */}
         {showSetup && (
           <div className="bg-blue-600/10 border-b border-white/10 p-6 space-y-4 animate-in slide-in-from-top duration-300">
-            <div className="flex items-center space-x-2 text-blue-400 font-bold uppercase text-[10px] tracking-widest">
+            <div className="flex items-center space-x-2 text-blue-400 font-black uppercase text-[10px] tracking-widest">
               <Database className="w-4 h-4" />
-              <span>Real-time View Counting Fix</span>
+              <span>Real-time View Logic Setup</span>
             </div>
-            <p className="text-xs text-gray-300">Run this SQL in your Supabase SQL Editor to enable view counting:</p>
-            <pre className="bg-black/40 p-3 rounded-lg text-[9px] text-blue-200 overflow-x-auto border border-blue-500/20">
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Copy and paste this into your <strong>Supabase SQL Editor</strong> to enable real-time view counts:
+            </p>
+            <div className="relative">
+              <pre className="bg-black/60 p-4 rounded-xl text-[10px] text-blue-300 overflow-x-auto border border-blue-500/20 font-mono">
 {`create or replace function increment_views(movie_id uuid)
 returns void as $$
 begin
@@ -119,48 +125,48 @@ end;
 $$ language plpgsql security definer;
 
 alter publication supabase_realtime add table movies;`}
-            </pre>
+              </pre>
+            </div>
             <button 
               onClick={() => setShowSetup(false)}
-              className="text-[10px] font-bold text-gray-500 hover:text-white uppercase tracking-widest"
+              className="text-[10px] font-black text-blue-400 hover:text-white uppercase tracking-widest"
             >
-              Close Setup Guide
+              I've done this, close help
             </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Upload Form */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
           {uploadError && (
-            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl space-y-3 text-red-500 text-sm">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <div className="space-y-1 flex-1">
-                  <p className="font-bold">Sync Error</p>
-                  <p className="opacity-90 leading-relaxed">{uploadError}</p>
-                </div>
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-start space-x-3 text-red-500 text-sm animate-in shake duration-300">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-black uppercase tracking-widest">Network Error</p>
+                <p className="opacity-80 leading-snug">{uploadError}</p>
               </div>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Movie Title</label>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Video Title</label>
               <input 
                 type="text" 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition placeholder:text-gray-600"
-                placeholder="Name your video..."
+                className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none transition placeholder:text-gray-700 font-bold"
+                placeholder="Ex: My Viral Masterpiece"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Channel / Category</label>
               <select 
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
-                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-600 outline-none transition"
+                className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none transition font-bold"
               >
                 <option value="Viral">Viral</option>
                 <option value="Insta post">Insta post</option>
@@ -168,23 +174,23 @@ alter publication supabase_realtime add table movies;`}
               </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32">
-                  <Film className={`w-8 h-8 ${videoFile ? 'text-red-500' : 'text-gray-500 group-hover:text-red-500'}`} />
-                  <span className="text-[10px] mt-2 font-bold uppercase tracking-widest text-gray-500">
-                    {videoFile ? videoFile.name : 'Select Video'}
+            <div className="grid grid-cols-2 gap-4">
+               <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-6 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition group h-40">
+                  <Film className={`w-10 h-10 transition-colors ${videoFile ? 'text-green-500' : 'text-gray-600 group-hover:text-red-500'}`} />
+                  <span className="text-[10px] mt-3 font-black uppercase tracking-tighter text-gray-500 text-center px-2 truncate w-full">
+                    {videoFile ? videoFile.name : 'Choose Video'}
                   </span>
                   <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
                </label>
 
-               <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:border-red-600 transition group h-32 overflow-hidden">
+               <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-6 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition group h-40 overflow-hidden">
                   {thumbnailPreview ? (
-                    <img src={thumbnailPreview} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="" />
+                    <img src={thumbnailPreview} className="absolute inset-0 w-full h-full object-cover opacity-60" alt="" />
                   ) : (
-                    <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-red-500" />
+                    <ImageIcon className="w-10 h-10 text-gray-600 group-hover:text-red-500" />
                   )}
-                  <span className="relative text-[10px] mt-2 font-bold uppercase tracking-widest text-white">
-                    {thumbnailFile ? 'Poster Ready' : 'Select Thumbnail'}
+                  <span className="relative z-10 text-[10px] mt-3 font-black uppercase tracking-tighter text-white bg-black/40 px-2 py-1 rounded">
+                    {thumbnailFile ? 'Thumbnail Set' : 'Choose Cover'}
                   </span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} required />
                </label>
@@ -192,14 +198,14 @@ alter publication supabase_realtime add table movies;`}
           </div>
 
           {isUploading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <div className="space-y-3 animate-in fade-in duration-300">
+              <div className="flex justify-between text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">
                 <span>Transmitting</span>
                 <span>{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
+              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-red-600 transition-all duration-300"
+                  className="h-full bg-red-600 transition-all duration-300 shadow-[0_0_10px_rgba(229,9,20,0.5)]"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -209,9 +215,14 @@ alter publication supabase_realtime add table movies;`}
           <button 
             type="submit" 
             disabled={isUploading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center shadow-lg active:scale-95 uppercase tracking-widest"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-5 rounded-2xl transition disabled:opacity-50 flex items-center justify-center shadow-xl active:scale-[0.98] uppercase tracking-[0.2em] text-sm"
           >
-            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Upload'}
+            {isUploading ? (
+              <div className="flex items-center">
+                <Loader2 className="w-5 h-5 animate-spin mr-3" />
+                Processing...
+              </div>
+            ) : 'Push to Cloud'}
           </button>
         </form>
       </div>
