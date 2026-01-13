@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check, Eye, Zap } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
+import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -102,51 +103,56 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
           </div>
         </div>
 
-        <div className="p-8 grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-6">
-            <div className="flex items-center space-x-3 text-sm font-semibold">
-              <span className="text-green-500">98% Match</span>
-              <span className="border border-gray-500 px-1 text-xs">{movie.rating}</span>
-              <span>{movie.year}</span>
-              <span className="flex items-center text-gray-400">
-                <Eye className="w-4 h-4 mr-1" />
-                {formatViews(movie.views)} views
-              </span>
-              <span className="border border-gray-500 px-1 text-[10px] rounded">HD</span>
-            </div>
-            
-            {movie.uploaderName && (
-              <div className="flex items-center space-x-2 text-sm text-gray-400 bg-white/5 w-fit px-3 py-1 rounded-full border border-white/10">
-                <User className="w-4 h-4" />
-                <span>Uploaded by <span className="text-white font-bold">{movie.uploaderName}</span></span>
+        <div className="p-8 pb-4">
+           {/* Banner Ad for the Video Page */}
+           <AdBanner zoneId="10802946" className="mb-4" />
+           
+           <div className="grid md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-6">
+              <div className="flex items-center space-x-3 text-sm font-semibold">
+                <span className="text-green-500">98% Match</span>
+                <span className="border border-gray-500 px-1 text-xs">{movie.rating}</span>
+                <span>{movie.year}</span>
+                <span className="flex items-center text-gray-400">
+                  <Eye className="w-4 h-4 mr-1" />
+                  {formatViews(movie.views)} views
+                </span>
+                <span className="border border-gray-500 px-1 text-[10px] rounded">HD</span>
               </div>
-            )}
+              
+              {movie.uploaderName && (
+                <div className="flex items-center space-x-2 text-sm text-gray-400 bg-white/5 w-fit px-3 py-1 rounded-full border border-white/10">
+                  <User className="w-4 h-4" />
+                  <span>Uploaded by <span className="text-white font-bold">{movie.uploaderName}</span></span>
+                </div>
+              )}
 
-            <p className="text-gray-200 text-lg leading-relaxed">
-              {movie.description}
-            </p>
+              <p className="text-gray-200 text-lg leading-relaxed">
+                {movie.description}
+              </p>
 
-            <div className="bg-indigo-950/30 border border-indigo-500/30 p-6 rounded-xl space-y-3 relative overflow-hidden group">
-               <div className="flex items-center space-x-2 text-indigo-400 font-bold uppercase text-xs tracking-widest">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Gemini AI Discovery</span>
-               </div>
-               <p className={`italic text-indigo-100 ${loadingAi ? 'animate-pulse' : ''}`}>
-                 "{aiInsight}"
-               </p>
-               <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-[60px] rounded-full" />
+              <div className="bg-indigo-950/30 border border-indigo-500/30 p-6 rounded-xl space-y-3 relative overflow-hidden group">
+                 <div className="flex items-center space-x-2 text-indigo-400 font-bold uppercase text-xs tracking-widest">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Gemini AI Discovery</span>
+                 </div>
+                 <p className={`italic text-indigo-100 ${loadingAi ? 'animate-pulse' : ''}`}>
+                   "{aiInsight}"
+                 </p>
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-[60px] rounded-full" />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-4 text-sm">
-            <div>
-              <span className="text-gray-500">Genre:</span> <span className="text-gray-200">{movie.genre}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Available in:</span> <span className="text-gray-200">4K, Atmos, HDR</span>
-            </div>
-            <div className="pt-4 border-t border-gray-800">
-               <p className="text-xs text-gray-500 italic">User Content? {movie.isUserUploaded ? 'Yes' : 'Original Selection'}</p>
+            <div className="space-y-4 text-sm">
+              <div>
+                <span className="text-gray-500">Genre:</span> <span className="text-gray-200">{movie.genre}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Available in:</span> <span className="text-gray-200">4K, Atmos, HDR</span>
+              </div>
+              <div className="pt-4 border-t border-gray-800">
+                 <p className="text-xs text-gray-500 italic">User Content? {movie.isUserUploaded ? 'Yes' : 'Original Selection'}</p>
+              </div>
             </div>
           </div>
         </div>
