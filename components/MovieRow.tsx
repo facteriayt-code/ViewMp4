@@ -49,11 +49,11 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
   return (
     <div className="space-y-4 mb-8">
-      <h3 className="text-xl md:text-2xl font-bold px-4 md:px-12 text-gray-100 uppercase tracking-tighter">{title}</h3>
+      <h3 className="text-xl md:text-2xl font-black px-4 md:px-12 text-gray-100 uppercase tracking-tighter italic">{title}</h3>
       <div className="group relative flex items-center">
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 z-30 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
+          className="absolute left-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
         >
           <ChevronLeft className="w-8 h-8" />
         </button>
@@ -66,42 +66,41 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none w-40 h-24 md:w-64 md:h-36 cursor-pointer transition duration-300 hover:scale-105 hover:z-20 rounded-md overflow-hidden bg-zinc-900 group/card shadow-lg hover:shadow-red-600/20"
+              className="relative flex-none w-44 h-28 md:w-72 md:h-40 cursor-pointer transition-all duration-300 hover:scale-105 hover:z-20 rounded-xl overflow-hidden bg-zinc-900 group/card shadow-xl hover:shadow-red-600/30 border border-white/5"
             >
               <img 
                 src={movie.thumbnail} 
                 alt={movie.title} 
-                className="w-full h-full object-cover brightness-[0.85] group-hover/card:brightness-50 transition-all duration-300"
+                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-50 transition-all duration-300"
               />
               
-              {/* FIXED: Play Button visibility for Mobile */}
+              {/* PLAY BUTTON - ALWAYS VISIBLE ON MOBILE */}
               <button 
                 onClick={(e) => handlePlayClick(e, movie)}
-                className="absolute inset-0 m-auto w-10 h-10 md:w-14 md:h-14 bg-red-600 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover/card:opacity-100 scale-90 md:scale-50 md:group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90 border-2 border-white/20"
+                className="absolute inset-0 m-auto w-12 h-12 md:w-16 md:h-16 bg-red-600 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover/card:opacity-100 scale-95 md:scale-50 md:group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_30px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90 border-2 border-white/30"
               >
-                <Play className="w-5 h-5 md:w-7 md:h-7 text-white fill-white ml-1" />
+                <Play className="w-6 h-6 md:w-8 md:h-8 text-white fill-white ml-1" />
               </button>
 
               <button 
                 onClick={(e) => handleShare(e, movie)}
-                className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
+                className="absolute top-2 right-2 z-30 p-2 bg-black/60 rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity hover:bg-red-600"
               >
-                {copiedId === movie.id ? <Check className="w-3 h-3 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4 text-white" />}
+                {copiedId === movie.id ? <Check className="w-4 h-4 text-white" /> : <Share2 className="w-4 h-4 text-white" />}
               </button>
 
-              <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
+              <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[10px] font-black text-white opacity-100 md:opacity-0 md:group-hover/card:opacity-100">
                 <Eye className="w-3 h-3 mr-1 text-red-500" />
-                <span className="tabular-nums">
-                  {formatViews(movie.views)}
-                </span>
+                <span>{formatViews(movie.views)}</span>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-2 md:p-4 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
-                 <p className="text-[10px] md:text-sm font-bold text-white truncate pr-6">{movie.title}</p>
-                 <div className="flex items-center space-x-2 text-[7px] md:text-[10px] text-green-400 font-bold mt-0.5">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-3 md:p-5 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
+                 <p className="text-xs md:text-base font-black text-white truncate pr-8 uppercase italic leading-none">{movie.title}</p>
+                 <div className="flex items-center space-x-2 text-[8px] md:text-[11px] text-green-400 font-black mt-1 uppercase tracking-widest">
                     <span>{movie.rating}</span>
+                    <span className="text-gray-500">•</span>
                     <span>{movie.year}</span>
-                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter">Community</span>}
+                    {movie.isUserUploaded && <span className="bg-red-600 text-white px-1.5 rounded-sm text-[7px] md:text-[9px]">Community</span>}
                  </div>
               </div>
             </div>
@@ -110,7 +109,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 z-30 p-2 bg-black/50 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
+          className="absolute right-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-125 md:px-4"
         >
           <ChevronRight className="w-8 h-8" />
         </button>
