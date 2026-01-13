@@ -197,12 +197,18 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
+    // UPDATED: Trending now exclusively shows user-uploaded videos
+    const userUploads = filteredMovies.filter(m => m.isUserUploaded === true);
+    
     return [
-      { title: 'Trending', movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 10) },
+      { 
+        title: 'Trending Community Uploads', 
+        movies: userUploads.sort((a,b) => b.views - a.views).slice(0, 15) 
+      },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
-      { title: 'Viral', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Onlyfans', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
-      { title: 'All Content', movies: filteredMovies },
+      { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
+      { title: 'Onlyfans Exclusives', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
+      { title: 'Full Library', movies: filteredMovies },
     ];
   }, [filteredMovies]);
 
@@ -273,7 +279,13 @@ const App: React.FC = () => {
       </div>
 
       {selectedMovie && (
-        <MovieDetails movie={selectedMovie} onClose={() => setSelectedMovie(null)} onPlay={handlePlay} />
+        <MovieDetails 
+          movie={selectedMovie} 
+          allMovies={movies}
+          onClose={() => setSelectedMovie(null)} 
+          onPlay={handlePlay} 
+          onMovieSelect={setSelectedMovie}
+        />
       )}
 
       {playingMovie && (
