@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
@@ -40,11 +40,6 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
     }
   };
 
-  const handlePlayClick = (e: React.MouseEvent, movie: Movie) => {
-    e.stopPropagation();
-    onPlay(movie);
-  };
-
   if (movies.length === 0) return null;
 
   return (
@@ -71,17 +66,9 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
               <img 
                 src={movie.thumbnail} 
                 alt={movie.title} 
-                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-50 transition-all duration-300"
+                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 transition-all duration-300"
               />
               
-              {/* PLAY BUTTON - ALWAYS VISIBLE ON MOBILE */}
-              <button 
-                onClick={(e) => handlePlayClick(e, movie)}
-                className="absolute inset-0 m-auto w-12 h-12 md:w-16 md:h-16 bg-red-600 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover/card:opacity-100 scale-95 md:scale-50 md:group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_30px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90 border-2 border-white/30"
-              >
-                <Play className="w-6 h-6 md:w-8 md:h-8 text-white fill-white ml-1" />
-              </button>
-
               <button 
                 onClick={(e) => handleShare(e, movie)}
                 className="absolute top-2 right-2 z-30 p-2 bg-black/60 rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity hover:bg-red-600"

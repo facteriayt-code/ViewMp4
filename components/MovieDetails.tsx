@@ -133,11 +133,8 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, 
                     <img 
                       src={sug.thumbnail} 
                       alt={sug.title} 
-                      className="w-full h-full object-cover transition duration-300 group-hover:scale-110 group-hover:brightness-50" 
+                      className="w-full h-full object-cover transition duration-300 group-hover:scale-110 group-hover:brightness-75" 
                     />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play className="w-6 h-6 text-white fill-white" />
-                    </div>
                   </div>
                   <h4 className="text-[10px] md:text-xs font-bold text-gray-300 truncate group-hover:text-red-500 transition-colors uppercase italic">
                     {sug.title}
