@@ -1,25 +1,37 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+
+declare var aclib: any;
 
 const AdBanner: React.FC = () => {
+  const adRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    try {
-      // @ts-ignore
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {
-      console.error("AdSense initialization failed:", e);
+    // If aclib is loaded, execute the banner run
+    if (typeof aclib !== 'undefined' && aclib.runBanner) {
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.innerHTML = `
+        aclib.runBanner({
+            zoneId: '10802910',
+        });
+      `;
+      if (adRef.current) {
+        adRef.current.appendChild(script);
+      }
     }
   }, []);
 
   return (
-    <div className="w-full py-6 flex justify-center bg-black/20">
-      <div className="w-full max-w-7xl px-4 md:px-12">
-        <ins className="adsbygoogle"
-             style={{ display: 'block' }}
-             data-ad-client="ca-pub-4236455328558244"
-             data-ad-slot="1773009337"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
+    <div className="w-full flex justify-center py-8">
+      <div 
+        ref={adRef} 
+        className="w-full max-w-[728px] min-h-[90px] bg-white/5 border border-white/5 rounded-lg flex items-center justify-center relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 bg-black/40 text-[8px] uppercase tracking-widest px-2 py-0.5 text-gray-500 rounded-br">
+          Advertisement
+        </div>
+        {/* Adcash banner will be injected here by the script above */}
       </div>
     </div>
   );

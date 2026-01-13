@@ -8,6 +8,7 @@ import UploadModal from './components/UploadModal.tsx';
 import VideoPlayer from './components/VideoPlayer.tsx';
 import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
+import AdBanner from './components/AdBanner.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -33,15 +34,12 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [isDeepLinking, setIsDeepLinking] = useState(false);
   
-  // Track the ID from URL to show loading state if needed
   const pendingVideoId = useRef<string | null>(new URLSearchParams(window.location.search).get('v'));
 
   useEffect(() => {
-    // 1. Verification and Initial State
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
     setIsAgeVerified(verified === 'true');
 
-    // 2. Auth Sync
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -66,13 +64,11 @@ const App: React.FC = () => {
       }
     });
 
-    // 3. Database Sync
     const syncCloudData = async () => {
       setIsSyncing(true);
       try {
         const cloudVideos = await getAllVideosFromCloud();
         const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
-        // Ensure uniqueness by ID
         const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
         setMovies(uniqueMovies);
         setIsOnline(true);
@@ -86,7 +82,6 @@ const App: React.FC = () => {
 
     syncCloudData();
 
-    // 4. Realtime Pipeline
     const moviesChannel = supabase
       .channel('movies-realtime-global')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
@@ -121,7 +116,6 @@ const App: React.FC = () => {
     };
   }, [selectedMovie?.id]);
 
-  // Robust Deep Linking Handler
   useEffect(() => {
     const processDeepLink = () => {
       const params = new URLSearchParams(window.location.search);
@@ -141,7 +135,6 @@ const App: React.FC = () => {
             setPlayingMovie(null);
           }
         } else {
-          // If we have a videoId in URL but it's not in our list yet
           setIsDeepLinking(true);
         }
       } else {
@@ -150,8 +143,6 @@ const App: React.FC = () => {
     };
 
     processDeepLink();
-
-    // Listen for manual URL changes (back/forward or replaceState)
     window.addEventListener('popstate', processDeepLink);
     return () => window.removeEventListener('popstate', processDeepLink);
   }, [movies]);
@@ -193,7 +184,6 @@ const App: React.FC = () => {
   return (
     <div className={`relative min-h-screen pb-20 bg-[#141414] ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
       {!isAgeVerified && <AgeDisclaimer onVerify={() => {
-        // Fix: Use STORAGE_KEYS.AGE_VERIFIED instead of the undefined STORAGE_KEYS_AGE_VERIFIED
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
         setIsAgeVerified(true);
       }} />}
@@ -206,7 +196,6 @@ const App: React.FC = () => {
         onSearch={setSearchTerm}
       />
       
-      {/* Loading Overlay for shared links if data hasn't arrived yet */}
       {isDeepLinking && isSyncing && (
         <div className="fixed inset-0 z-[80] bg-black/90 flex flex-col items-center justify-center space-y-4">
            <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
@@ -223,7 +212,6 @@ const App: React.FC = () => {
       )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
-        {/* Connection Status Bar */}
         <div className="px-4 md:px-12 mb-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
              <div className={`p-1.5 rounded-lg ${isOnline ? 'bg-green-600/10 text-green-500' : 'bg-red-600/10 text-red-500'}`}>
@@ -244,12 +232,15 @@ const App: React.FC = () => {
         </div>
 
         {rows.map((row, idx) => (
-          <MovieRow 
-            key={row.title + idx}
-            title={row.title}
-            movies={row.movies}
-            onMovieClick={setSelectedMovie}
-          />
+          <React.Fragment key={row.title + idx}>
+            <MovieRow 
+              title={row.title}
+              movies={row.movies}
+              onMovieClick={setSelectedMovie}
+            />
+            {/* Display Ad Banner between some rows for visibility */}
+            {idx === 1 && <AdBanner />}
+          </React.Fragment>
         ))}
       </div>
 
@@ -275,6 +266,10 @@ const App: React.FC = () => {
           onClose={() => setShowLoginModal(false)} 
         />
       )}
+
+      <div className="px-4 md:px-12 mt-12">
+        <AdBanner />
+      </div>
 
       <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
         <div className="flex flex-col items-center space-y-4">
