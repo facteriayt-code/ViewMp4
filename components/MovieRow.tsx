@@ -66,7 +66,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none w-40 h-24 md:w-64 md:h-36 cursor-pointer transition duration-300 hover:scale-110 hover:z-20 rounded-md overflow-hidden bg-zinc-900 group/card shadow-lg hover:shadow-red-600/20"
+              className="relative flex-none w-40 h-24 md:w-64 md:h-36 cursor-pointer transition duration-300 hover:scale-105 hover:z-20 rounded-md overflow-hidden bg-zinc-900 group/card shadow-lg hover:shadow-red-600/20"
             >
               <img 
                 src={movie.thumbnail} 
@@ -74,40 +74,34 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                 className="w-full h-full object-cover brightness-[0.85] group-hover/card:brightness-50 transition-all duration-300"
               />
               
-              {/* Central Play Button on Hover */}
+              {/* FIXED: Play Button visibility for Mobile */}
               <button 
                 onClick={(e) => handlePlayClick(e, movie)}
-                className="absolute inset-0 m-auto w-10 h-10 md:w-14 md:h-14 bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-50 group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90"
+                className="absolute inset-0 m-auto w-10 h-10 md:w-14 md:h-14 bg-red-600 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover/card:opacity-100 scale-90 md:scale-50 md:group-hover/card:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(229,9,20,0.6)] z-40 hover:scale-110 active:scale-90 border-2 border-white/20"
               >
                 <Play className="w-5 h-5 md:w-7 md:h-7 text-white fill-white ml-1" />
               </button>
 
               <button 
                 onClick={(e) => handleShare(e, movie)}
-                className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
+                className="absolute top-2 right-2 z-30 p-1.5 bg-black/60 rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity hover:bg-red-600 hover:border-red-600"
               >
                 {copiedId === movie.id ? <Check className="w-3 h-3 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4 text-white" />}
               </button>
 
-              <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-0 group-hover/card:opacity-100 transition-opacity">
+              <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
                 <Eye className="w-3 h-3 mr-1 text-red-500" />
                 <span className="tabular-nums">
                   {formatViews(movie.views)}
                 </span>
               </div>
 
-              {copiedId === movie.id && (
-                <div className="absolute top-10 right-2 z-40 bg-green-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg animate-in fade-in slide-in-from-top-1 uppercase tracking-tighter">
-                  Copied!
-                </div>
-              )}
-
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity p-2 md:p-4">
-                 <p className="text-xs md:text-sm font-bold text-white truncate pr-6">{movie.title}</p>
-                 <div className="flex items-center space-x-2 text-[8px] md:text-[10px] text-green-400 font-bold mt-1">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-2 md:p-4 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
+                 <p className="text-[10px] md:text-sm font-bold text-white truncate pr-6">{movie.title}</p>
+                 <div className="flex items-center space-x-2 text-[7px] md:text-[10px] text-green-400 font-bold mt-0.5">
                     <span>{movie.rating}</span>
                     <span>{movie.year}</span>
-                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter text-[7px] md:text-[8px]">User Choice</span>}
+                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter">Community</span>}
                  </div>
               </div>
             </div>
