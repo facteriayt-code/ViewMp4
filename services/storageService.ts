@@ -70,20 +70,7 @@ export const saveVideoToCloud = async (
 
     if (dbError) {
       console.error("Database Insert Error details:", dbError);
-      
-      // Extract column name from error message if possible
-      const missingColumnMatch = dbError.message.match(/column "(.+?)"/);
-      const columnName = missingColumnMatch ? missingColumnMatch[1] : null;
-
-      if (columnName) {
-         throw new Error(`Database Schema Error: The column '${columnName}' is missing from your 'movies' table. Please run the ALTER TABLE script in your Supabase SQL Editor.`);
-      }
-      
-      if (dbError.message.includes('schema cache')) {
-         throw new Error("Supabase Schema Cache error: Database updated, but API is still using old definition. Please wait 10 seconds and refresh the page.");
-      }
-      
-      throw new Error(`Database Error: ${dbError.message} (Code: ${dbError.code})`);
+      throw new Error(`Database Error: ${dbError.message}`);
     }
 
     return mapDbToMovie(data);
@@ -97,24 +84,43 @@ export const saveVideoToCloud = async (
  * Increments movie views in Supabase using the RPC function.
  */
 export const incrementMovieView = async (movieId: string) => {
+  // Simple check to see if it's a UUID (Supabase default) or a numeric string (INITIAL_MOVIES)
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
-  if (!isUuid) return;
+  
+  // We only increment views for cloud-stored movies (UUIDs)
+  if (!isUuid) {
+    console.debug("Skipping view increment for local static movie.");
+    return;
+  }
 
   try {
-    // Attempt RPC first (best practice)
+    // 1. Try to use the RPC function (recommended)
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
     
     if (rpcError) {
-      console.warn("RPC increment failed, falling back to manual update", rpcError);
-      // Fallback manual update if RPC is missing or failing
-      const { data: current, error: fetchError } = await supabase.from('movies').select('views').eq('id', movieId).single();
+      console.warn("RPC increment_views failed, attempting manual fallback:", rpcError.message);
+      
+      // 2. Fallback: Manual update if RPC is not set up
+      const { data: current, error: fetchError } = await supabase
+        .from('movies')
+        .select('views')
+        .eq('id', movieId)
+        .single();
+        
       if (!fetchError && current) {
         const nextViews = (Number(current.views) || 0) + 1;
-        await supabase.from('movies').update({ views: nextViews }).eq('id', movieId);
+        await supabase
+          .from('movies')
+          .update({ views: nextViews })
+          .eq('id', movieId);
+      } else {
+        console.error("Manual fallback also failed:", fetchError);
       }
+    } else {
+      console.log("View successfully incremented for:", movieId);
     }
   } catch (err) {
-    console.error("Failed to increment view:", err);
+    console.error("Critical failure during view increment:", err);
   }
 };
 
