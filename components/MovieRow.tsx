@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 
@@ -76,8 +76,10 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
               </button>
 
               <div className="absolute top-2 left-2 z-30 flex items-center bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white opacity-0 group-hover/card:opacity-100 transition-opacity">
-                <Eye className="w-3 h-3 mr-1" />
-                {formatViews(movie.views)}
+                <Eye className="w-3 h-3 mr-1 text-red-500" />
+                <span className="tabular-nums transition-all duration-300">
+                  {formatViews(movie.views)}
+                </span>
               </div>
 
               {copiedId === movie.id && (
@@ -91,7 +93,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick }) => {
                  <div className="flex items-center space-x-2 text-[8px] md:text-[10px] text-green-400 font-bold mt-1">
                     <span>{movie.rating}</span>
                     <span>{movie.year}</span>
-                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm">USER</span>}
+                    {movie.isUserUploaded && <span className="text-orange-500 border border-orange-500/30 px-1 rounded-sm uppercase tracking-tighter text-[7px] md:text-[8px]">Realtime User Content</span>}
                  </div>
               </div>
             </div>

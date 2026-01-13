@@ -15,11 +15,29 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
   AGE_VERIFIED: 'geministream_age_verified'
+};
+
+const StickyFooterAd: React.FC = () => {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return (
+    <div className="fixed bottom-0 left-0 w-full z-40 bg-black/80 backdrop-blur-md border-t border-white/10 animate-in slide-in-from-bottom duration-500">
+      <div className="relative flex justify-center py-2 px-4">
+        <button 
+          onClick={() => setVisible(false)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <AdBanner zoneId="10802910" className="!py-0" />
+      </div>
+    </div>
+  );
 };
 
 const App: React.FC = () => {
@@ -36,6 +54,11 @@ const App: React.FC = () => {
   const [isDeepLinking, setIsDeepLinking] = useState(false);
   
   const pendingVideoId = useRef<string | null>(new URLSearchParams(window.location.search).get('v'));
+  const selectedMovieRef = useRef<Movie | null>(null);
+  
+  useEffect(() => {
+    selectedMovieRef.current = selectedMovie;
+  }, [selectedMovie]);
 
   useEffect(() => {
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
@@ -87,9 +110,10 @@ const App: React.FC = () => {
       .channel('movies-realtime-global')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
-          setMovies(prev => prev.map(m => m.id === payload.new.id ? { ...m, views: payload.new.views } : m));
-          if (selectedMovie?.id === payload.new.id) {
-            setSelectedMovie(prev => prev ? { ...prev, views: payload.new.views } : null);
+          const updatedViews = Number(payload.new.views) || 0;
+          setMovies(prev => prev.map(m => m.id === payload.new.id ? { ...m, views: updatedViews } : m));
+          if (selectedMovieRef.current?.id === payload.new.id) {
+            setSelectedMovie(prev => prev ? { ...prev, views: updatedViews } : null);
           }
         } else if (payload.eventType === 'INSERT') {
           const newMovie: Movie = {
@@ -115,7 +139,7 @@ const App: React.FC = () => {
       authSub.unsubscribe();
       supabase.removeChannel(moviesChannel);
     };
-  }, [selectedMovie?.id]);
+  }, []);
 
   useEffect(() => {
     const processDeepLink = () => {
@@ -239,9 +263,11 @@ const App: React.FC = () => {
               movies={row.movies}
               onMovieClick={setSelectedMovie}
             />
-            {/* Display Ad Banners and Native Units between rows */}
-            {idx === 1 && <AdBanner />}
-            {idx === 2 && <NativeAd />}
+            {/* IN-FEED ADS: Balanced distribution */}
+            {idx === 0 && <AdBanner zoneId="10802910" className="opacity-80" />}
+            {idx === 1 && <NativeAd />}
+            {idx === 2 && <AdBanner zoneId="10802946" />}
+            {idx === 3 && <NativeAd />}
           </React.Fragment>
         ))}
       </div>
@@ -269,11 +295,11 @@ const App: React.FC = () => {
         />
       )}
 
-      <div className="px-4 md:px-12 mt-12">
-        <AdBanner />
+      <div className="px-4 md:px-12 mt-12 mb-20">
+        <AdBanner zoneId="10802910" />
       </div>
 
-      <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center">
+      <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center pb-32">
         <div className="flex flex-col items-center space-y-4">
           <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
@@ -285,6 +311,9 @@ const App: React.FC = () => {
           <p>© 2024 GeminiStream Platform.</p>
         </div>
       </footer>
+
+      {/* STICKY AD: Ensures ad visibility on all views */}
+      <StickyFooterAd />
     </div>
   );
 };

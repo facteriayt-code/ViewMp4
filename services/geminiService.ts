@@ -18,13 +18,19 @@ export const getMovieAIInsight = async (movieTitle: string): Promise<string> => 
 export const getAIPersonalizedRecommendations = async (userHistory: string[]): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const historyText = userHistory.length > 0 ? userHistory.join(", ") : "Action and Sci-Fi";
+    const historyText = userHistory.length > 0 ? userHistory.join(", ") : "Action and Sci-Fi masterpieces";
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Based on a user who likes these movies: ${historyText}, what genre should they explore next? Give a 1-word genre and a 1-sentence explanation why.`,
+      contents: `The user has recently watched or expressed interest in: ${historyText}. 
+      Based on this specific taste, suggest exactly ONE movie title they should watch next that is NOT in the provided list.
+      Provide the response in this format: 
+      "Title: [Movie Name] | Genre: [Genre] | Why: [One concise sentence explaining why this fits their specific taste profile]."`,
     });
-    return response.text || "Adventure awaits!";
+    
+    return response.text || "Adventure awaits! Check out our top trending picks today.";
   } catch (error) {
-    return "Check out our latest trending titles!";
+    console.error("Gemini Recommendation Error:", error);
+    return "Explore our latest trending titles to find your next favorite!";
   }
 };

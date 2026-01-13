@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react';
 import { Movie } from '../types.ts';
@@ -56,17 +57,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       }
     };
 
-    // 2. Setup IMA with user-provided VAST tag
+    // 2. Setup IMA with the Adcash/Onclickalgo VAST tag
     player.ready(() => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          // UPDATED: User's requested VAST ad tag for pre-rolls
-          adTagUrl: 'https://youradexchange.com/video/select.php?r=10802842',
+          // INTEGRATED: User's requested VAST ad tag domain for pre-rolls
+          adTagUrl: 'https://onclickalgo.com/video/select.php?r=10802842',
           showCountdown: true,
           debug: false,
           adWillAutoPlay: true,
-          adsResponseTimeout: 5000 
+          adsResponseTimeout: 8000 // Slightly longer timeout to ensure reliable loading
         };
 
         try {
@@ -111,13 +112,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             player.ima.initializeAdDisplayContainer();
             player.ima.requestAds();
             
-            // Safety timeout: If no ad starts within 5 seconds, play the movie.
+            // Safety timeout: If no ad starts within 8 seconds, play the movie.
             adTimeoutRef.current = window.setTimeout(() => {
               if (adLoading) {
                 console.warn('Ad server timeout - Triggering content fallback.');
                 forceContentPlay();
               }
-            }, 5000);
+            }, 8000);
 
             player.off('play', requestAdsOnPlay);
           };
@@ -177,7 +178,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           {(isAdPlaying || adLoading) && (
             <div className="flex items-center justify-center space-x-2">
               <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded font-black text-white uppercase tracking-widest animate-pulse">
-                {adLoading ? 'Verifying Stream...' : 'Sponsored'}
+                {adLoading ? 'Verifying Stream...' : 'Sponsored Content'}
               </span>
             </div>
           )}
@@ -207,7 +208,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             </div>
             <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Playback Interrupted</h3>
             <p className="text-gray-400 max-w-md mx-auto leading-relaxed text-sm">
-              We couldn't initialize the secure stream. Please check your internet connection and disable any aggressive ad-blockers.
+              We couldn't initialize the secure stream. Please check your internet connection and ensure ad-blockers are disabled for this site to view free content.
             </p>
             <button 
               onClick={onClose} 

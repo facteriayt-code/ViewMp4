@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Plus, ThumbsUp, Sparkles, User, Share2, Check, Eye, Zap } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
@@ -19,6 +19,8 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
   const [aiInsight, setAiInsight] = useState<string>('Summoning Gemini intelligence...');
   const [loadingAi, setLoadingAi] = useState(true);
   const [copied, setCopied] = useState<'info' | 'play' | null>(null);
+  const [viewPulse, setViewPulse] = useState(false);
+  const prevViews = useRef(movie.views);
 
   useEffect(() => {
     const fetchAI = async () => {
@@ -28,7 +30,17 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
       setLoadingAi(false);
     };
     fetchAI();
-  }, [movie]);
+  }, [movie.id]); // Fetch only when the movie ID changes
+
+  // Trigger pulse animation when views update
+  useEffect(() => {
+    if (movie.views !== prevViews.current) {
+      setViewPulse(true);
+      const timer = setTimeout(() => setViewPulse(false), 1000);
+      prevViews.current = movie.views;
+      return () => clearTimeout(timer);
+    }
+  }, [movie.views]);
 
   const handleShare = async (directPlay: boolean = false) => {
     const shareUrl = `${window.location.origin}?v=${movie.id}${directPlay ? '&autoplay=true' : ''}`;
@@ -113,9 +125,10 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay }) =
                 <span className="text-green-500">98% Match</span>
                 <span className="border border-gray-500 px-1 text-xs">{movie.rating}</span>
                 <span>{movie.year}</span>
-                <span className="flex items-center text-gray-400">
-                  <Eye className="w-4 h-4 mr-1" />
+                <span className={`flex items-center transition-all duration-300 ${viewPulse ? 'text-red-500 scale-110 font-black' : 'text-gray-400'}`}>
+                  <Eye className={`w-4 h-4 mr-1 ${viewPulse ? 'animate-bounce' : ''}`} />
                   {formatViews(movie.views)} views
+                  {viewPulse && <span className="ml-2 text-[10px] uppercase tracking-widest animate-pulse">Live Update!</span>}
                 </span>
                 <span className="border border-gray-500 px-1 text-[10px] rounded">HD</span>
               </div>
