@@ -15,7 +15,7 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2, X } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, TrendingUp } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -197,17 +197,18 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
-    const userUploads = filteredMovies.filter(m => m.isUserUploaded === true);
+    // UPDATED: Trending Now ONLY contains user-uploaded content
+    const userUploadsOnly = filteredMovies.filter(m => m.isUserUploaded === true);
     
     return [
       { 
-        title: 'Trending Community Uploads', 
-        movies: userUploads.sort((a,b) => b.views - a.views).slice(0, 15) 
+        title: 'Trending Now', 
+        movies: userUploadsOnly.sort((a,b) => b.views - a.views) 
       },
+      { title: 'New Community Uploads', movies: userUploadsOnly.slice(0, 10) },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
       { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Onlyfans Exclusives', movies: filteredMovies.filter(m => m.genre === 'Onlyfans') },
-      { title: 'Full Library', movies: filteredMovies },
+      { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) },
     ];
   }, [filteredMovies]);
 
@@ -248,8 +249,8 @@ const App: React.FC = () => {
                 {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
              </div>
              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Supabase Project</span>
-                <span className="text-xs font-bold text-white leading-none">Stream (diurandrwkqhe...)</span>
+                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Supabase Connection</span>
+                <span className="text-xs font-bold text-white leading-none">Status: {isOnline ? 'Online' : 'Offline'}</span>
              </div>
           </div>
           
@@ -269,11 +270,8 @@ const App: React.FC = () => {
               onMovieClick={setSelectedMovie}
               onPlay={handlePlay}
             />
-            {/* IN-FEED ADS: Balanced distribution */}
             {idx === 0 && <AdBanner zoneId="10802910" className="opacity-80" />}
             {idx === 1 && <NativeAd />}
-            {idx === 2 && <AdBanner zoneId="10802946" />}
-            {idx === 3 && <NativeAd />}
           </React.Fragment>
         ))}
       </div>
@@ -317,9 +315,6 @@ const App: React.FC = () => {
             <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
             <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Backend Linked</span>
           </div>
-          <p className="max-w-md mx-auto text-xs opacity-50">
-            All user data, uploads, and view statistics are synchronized in real-time using Supabase.
-          </p>
           <p>© 2024 GeminiStream Platform.</p>
         </div>
       </footer>
