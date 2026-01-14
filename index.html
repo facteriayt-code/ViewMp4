@@ -25,38 +25,13 @@
             margin: 0;
             overflow-x: hidden;
         }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #141414;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .netflix-gradient {
-            background: linear-gradient(to top, #141414 0%, rgba(20, 20, 20, 0) 100%);
-        }
-        .row-container::-webkit-scrollbar {
-            display: none;
-        }
-        .row-container {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        /* Video.js UI Overrides */
-        .video-js {
-            width: 100%;
-            height: 100%;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #141414; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .netflix-gradient { background: linear-gradient(to top, #141414 0%, rgba(20, 20, 20, 0) 100%); }
+        .video-js { width: 100%; height: 100%; background-color: black; }
         .vjs-big-play-button {
             background-color: rgba(229, 9, 20, 0.8) !important;
-            border-color: #e50914 !important;
             border-radius: 50% !important;
             width: 80px !important;
             height: 80px !important;
@@ -66,29 +41,25 @@
         }
     </style>
     <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@19.0.0",
-        "react-dom": "https://esm.sh/react-dom@19.0.0",
-        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-        "@google/genai": "https://esm.sh/@google/genai@1.35.0",
-        "lucide-react": "https://esm.sh/lucide-react@0.462.0?external=react",
-        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
-        "@aws-sdk/client-s3": "https://esm.sh/@aws-sdk/client-s3@3.637.0",
-        "@aws-sdk/lib-storage": "https://esm.sh/@aws-sdk/lib-storage@3.637.0",
-        "firebase/": "https://esm.sh/firebase@^12.7.0/",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "react/": "https://esm.sh/react@^19.2.3/"
-      }
-    }
-    </script>
-    <!-- Native Banner Ad Script -->
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.35.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.462.0?external=react",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
+    "@aws-sdk/client-s3": "https://esm.sh/@aws-sdk/client-s3@3.637.0",
+    "@aws-sdk/lib-storage": "https://esm.sh/@aws-sdk/lib-storage@3.637.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/"
+  }
+}
+</script>
+    <!-- Ad Network Scripts -->
     <script async="async" data-cfasync="false" src="https://pl28466918.effectivegatecpm.com/92100ea7c1b81dec5e887cbf56a2c891/invoke.js"></script>
-
-    <!-- Popunder Ad Script -->
     <script src="https://pl28466582.effectivegatecpm.com/cd/6c/2a/cd6c2a20f9d7644f313ec50ba131207a.js"></script>
-
-    <!-- Social Banner Ad Tag -->
     <script src="https://pl28466939.effectivegatecpm.com/1a/7d/47/1a7d475132606696bfc5a57e0376a4ca.js"></script>
 </head>
 <body>
@@ -96,7 +67,7 @@
     <script type="module" src="index.tsx"></script>
 
     <!-- Outstream Ad Placement -->
-    <div class="fixed bottom-4 right-4 z-[100] max-w-[300px]">
+    <div class="fixed bottom-4 right-4 z-[100] max-w-[300px] bg-black/40 p-2 rounded-xl backdrop-blur-sm border border-white/5">
       <script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script> 
       <ins class="eas6a97888e37" data-zoneid="5828618"></ins> 
       <script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
