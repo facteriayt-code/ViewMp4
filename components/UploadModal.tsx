@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Cloud, Terminal, Link, FileUp, Save, Code, Copy, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Cloud, Terminal, Link, FileUp, Save, Code, Copy, CheckCircle2, ShieldAlert, Tag } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -9,6 +9,17 @@ interface UploadModalProps {
   onUpload: (newMovie: Movie) => void;
   movieToEdit?: Movie | null;
 }
+
+const CATEGORY_OPTIONS = [
+  'Viral',
+  'onlyfans',
+  'Insta post',
+  'Sci-Fi',
+  'Action',
+  'Adventure',
+  'Comedy',
+  'Horror'
+];
 
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
@@ -165,9 +176,27 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4">
           <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Title</label>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="Video Title" required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Title</label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="Video Title" required />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
+                <div className="relative">
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <select 
+                    value={genre} 
+                    onChange={(e) => setGenre(e.target.value)}
+                    className="w-full bg-[#252525] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm appearance-none"
+                  >
+                    {CATEGORY_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {uploadType === 'link' && (
@@ -176,6 +205,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                 <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="https://..." required />
               </div>
             )}
+
+            <div>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Description</label>
+              <textarea 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm min-h-[80px]" 
+                placeholder="Tell us about this video..." 
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
                {uploadType === 'file' && (
