@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Cloud, Terminal, Link, FileUp, Save, Code, Copy, CheckCircle2, ShieldAlert, Tag } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2 } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -21,22 +21,33 @@ const CATEGORY_OPTIONS = [
   'Horror'
 ];
 
+interface LinkEntry {
+  title: string;
+  url: string;
+}
+
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
+  const isEditMode = !!movieToEdit;
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
+  
+  // States for single file upload or common metadata
   const [title, setTitle] = useState(movieToEdit?.title || '');
   const [description, setDescription] = useState(movieToEdit?.description || '');
   const [genre, setGenre] = useState(movieToEdit?.genre || 'Viral');
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUrl, setVideoUrl] = useState(movieToEdit?.videoUrl || '');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  
+  // States for multiple link upload
+  const [linkEntries, setLinkEntries] = useState<LinkEntry[]>([
+    { title: movieToEdit?.title || '', url: movieToEdit?.videoUrl || '' }
+  ]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
-  const isEditMode = !!movieToEdit;
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -46,6 +57,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       reader.onloadend = () => setThumbnailPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
+  };
+
+  const addLinkEntry = () => {
+    setLinkEntries([...linkEntries, { title: '', url: '' }]);
+  };
+
+  const removeLinkEntry = (index: number) => {
+    if (linkEntries.length <= 1) return;
+    const newEntries = [...linkEntries];
+    newEntries.splice(index, 1);
+    setLinkEntries(newEntries);
+  };
+
+  const updateLinkEntry = (index: number, field: keyof LinkEntry, value: string) => {
+    const newEntries = [...linkEntries];
+    newEntries[index][field] = value;
+    setLinkEntries(newEntries);
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -58,27 +86,61 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     e.preventDefault();
     setIsUploading(true);
     setError(null);
+    setUploadProgress(0);
     
     try {
-      const metadata: Partial<Movie> = {
-        id: movieToEdit?.id,
-        title,
-        description,
-        genre,
-        uploaderId: user.id,
-        uploaderName: user.name,
-        videoUrl: uploadType === 'link' ? videoUrl : (movieToEdit?.videoUrl || undefined),
-        thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
-      };
+      if (uploadType === 'file') {
+        const metadata: Partial<Movie> = {
+          id: movieToEdit?.id,
+          title,
+          description,
+          genre,
+          uploaderId: user.id,
+          uploaderName: user.name,
+          thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
+        };
 
-      const savedMovie = await saveVideoToCloud(
-        metadata, 
-        uploadType === 'file' ? videoFile : null, 
-        thumbnailFile,
-        setUploadProgress
-      );
+        const savedMovie = await saveVideoToCloud(
+          metadata, 
+          videoFile, 
+          thumbnailFile,
+          setUploadProgress
+        );
+        onUpload(savedMovie);
+      } else {
+        // Handle multiple link uploads
+        const total = linkEntries.length;
+        for (let i = 0; i < total; i++) {
+          const entry = linkEntries[i];
+          if (!entry.url || !entry.title) continue;
 
-      onUpload(savedMovie);
+          const metadata: Partial<Movie> = {
+            id: i === 0 ? movieToEdit?.id : undefined, // Only update existing if it's the first entry in edit mode
+            title: entry.title,
+            description,
+            genre,
+            uploaderId: user.id,
+            uploaderName: user.name,
+            videoUrl: entry.url,
+            thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
+          };
+
+          // For multiple uploads, we reuse the same thumbnail if provided once
+          const savedMovie = await saveVideoToCloud(
+            metadata, 
+            null, 
+            i === 0 ? thumbnailFile : null, // Only upload thumbnail on first iteration if it's a file
+            (p) => setUploadProgress(Math.round(((i / total) * 100) + (p / total)))
+          );
+          
+          // Update the common thumbnailUrl so subsequent uploads use the same public URL
+          if (i === 0 && savedMovie.thumbnail) {
+            setThumbnailUrl(savedMovie.thumbnail);
+          }
+
+          onUpload(savedMovie);
+        }
+      }
       onClose();
     } catch (err: any) {
       setError(err.message);
@@ -134,30 +196,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                         </button>
                     </div>
                  </div>
-
-                 <div className="pt-2 border-t border-white/5 space-y-3">
-                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Manual GUI Fix (Dashboard Boxes)</p>
-                    <div className="space-y-2">
-                        <div className="flex flex-col space-y-1">
-                            <span className="text-[8px] text-gray-400 uppercase font-black">USING Expression</span>
-                            <div className="flex items-center justify-between bg-black/60 p-2 rounded border border-white/5">
-                                <code className="text-[10px] text-green-400">auth.uid() = uploader_id</code>
-                                <button onClick={() => copyToClipboard('auth.uid() = uploader_id', 'using')} className="text-gray-400 hover:text-white">
-                                    {copiedField === 'using' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex flex-col space-y-1">
-                            <span className="text-[8px] text-gray-400 uppercase font-black">WITH CHECK Expression</span>
-                            <div className="flex items-center justify-between bg-black/60 p-2 rounded border border-white/5">
-                                <code className="text-[10px] text-green-400">auth.uid() = uploader_id</code>
-                                <button onClick={() => copyToClipboard('auth.uid() = uploader_id', 'check')} className="text-gray-400 hover:text-white">
-                                    {copiedField === 'check' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                 </div>
               </div>
             )}
           </div>
@@ -169,20 +207,24 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                <FileUp className="w-4 h-4" /> <span>File</span>
              </button>
              <button onClick={() => setUploadType('link')} className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${uploadType === 'link' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500'}`}>
-               <Link className="w-4 h-4" /> <span>Link</span>
+               <Link className="w-4 h-4" /> <span>Link(s)</span>
              </button>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4">
           <div className="space-y-4">
+            
+            {/* Common Metadata Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Title</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="Video Title" required />
-              </div>
+              {uploadType === 'file' && (
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Title</label>
+                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="Video Title" required={uploadType === 'file'} />
+                </div>
+              )}
               
-              <div>
+              <div className={uploadType === 'link' ? 'sm:col-span-2' : ''}>
                 <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
                 <div className="relative">
                   <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -199,15 +241,60 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
               </div>
             </div>
 
+            {/* Link Upload Section - Supports Multiple */}
             {uploadType === 'link' && (
-              <div>
-                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Video URL</label>
-                <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="w-full bg-[#252525] border border-white/5 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none font-bold text-sm" placeholder="https://..." required />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">Video Links</label>
+                  {!isEditMode && (
+                    <button 
+                      type="button" 
+                      onClick={addLinkEntry}
+                      className="text-[10px] flex items-center space-x-1 text-red-500 hover:text-red-400 font-black uppercase tracking-widest transition"
+                    >
+                      <Plus className="w-3 h-3" /> <span>Add Link</span>
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                  {linkEntries.map((entry, index) => (
+                    <div key={index} className="bg-black/30 p-3 rounded-xl border border-white/5 space-y-3 relative group/entry">
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          value={entry.title} 
+                          onChange={(e) => updateLinkEntry(index, 'title', e.target.value)} 
+                          className="flex-1 bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
+                          placeholder={`Video Title #${index + 1}`} 
+                          required 
+                        />
+                        {linkEntries.length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => removeLinkEntry(index)}
+                            className="p-2 text-gray-600 hover:text-red-500 transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <input 
+                        type="url" 
+                        value={entry.url} 
+                        onChange={(e) => updateLinkEntry(index, 'url', e.target.value)} 
+                        className="w-full bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
+                        placeholder="https://..." 
+                        required 
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             <div>
-              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Description</label>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Description (Optional)</label>
               <textarea 
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)} 
@@ -221,13 +308,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition h-32">
                     <Film className={`w-8 h-8 ${videoFile ? 'text-green-500' : 'text-gray-600'}`} />
                     <span className="text-[10px] mt-2 font-black uppercase text-gray-500 truncate w-full text-center px-2">
-                      {videoFile ? videoFile.name : 'Video File'}
+                      {videoFile ? videoFile.name : 'Select Video'}
                     </span>
                     <input type="file" accept="video/*" className="hidden" onChange={(e) => setVideoFile(e.target.files?.[0] || null)} />
                  </label>
                )}
 
-               <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition h-32 overflow-hidden">
+               <label className={`relative flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition h-32 overflow-hidden ${uploadType === 'link' ? 'col-span-2' : ''}`}>
                   {thumbnailPreview || thumbnailUrl ? (
                     <img src={thumbnailPreview || thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-40" />
                   ) : <ImageIcon className="w-8 h-8 text-gray-600" />}
@@ -240,7 +327,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           {isUploading && (
             <div className="space-y-2 pt-4">
               <div className="flex justify-between text-[9px] font-black text-red-500 uppercase">
-                <span>Uploading</span> <span>{uploadProgress}%</span>
+                <span>{uploadType === 'link' ? 'Publishing Batch' : 'Uploading'}</span> <span>{uploadProgress}%</span>
               </div>
               <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
                 <div className="h-full bg-red-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
@@ -253,10 +340,28 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
             disabled={isUploading}
             className={`w-full text-white font-black py-4 rounded-2xl transition disabled:opacity-50 flex items-center justify-center uppercase tracking-[0.2em] text-xs ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}
           >
-            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditMode ? 'Update' : 'Publish'}
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isEditMode ? (
+              'Update Broadcast'
+            ) : (
+              uploadType === 'link' && linkEntries.length > 1 ? `Publish ${linkEntries.length} Videos` : 'Publish content'
+            )}
           </button>
         </form>
       </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(229, 9, 20, 0.3);
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 };
