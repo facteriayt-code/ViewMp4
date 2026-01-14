@@ -155,9 +155,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
-  const isRlsError = error?.includes('RLS_ERROR');
-  
-  // Full, single-paste script for EVERYTHING
   const fullSqlFix = `-- 1. Table Permissions
 alter table movies enable row level security;
 drop policy if exists "Public Select" on movies;
@@ -172,7 +169,7 @@ begin
 end; 
 $$ language plpgsql security definer;
 
--- 3. Storage Permissions (Make sure 'videos' and 'thumbnails' buckets exist!)
+-- 3. Storage Permissions
 insert into storage.buckets (id, name, public) 
 values ('videos', 'videos', true), ('thumbnails', 'thumbnails', true)
 on conflict (id) do update set public = true;
@@ -426,14 +423,6 @@ create policy "Authenticated Storage Delete" on storage.objects for delete using
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: rgba(229, 9, 20, 0.3);
           border-radius: 10px;
-        }
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-        .shake-in {
-          animation: shake 0.3s ease-in-out;
         }
       `}</style>
     </div>
