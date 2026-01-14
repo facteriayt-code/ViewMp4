@@ -63,24 +63,22 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           </h3>
           <button 
             onClick={handleShareCategory}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all duration-500 ${copiedCategory ? 'bg-green-600 border-green-500 scale-105 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/5 border-white/10 hover:bg-red-600 hover:border-red-500 hover:shadow-[0_0_15px_rgba(229,9,20,0.3)]'}`}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all duration-500 shadow-xl ${
+              copiedCategory 
+                ? 'bg-green-600 border-green-500 scale-105 shadow-green-500/20' 
+                : 'bg-red-600/10 border-red-600/40 hover:bg-red-600 hover:border-red-500 shadow-red-600/10'
+            }`}
             title="Share Entire Category"
           >
             {copiedCategory ? (
               <Check className="w-3.5 h-3.5 text-white" />
             ) : (
-              <Share2 className="w-3.5 h-3.5 text-gray-400 group-hover/row:text-white" />
+              <Share2 className="w-3.5 h-3.5 text-white" />
             )}
-            <span className={`text-[10px] font-black uppercase tracking-widest hidden sm:inline ${copiedCategory ? 'text-white' : 'text-gray-400 group-hover/row:text-white'}`}>
-              {copiedCategory ? 'Link Copied' : 'Share Category'}
+            <span className={`text-[10px] font-black uppercase tracking-widest text-white`}>
+              {copiedCategory ? 'Copied' : 'Share'}
             </span>
           </button>
-          
-          {copiedCategory && (
-            <span className="text-[10px] font-black text-green-500 uppercase tracking-widest animate-in fade-in slide-in-from-left-2 md:hidden">
-              Copied!
-            </span>
-          )}
         </div>
         
         <div className="hidden md:flex items-center space-x-1 opacity-0 group-hover/row:opacity-100 transition-opacity duration-500">

@@ -9,6 +9,7 @@ import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
 import NativeAd from './components/NativeAd.tsx';
 import AdBanner from './components/AdBanner.tsx';
+import CategoryShareBar from './components/CategoryShareBar.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -33,9 +34,7 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
-  const [isDeepLinking, setIsDeepLinking] = useState(false);
   
-  const pendingVideoId = useRef<string | null>(new URLSearchParams(window.location.search).get('v'));
   const selectedMovieRef = useRef<Movie | null>(null);
   
   useEffect(() => {
@@ -141,6 +140,26 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const handleCategoryScroll = (categoryName: string) => {
+    const targetId = `row-${categoryName.replace(/\s+/g, '-').toLowerCase()}`;
+    const element = document.getElementById(targetId);
+    if (element) {
+      const headerOffset = 150;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      element.classList.add('ring-1', 'ring-red-600/50', 'bg-red-600/5', 'rounded-xl', 'transition-all');
+      setTimeout(() => {
+        element.classList.remove('ring-1', 'ring-red-600/50', 'bg-red-600/5');
+      }, 3000);
+    }
+  };
+
   useEffect(() => {
     const processDeepLink = () => {
       const params = new URLSearchParams(window.location.search);
@@ -151,8 +170,6 @@ const App: React.FC = () => {
       if (videoId) {
         const target = movies.find(m => m.id === videoId);
         if (target) {
-          setIsDeepLinking(false);
-          pendingVideoId.current = null;
           if (autoplay) {
             setPlayingMovie(target);
             setSelectedMovie(null);
@@ -160,33 +177,15 @@ const App: React.FC = () => {
             setSelectedMovie(target);
             setPlayingMovie(null);
           }
-        } else {
-          setIsDeepLinking(true);
         }
       } 
       else if (category) {
         const decodedCat = decodeURIComponent(category);
-        setSearchTerm(decodedCat);
-        setIsDeepLinking(false);
-        
-        // Visual enhancement: Scroll to row after a short delay to ensure rendering
-        setTimeout(() => {
-          const targetRow = document.getElementById(`row-${decodedCat.replace(/\s+/g, '-').toLowerCase()}`);
-          if (targetRow) {
-            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            targetRow.classList.add('ring-2', 'ring-red-600', 'ring-offset-8', 'ring-offset-[#141414]', 'rounded-xl');
-            setTimeout(() => targetRow.classList.remove('ring-2', 'ring-red-600'), 3000);
-          }
-        }, 800);
-      }
-      else {
-        setIsDeepLinking(false);
+        setTimeout(() => handleCategoryScroll(decodedCat), 1000);
       }
     };
 
     processDeepLink();
-    window.addEventListener('popstate', processDeepLink);
-    return () => window.removeEventListener('popstate', processDeepLink);
   }, [movies]);
 
   const handleLogout = async () => {
@@ -261,16 +260,18 @@ const App: React.FC = () => {
         onPlay={handlePlay} 
       />
 
-      <div className="relative z-20 -mt-20 md:-mt-48 space-y-4">
+      <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+
+      <div className="relative z-20 space-y-4">
         {isSyncing && (
-          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg">
+          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
              <Loader2 className="w-4 h-4 animate-spin" />
              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
           </div>
         )}
 
         {!isOnline && (
-          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce">
+          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
              <WifiOff className="w-4 h-4" />
              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
           </div>
