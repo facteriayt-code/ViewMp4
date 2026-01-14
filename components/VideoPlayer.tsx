@@ -59,10 +59,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          adTagUrl: 'https://s.magsrv.com/v1/vast.php?idzone=5828614',
+          adTagUrl: 'https://improbablehospital.com/dOm.FfzgddGkNWvTZLGNUn/XeimA9euBZUUQlwkNP/TmY/3lNeDwg_xwMej/MFtfNxjNcj0ROEDjEpyPNJCAZGsta-WG1-pndaDk0/xp',
           showCountdown: true,
           debug: false,
-          adsResponseTimeout: 5000,
+          adsResponseTimeout: 8000,
           adWillAutoPlay: true
         };
 
@@ -124,13 +124,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       
       playerRef.current.play();
 
-      // Fail-safe: If ad server is silent for 6 seconds, just play the movie
+      // Fail-safe: If ad server is silent for 8 seconds, just play the movie
       adTimeoutRef.current = window.setTimeout(() => {
         if (!isAdPlaying) {
           console.warn('IMA Ad server unresponsive. Skipping to content.');
           finalizeContentPlay();
         }
-      }, 6000);
+      }, 8000);
     }
   };
 
