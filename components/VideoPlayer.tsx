@@ -72,8 +72,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       if (player.ima) {
         const imaOptions = {
           id: 'my-video',
-          // Updated to the URL provided in the prompt
-          adTagUrl: 'https://youradexchange.com/video/select.php?r=10802842',
+          // New updated VAST ad tag URL
+          adTagUrl: 'https://s.magsrv.com/v1/vast.php?idzone=5828614',
           showCountdown: true,
           debug: false,
           adWillAutoPlay: true,
