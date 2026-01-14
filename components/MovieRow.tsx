@@ -1,5 +1,4 @@
-
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 
@@ -19,6 +18,7 @@ const formatViews = (views: number) => {
 const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedCategory, setCopiedCategory] = useState(false);
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
@@ -28,7 +28,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
     }
   };
 
-  const handleShare = async (e: React.MouseEvent, movie: Movie) => {
+  const handleShareMovie = async (e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}?v=${movie.id}`;
     try {
@@ -40,11 +40,40 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
     }
   };
 
+  const handleShareCategory = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}?cat=${encodeURIComponent(title)}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedCategory(true);
+      setTimeout(() => setCopiedCategory(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy category link:', err);
+    }
+  };
+
   if (movies.length === 0) return null;
 
   return (
-    <div className="space-y-4 mb-8">
-      <h3 className="text-xl md:text-2xl font-black px-4 md:px-12 text-gray-100 uppercase tracking-tighter italic">{title}</h3>
+    <div id={`row-${title.replace(/\s+/g, '-').toLowerCase()}`} className="space-y-4 mb-8 group/row">
+      <div className="flex items-center px-4 md:px-12 space-x-3">
+        <h3 className="text-xl md:text-2xl font-black text-gray-100 uppercase tracking-tighter italic">
+          {title}
+        </h3>
+        <button 
+          onClick={handleShareCategory}
+          className={`p-1.5 rounded-full border transition-all duration-300 opacity-0 group-hover/row:opacity-100 ${copiedCategory ? 'bg-green-600 border-green-500 scale-110' : 'bg-white/5 border-white/10 hover:bg-red-600 hover:border-red-500'}`}
+          title="Share Category"
+        >
+          {copiedCategory ? <Check className="w-3.5 h-3.5 text-white" /> : <Share2 className="w-3.5 h-3.5 text-gray-400 group-hover/row:text-white" />}
+        </button>
+        {copiedCategory && (
+          <span className="text-[10px] font-black text-green-500 uppercase tracking-widest animate-in fade-in slide-in-from-left-2">
+            Link Copied
+          </span>
+        )}
+      </div>
+
       <div className="group relative flex items-center">
         <button 
           onClick={() => scroll('left')}
@@ -70,7 +99,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
               />
               
               <button 
-                onClick={(e) => handleShare(e, movie)}
+                onClick={(e) => handleShareMovie(e, movie)}
                 className="absolute top-2 right-2 z-30 p-2 bg-black/60 rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity hover:bg-red-600"
               >
                 {copiedId === movie.id ? <Check className="w-4 h-4 text-white" /> : <Share2 className="w-4 h-4 text-white" />}

@@ -111,6 +111,7 @@ const App: React.FC = () => {
             setSelectedMovie(updatedMovie);
           }
         } else if (payload.eventType === 'INSERT') {
+          // Fix: Property name 'video_url' changed to 'videoUrl' to match Movie interface
           const newMovie: Movie = {
             id: payload.new.id,
             title: payload.new.title,
@@ -146,7 +147,9 @@ const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const videoId = params.get('v');
       const autoplay = params.get('autoplay') === 'true';
+      const category = params.get('cat');
 
+      // Handle Video Link
       if (videoId) {
         const target = movies.find(m => m.id === videoId);
         if (target) {
@@ -162,7 +165,16 @@ const App: React.FC = () => {
         } else {
           setIsDeepLinking(true);
         }
-      } else {
+      } 
+      // Handle Category Link
+      else if (category) {
+        setSearchTerm(decodeURIComponent(category));
+        setIsDeepLinking(false);
+        // Optional: Scroll to the search results or the specific row if not using search filter
+        // const targetRow = document.getElementById(`row-${category.replace(/\s+/g, '-').toLowerCase()}`);
+        // if (targetRow) targetRow.scrollIntoView({ behavior: 'smooth' });
+      }
+      else {
         setIsDeepLinking(false);
       }
     };
@@ -213,129 +225,4 @@ const App: React.FC = () => {
       { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
       { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) },
-    ];
-  }, [filteredMovies]);
-
-  return (
-    <div className={`relative min-h-screen pb-20 bg-[#141414] ${!isAgeVerified ? 'max-h-screen overflow-hidden' : ''}`}>
-      {!isAgeVerified && <AgeDisclaimer onVerify={() => {
-        localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
-        setIsAgeVerified(true);
-      }} />}
-
-      <Navbar 
-        user={user}
-        onUploadClick={() => {
-          setEditingMovie(null);
-          user ? setShowUploadModal(true) : setShowLoginModal(true);
-        }} 
-        onLoginClick={() => setShowLoginModal(true)}
-        onLogout={handleLogout}
-        onSearch={setSearchTerm}
-      />
-      
-      {isDeepLinking && isSyncing && (
-        <div className="fixed inset-0 z-[80] bg-black/90 flex flex-col items-center justify-center space-y-4">
-           <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
-           <p className="text-white font-bold uppercase tracking-widest text-sm animate-pulse">Fetching shared content...</p>
-        </div>
-      )}
-
-      {!searchTerm && movies.length > 0 && (
-        <Hero 
-          movie={movies[0]} 
-          onInfoClick={setSelectedMovie} 
-          onPlay={handlePlay}
-        />
-      )}
-      
-      <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
-        {/* Connection status moved to footer to prevent blocking content flow */}
-        
-        {/* PRIMARY AD PLACEMENT - TOP OF FEED FOR MAX REVENUE */}
-        <AdBanner />
-
-        {rows.map((row, idx) => (
-          <React.Fragment key={row.title + idx}>
-            <MovieRow 
-              title={row.title}
-              movies={row.movies}
-              onMovieClick={setSelectedMovie}
-              onPlay={handlePlay}
-            />
-            {idx === 0 && <NativeAd />}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {selectedMovie && (
-        <MovieDetails 
-          movie={selectedMovie} 
-          allMovies={movies}
-          user={user}
-          onClose={() => setSelectedMovie(null)} 
-          onPlay={handlePlay} 
-          onMovieSelect={setSelectedMovie}
-          onEdit={handleEdit}
-        />
-      )}
-
-      {playingMovie && (
-        <VideoPlayer movie={playingMovie} onClose={() => setPlayingMovie(null)} />
-      )}
-
-      {showUploadModal && user && (
-        <UploadModal 
-          user={user}
-          movieToEdit={editingMovie}
-          onClose={() => {
-            setShowUploadModal(false);
-            setEditingMovie(null);
-          }} 
-          onUpload={(m) => {
-            if (editingMovie) {
-               setMovies(prev => prev.map(old => old.id === m.id ? m : old));
-            } else {
-               setMovies(prev => [m, ...prev]);
-            }
-          }} 
-        />
-      )}
-
-      {showLoginModal && (
-        <LoginModal 
-          onLogin={() => setShowLoginModal(false)} 
-          onClose={() => setShowLoginModal(false)} 
-        />
-      )}
-
-      <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center pb-10">
-        <div className="flex flex-col items-center space-y-6">
-          <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-6">
-            <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                Supabase: {isOnline ? 'Connected' : 'Offline'}
-              </span>
-            </div>
-            
-            {isSyncing && (
-              <div className="flex items-center space-x-2 text-[10px] font-bold text-orange-500 uppercase tracking-widest animate-pulse">
-                <Database className="w-3 h-3" />
-                <span>Syncing Database...</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <p>© 2024 GeminiStream Platform.</p>
-            <p className="text-[10px] opacity-50">High-performance streaming engine powered by Supabase & Gemini AI</p>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-export default App;
+      { title: 'Premium Movies',
