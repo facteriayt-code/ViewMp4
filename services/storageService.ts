@@ -4,8 +4,8 @@ import { supabase } from './supabaseClient.ts';
 /**
  * FULL DATABASE & STORAGE SETUP (Run this in Supabase SQL Editor):
  * 
- * -- 1. Tables
- * create table if not exists movies (
+ * -- 1. Create the movies table
+ * create table if not exists public.movies (
  *   id uuid default gen_random_uuid() primary key,
  *   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
  *   title text not null,
@@ -14,32 +14,37 @@ import { supabase } from './supabaseClient.ts';
  *   video_url text,
  *   genre text,
  *   year integer,
- *   rating text,
+ *   rating text default 'NR',
  *   views bigint default 0,
  *   is_user_uploaded boolean default true,
- *   uploader_id uuid references auth.users(id),
+ *   uploader_id uuid references auth.users(id) on delete cascade,
  *   uploader_name text
  * );
  * 
- * -- 2. Table RLS
- * alter table movies enable row level security;
- * create policy "Public Select" on movies for select using (true);
- * create policy "User Management" on movies for all using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
+ * -- 2. Enable Row Level Security
+ * alter table public.movies enable row level security;
  * 
- * -- 3. View Counter RPC
- * create or replace function increment_views(movie_id uuid)
+ * -- 3. Create Table Policies
+ * create policy "Allow public read access" on public.movies for select using (true);
+ * create policy "Allow individual insert" on public.movies for insert with check (auth.uid() = uploader_id);
+ * create policy "Allow individual update" on public.movies for update using (auth.uid() = uploader_id);
+ * create policy "Allow individual delete" on public.movies for delete using (auth.uid() = uploader_id);
+ * 
+ * -- 4. Create the view increment function
+ * create or replace function public.increment_views(movie_id uuid)
  * returns void as $$
  * begin
- *   update movies set views = views + 1 where id = movie_id;
+ *   update public.movies set views = views + 1 where id = movie_id;
  * end;
  * $$ language plpgsql security definer;
  * 
- * -- 4. Storage Setup
- * -- NOTE: Ensure you manually create 'videos' and 'thumbnails' buckets in Supabase Dashboard first!
- * -- Go to Storage -> New Bucket -> Set to "Public".
+ * -- 5. Storage Bucket Setup (Public Buckets)
+ * insert into storage.buckets (id, name, public) values ('videos', 'videos', true), ('thumbnails', 'thumbnails', true)
+ * on conflict (id) do update set public = true;
  * 
+ * -- 6. Storage Policies
  * create policy "Public Access" on storage.objects for select using (bucket_id in ('videos', 'thumbnails'));
- * create policy "Authenticated Insert" on storage.objects for insert with check (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
+ * create policy "Authenticated Manage" on storage.objects for all using (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
  */
 
 export const saveVideoToCloud = async (
@@ -64,7 +69,7 @@ export const saveVideoToCloud = async (
     if (error) {
       console.error(`Storage Error [${bucket}]:`, error);
       if (error.message.includes('row-level security') || error.message.includes('403') || error.message.includes('Policy')) {
-        throw new Error(`STORAGE_RLS_ERROR: ${bucket}. Make sure the bucket is Public and Policies are set.`);
+        throw new Error(`STORAGE_RLS_ERROR: ${bucket}. Ensure bucket is Public and Policies are set.`);
       }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
@@ -111,7 +116,7 @@ export const saveVideoToCloud = async (
         if (updateError.code === '42501') throw new Error("DATABASE_RLS_ERROR: UPDATE permission denied.");
         throw updateError;
       }
-      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: No row updated (check ownership).");
+      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: Update failed (check ownership).");
       
       return mapDbToMovie(data[0]);
     }
