@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2 } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -29,8 +29,9 @@ interface LinkEntry {
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
   const isEditMode = !!movieToEdit;
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkText, setBulkText] = useState('');
   
-  // States for single file upload or common metadata
   const [title, setTitle] = useState(movieToEdit?.title || '');
   const [description, setDescription] = useState(movieToEdit?.description || '');
   const [genre, setGenre] = useState(movieToEdit?.genre || 'Viral');
@@ -39,7 +40,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   
-  // States for multiple link upload
   const [linkEntries, setLinkEntries] = useState<LinkEntry[]>([
     { title: movieToEdit?.title || '', url: movieToEdit?.videoUrl || '' }
   ]);
@@ -56,6 +56,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       const reader = new FileReader();
       reader.onloadend = () => setThumbnailPreview(reader.result as string);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBulkImport = () => {
+    const lines = bulkText.split('\n').filter(line => line.trim());
+    const newEntries: LinkEntry[] = lines.map(line => {
+      const parts = line.split('|');
+      if (parts.length >= 2) {
+        return { title: parts[0].trim(), url: parts[1].trim() };
+      }
+      return { title: `Video ${Date.now()}`, url: line.trim() };
+    });
+    
+    if (newEntries.length > 0) {
+      setLinkEntries(newEntries);
+      setShowBulkImport(false);
+      setBulkText('');
     }
   };
 
@@ -100,22 +117,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
         };
 
-        const savedMovie = await saveVideoToCloud(
-          metadata, 
-          videoFile, 
-          thumbnailFile,
-          setUploadProgress
-        );
+        const savedMovie = await saveVideoToCloud(metadata, videoFile, thumbnailFile, setUploadProgress);
         onUpload(savedMovie);
       } else {
-        // Handle multiple link uploads
         const total = linkEntries.length;
         for (let i = 0; i < total; i++) {
           const entry = linkEntries[i];
           if (!entry.url || !entry.title) continue;
 
           const metadata: Partial<Movie> = {
-            id: i === 0 ? movieToEdit?.id : undefined, // Only update existing if it's the first entry in edit mode
+            id: i === 0 ? movieToEdit?.id : undefined,
             title: entry.title,
             description,
             genre,
@@ -125,19 +136,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
             thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
           };
 
-          // For multiple uploads, we reuse the same thumbnail if provided once
           const savedMovie = await saveVideoToCloud(
             metadata, 
             null, 
-            i === 0 ? thumbnailFile : null, // Only upload thumbnail on first iteration if it's a file
+            i === 0 ? thumbnailFile : null,
             (p) => setUploadProgress(Math.round(((i / total) * 100) + (p / total)))
           );
           
-          // Update the common thumbnailUrl so subsequent uploads use the same public URL
-          if (i === 0 && savedMovie.thumbnail) {
-            setThumbnailUrl(savedMovie.thumbnail);
-          }
-
+          if (i === 0 && savedMovie.thumbnail) setThumbnailUrl(savedMovie.thumbnail);
           onUpload(savedMovie);
         }
       }
@@ -150,6 +156,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   };
 
   const isRlsError = error?.includes('RLS_ERROR');
+  const fullSqlFix = `alter table movies enable row level security;
+create policy "Public Select" on movies for select using (true);
+create policy "User Management" on movies for all using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
+create or replace function increment_views(movie_id uuid) returns void as $$ begin update movies set views = views + 1 where id = movie_id; end; $$ language plpgsql security definer;`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
@@ -171,10 +181,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           <div className="mx-5 mt-5 sm:mx-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col space-y-4">
             <div className="flex items-start space-x-3 text-red-500">
               <ShieldAlert className="w-6 h-6 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-black uppercase tracking-widest text-[10px]">Database Permission Denied</p>
+              <div className="space-y-1 text-left">
+                <p className="font-black uppercase tracking-widest text-[10px]">Permission Error Detected</p>
                 <p className="text-xs opacity-90 leading-relaxed">
-                  Supabase RLS is blocking this action. You need to configure your Policy correctly.
+                  Supabase RLS is blocking this operation. Please run the SQL fix below.
                 </p>
               </div>
             </div>
@@ -183,16 +193,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
               <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-4">
                  <div className="space-y-2">
                     <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest flex items-center">
-                      <Terminal className="w-3 h-3 mr-1" /> SQL Editor Fix (Easiest)
+                      <Terminal className="w-3 h-3 mr-1" /> SQL Setup Script
                     </p>
-                    <div className="flex items-center justify-between bg-black/60 p-2 rounded-lg border border-white/5">
-                        <code className="text-[10px] text-blue-400 font-mono truncate">create policy "User Management" on movies for all...</code>
+                    <div className="bg-black/60 p-3 rounded-lg border border-white/5 relative group">
+                        <pre className="text-[9px] text-blue-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
+                          {fullSqlFix}
+                        </pre>
                         <button 
-                          onClick={() => copyToClipboard(`create policy "User Management" on movies for all using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);`, 'sql')}
-                          className="ml-2 flex items-center space-x-1 bg-white/5 hover:bg-white/10 px-2 py-1 rounded transition text-white shrink-0"
+                          onClick={() => copyToClipboard(fullSqlFix, 'fullsql')}
+                          className="absolute top-2 right-2 flex items-center space-x-1 bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition text-white shadow-lg"
                         >
-                          {copiedField === 'sql' ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                          <span className="text-[8px] uppercase font-black">{copiedField === 'sql' ? 'Copied' : 'Copy SQL'}</span>
+                          {copiedField === 'fullsql' ? <CheckCircle2 className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          <span className="text-[8px] uppercase font-black">{copiedField === 'fullsql' ? 'Copied' : 'Copy All SQL'}</span>
                         </button>
                     </div>
                  </div>
@@ -215,7 +227,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
         <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4">
           <div className="space-y-4">
             
-            {/* Common Metadata Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {uploadType === 'file' && (
                 <div>
@@ -241,55 +252,79 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
               </div>
             </div>
 
-            {/* Link Upload Section - Supports Multiple */}
             {uploadType === 'link' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">Video Links</label>
                   {!isEditMode && (
-                    <button 
-                      type="button" 
-                      onClick={addLinkEntry}
-                      className="text-[10px] flex items-center space-x-1 text-red-500 hover:text-red-400 font-black uppercase tracking-widest transition"
-                    >
-                      <Plus className="w-3 h-3" /> <span>Add Link</span>
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowBulkImport(!showBulkImport)}
+                        className="text-[10px] flex items-center space-x-1 text-blue-500 hover:text-blue-400 font-black uppercase tracking-widest transition"
+                      >
+                        <ListFilter className="w-3 h-3" /> <span>Bulk Import</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={addLinkEntry}
+                        className="text-[10px] flex items-center space-x-1 text-red-500 hover:text-red-400 font-black uppercase tracking-widest transition"
+                      >
+                        <Plus className="w-3 h-3" /> <span>Add Link</span>
+                      </button>
+                    </div>
                   )}
                 </div>
-                
-                <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-                  {linkEntries.map((entry, index) => (
-                    <div key={index} className="bg-black/30 p-3 rounded-xl border border-white/5 space-y-3 relative group/entry">
-                      <div className="flex items-center space-x-2">
+
+                {showBulkImport ? (
+                  <div className="bg-blue-600/5 border border-blue-500/20 p-4 rounded-2xl space-y-3 animate-in fade-in zoom-in-95">
+                    <p className="text-[9px] font-black text-blue-500 uppercase">Bulk Import (Title | URL)</p>
+                    <textarea 
+                      value={bulkText}
+                      onChange={(e) => setBulkText(e.target.value)}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-xs text-white font-mono min-h-[100px] outline-none"
+                      placeholder="My Video 1 | https://url1.com&#10;My Video 2 | https://url2.com"
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <button type="button" onClick={() => setShowBulkImport(false)} className="text-[10px] font-black uppercase text-gray-500 px-3 py-1">Cancel</button>
+                      <button type="button" onClick={handleBulkImport} className="text-[10px] font-black uppercase bg-blue-600 text-white px-3 py-1 rounded-lg">Import</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                    {linkEntries.map((entry, index) => (
+                      <div key={index} className="bg-black/30 p-3 rounded-xl border border-white/5 space-y-3 relative group/entry">
+                        <div className="flex items-center space-x-2">
+                          <input 
+                            type="text" 
+                            value={entry.title} 
+                            onChange={(e) => updateLinkEntry(index, 'title', e.target.value)} 
+                            className="flex-1 bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
+                            placeholder={`Video Title #${index + 1}`} 
+                            required 
+                          />
+                          {linkEntries.length > 1 && (
+                            <button 
+                              type="button" 
+                              onClick={() => removeLinkEntry(index)}
+                              className="p-2 text-gray-600 hover:text-red-500 transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                         <input 
-                          type="text" 
-                          value={entry.title} 
-                          onChange={(e) => updateLinkEntry(index, 'title', e.target.value)} 
-                          className="flex-1 bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
-                          placeholder={`Video Title #${index + 1}`} 
+                          type="url" 
+                          value={entry.url} 
+                          onChange={(e) => updateLinkEntry(index, 'url', e.target.value)} 
+                          className="w-full bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
+                          placeholder="https://..." 
                           required 
                         />
-                        {linkEntries.length > 1 && (
-                          <button 
-                            type="button" 
-                            onClick={() => removeLinkEntry(index)}
-                            className="p-2 text-gray-600 hover:text-red-500 transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
-                      <input 
-                        type="url" 
-                        value={entry.url} 
-                        onChange={(e) => updateLinkEntry(index, 'url', e.target.value)} 
-                        className="w-full bg-[#181818] border border-white/5 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-red-600 outline-none font-bold text-xs" 
-                        placeholder="https://..." 
-                        required 
-                      />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

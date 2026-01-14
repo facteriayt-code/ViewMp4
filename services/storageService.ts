@@ -2,9 +2,9 @@ import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 
 /**
- * DATABASE SETUP (Run this in Supabase SQL Editor):
+ * FULL DATABASE SETUP (Run this in Supabase SQL Editor):
  * 
- * -- 1. Create the table
+ * -- 1. Table Setup
  * create table movies (
  *   id uuid default gen_random_uuid() primary key,
  *   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -21,16 +21,28 @@ import { supabase } from './supabaseClient.ts';
  *   uploader_name text
  * );
  * 
- * -- 2. Enable RLS
+ * -- 2. Row Level Security (RLS)
  * alter table movies enable row level security;
  * 
- * -- 3. Public Select Policy (Allows everyone to see movies)
  * create policy "Public Select" on movies for select using (true);
- * 
- * -- 4. Authenticated User Policies (Allows users to manage their own content)
  * create policy "User Insert" on movies for insert with check (auth.uid() = uploader_id);
  * create policy "User Update" on movies for update using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
  * create policy "User Delete" on movies for delete using (auth.uid() = uploader_id);
+ * 
+ * -- 3. View Counter Function (RPC)
+ * create or replace function increment_views(movie_id uuid)
+ * returns void as $$
+ * begin
+ *   update movies
+ *   set views = views + 1
+ *   where id = movie_id;
+ * end;
+ * $$ language plpgsql security definer;
+ * 
+ * -- 4. Storage Bucket Setup (IMPORTANT)
+ * -- Go to "Storage" in Supabase, create 'videos' and 'thumbnails' buckets.
+ * -- Set them to "Public". 
+ * -- Add policies: ALLOW ALL for authenticated users.
  */
 
 export const saveVideoToCloud = async (
