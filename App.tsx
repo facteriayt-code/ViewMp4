@@ -251,25 +251,8 @@ const App: React.FC = () => {
       )}
       
       <div className={`${searchTerm ? 'pt-24' : '-mt-32 relative z-20'} transition-all duration-500`}>
-        <div className="px-4 md:px-12 mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-             <div className={`p-1.5 rounded-lg ${isOnline ? 'bg-green-600/10 text-green-500' : 'bg-red-600/10 text-red-500'}`}>
-                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-             </div>
-             <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-tighter text-gray-500">Supabase Connection</span>
-                <span className="text-xs font-bold text-white leading-none">Status: {isOnline ? 'Online' : 'Offline'}</span>
-             </div>
-          </div>
-          
-          {isSyncing && (
-            <div className="flex items-center space-x-2 text-[10px] font-bold text-orange-500 uppercase tracking-widest animate-pulse">
-               <Database className="w-3 h-3" />
-               <span>Syncing Realtime...</span>
-            </div>
-          )}
-        </div>
-
+        {/* Connection status moved to footer to prevent blocking content flow */}
+        
         {/* PRIMARY AD PLACEMENT - TOP OF FEED FOR MAX REVENUE */}
         <AdBanner />
 
@@ -328,12 +311,27 @@ const App: React.FC = () => {
       )}
 
       <footer className="px-4 md:px-12 py-16 border-t border-white/5 text-gray-600 text-sm mt-20 text-center pb-10">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Backend Linked</span>
+        <div className="flex flex-col items-center space-y-6">
+          <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-6">
+            <div className="flex items-center space-x-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                Supabase: {isOnline ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+            
+            {isSyncing && (
+              <div className="flex items-center space-x-2 text-[10px] font-bold text-orange-500 uppercase tracking-widest animate-pulse">
+                <Database className="w-3 h-3" />
+                <span>Syncing Database...</span>
+              </div>
+            )}
           </div>
-          <p>© 2024 GeminiStream Platform.</p>
+          
+          <div className="space-y-2">
+            <p>© 2024 GeminiStream Platform.</p>
+            <p className="text-[10px] opacity-50">High-performance streaming engine powered by Supabase & Gemini AI</p>
+          </div>
         </div>
       </footer>
     </div>
