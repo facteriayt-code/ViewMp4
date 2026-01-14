@@ -186,6 +186,7 @@ const App: React.FC = () => {
         movies: userUploadsOnly.sort((a,b) => b.views - a.views) 
       },
       { title: 'New Community Uploads', movies: userUploadsOnly.slice(0, 10) },
+      { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
       { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
       { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) },

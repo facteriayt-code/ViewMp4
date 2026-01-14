@@ -84,7 +84,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
         <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-black flex items-center text-white uppercase italic tracking-tighter">
-              <Cloud className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600" />
+              <Cloud className="w-5 h-5 sm:w-6 h-6 mr-2 text-red-600" />
               Upload to Cloud
             </h2>
             <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Supabase Realtime Network</p>
@@ -167,6 +167,7 @@ $$ language plpgsql security definer;`}
               >
                 <option value="Viral">Viral</option>
                 <option value="Insta post">Insta post</option>
+                <option value="onlyfans">onlyfans</option>
                 <option value="Action">Action</option>
               </select>
             </div>
