@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   
   const selectedMovieRef = useRef<Movie | null>(null);
+  const deepLinkProcessed = useRef(false);
   
   useEffect(() => {
     selectedMovieRef.current = selectedMovie;
@@ -161,31 +162,39 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const processDeepLink = () => {
-      const params = new URLSearchParams(window.location.search);
-      const videoId = params.get('v');
-      const autoplay = params.get('autoplay') === 'true';
-      const category = params.get('cat');
+    // Only process deep link once movies are loaded and we haven't done it yet
+    if (movies.length > INITIAL_MOVIES.length && !deepLinkProcessed.current) {
+      const processDeepLink = () => {
+        const params = new URLSearchParams(window.location.search);
+        const videoId = params.get('v');
+        const autoplay = params.get('autoplay') === 'true';
+        const category = params.get('cat');
 
-      if (videoId) {
-        const target = movies.find(m => m.id === videoId);
-        if (target) {
-          if (autoplay) {
-            setPlayingMovie(target);
-            setSelectedMovie(null);
-          } else {
-            setSelectedMovie(target);
-            setPlayingMovie(null);
+        if (videoId) {
+          const target = movies.find(m => m.id === videoId);
+          if (target) {
+            if (autoplay) {
+              setPlayingMovie(target);
+              setSelectedMovie(null);
+            } else {
+              setSelectedMovie(target);
+              setPlayingMovie(null);
+            }
+            deepLinkProcessed.current = true;
           }
+        } 
+        else if (category) {
+          const decodedCat = decodeURIComponent(category);
+          setTimeout(() => handleCategoryScroll(decodedCat), 1000);
+          deepLinkProcessed.current = true;
+        } else {
+          // If no relevant params, mark as processed anyway to avoid re-checking
+          deepLinkProcessed.current = true;
         }
-      } 
-      else if (category) {
-        const decodedCat = decodeURIComponent(category);
-        setTimeout(() => handleCategoryScroll(decodedCat), 1000);
-      }
-    };
+      };
 
-    processDeepLink();
+      processDeepLink();
+    }
   }, [movies]);
 
   const handleLogout = async () => {

@@ -40,7 +40,7 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
   }, [allMovies, movie.id]);
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}?v=${movie.id}`;
+    const shareUrl = `${window.location.origin}?v=${movie.id}&autoplay=true`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);

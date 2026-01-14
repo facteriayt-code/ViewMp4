@@ -30,7 +30,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
   const handleShareMovie = async (e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}?v=${movie.id}`;
+    const shareUrl = `${window.location.origin}?v=${movie.id}&autoplay=true`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedId(movie.id);
