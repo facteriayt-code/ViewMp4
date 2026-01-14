@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2, PlayCircle } from 'lucide-react';
+import { X, ArrowLeft, Volume2, VolumeX, AlertCircle, Loader2, PlayCircle, SkipForward, ChevronRight } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
 
@@ -15,11 +15,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
   const adTimeoutRef = useRef<number | null>(null);
+  const skipIntervalRef = useRef<number | null>(null);
+  
   const [isMuted, setIsMuted] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
   const [needsClickToStart, setNeedsClickToStart] = useState(true);
+  const [adSecondsElapsed, setAdSecondsElapsed] = useState(0);
+  
+  const SKIP_THRESHOLD = 20;
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -44,6 +48,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       console.log('IMA: Finalizing ad phase and playing content.');
       setIsAdPlaying(false);
       setAdLoading(false);
+      setAdSecondsElapsed(0);
+      
+      if (skipIntervalRef.current) {
+        window.clearInterval(skipIntervalRef.current);
+        skipIntervalRef.current = null;
+      }
+      
       if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
       
       if (player) {
@@ -60,7 +71,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         const imaOptions = {
           id: 'my-video',
           adTagUrl: 'https://improbablehospital.com/dOm.FfzgddGkNWvTZLGNUn/XeimA9euBZUUQlwkNP/TmY/3lNeDwg_xwMej/MFtfNxjNcj0ROEDjEpyPNJCAZGsta-WG1-pndaDk0/xp',
-          showCountdown: true,
+          showCountdown: false, // We use our custom UI for skipping
           debug: false,
           adsResponseTimeout: 8000,
           adWillAutoPlay: true
@@ -74,7 +85,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             console.log('IMA Event: Ad Started');
             setIsAdPlaying(true);
             setAdLoading(false);
+            setAdSecondsElapsed(0);
+            
             if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
+            
+            // Start custom skip timer
+            if (skipIntervalRef.current) window.clearInterval(skipIntervalRef.current);
+            skipIntervalRef.current = window.setInterval(() => {
+              setAdSecondsElapsed(prev => prev + 1);
+            }, 1000);
           });
 
           // Completion / Error Events
@@ -105,6 +124,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     return () => {
       if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
+      if (skipIntervalRef.current) window.clearInterval(skipIntervalRef.current);
       if (playerRef.current) {
         playerRef.current.dispose();
       }
@@ -134,9 +154,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     }
   };
 
+  const handleSkipAd = () => {
+    if (adSecondsElapsed >= SKIP_THRESHOLD && playerRef.current?.ima?.getAdsManager()) {
+      playerRef.current.ima.getAdsManager().skip();
+    }
+  };
+
   const finalizeContentPlay = () => {
     setIsAdPlaying(false);
     setAdLoading(false);
+    setAdSecondsElapsed(0);
+    if (skipIntervalRef.current) {
+      window.clearInterval(skipIntervalRef.current);
+      skipIntervalRef.current = null;
+    }
     if (playerRef.current) {
       playerRef.current.play();
     }
@@ -197,6 +228,32 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
+        {/* Custom Skip Ad Button */}
+        {isAdPlaying && (
+          <div className="absolute bottom-24 right-0 z-[220] flex items-end justify-end pointer-events-none pr-0 sm:pr-8">
+            <button 
+              onClick={handleSkipAd}
+              disabled={adSecondsElapsed < SKIP_THRESHOLD}
+              className={`pointer-events-auto flex items-center space-x-2 px-6 py-3 bg-black/70 border-y border-l border-white/10 text-white transition-all duration-300 ${
+                adSecondsElapsed >= SKIP_THRESHOLD 
+                ? 'opacity-100 translate-x-0 hover:bg-white/20 active:scale-95' 
+                : 'opacity-80 translate-x-4 grayscale'
+              }`}
+            >
+              {adSecondsElapsed >= SKIP_THRESHOLD ? (
+                <>
+                  <span className="text-sm font-black uppercase tracking-widest">Skip Ad</span>
+                  <ChevronRight className="w-5 h-5" />
+                </>
+              ) : (
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                  You can skip in {SKIP_THRESHOLD - adSecondsElapsed}s
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
         <div data-vjs-player className="w-full h-full">
           <video id="my-video" ref={videoRef} className="video-js vjs-big-play-centered vjs-theme-netflix" playsInline />
         </div>
@@ -216,6 +273,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         .vjs-ima-ad-container { z-index: 215 !important; }
         .vjs-ad-playing .vjs-control-bar { display: none !important; }
         .video-js { width: 100%; height: 100%; }
+        /* Style adjustments for the skip button container to ensure it stays above the IMA container */
+        .vjs-ima-ad-container + div { pointer-events: none; }
       `}</style>
     </div>
   );
