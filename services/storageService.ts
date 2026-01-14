@@ -2,8 +2,35 @@ import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 
 /**
- * Handles Video and Thumbnail saving. Supports both raw file uploads and direct URLs.
+ * DATABASE SETUP (Run this in Supabase SQL Editor):
+ * 
+ * -- Create the table
+ * create table movies (
+ *   id uuid default gen_random_uuid() primary key,
+ *   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+ *   title text not null,
+ *   description text,
+ *   thumbnail text,
+ *   video_url text,
+ *   genre text,
+ *   year integer,
+ *   rating text,
+ *   views bigint default 0,
+ *   is_user_uploaded boolean default true,
+ *   uploader_id uuid references auth.users(id),
+ *   uploader_name text
+ * );
+ * 
+ * -- Enable RLS
+ * alter table movies enable row level security;
+ * 
+ * -- Policies
+ * create policy "Public Access" on movies for select using (true);
+ * create policy "User Insert" on movies for insert with check (auth.uid() = uploader_id);
+ * create policy "User Update" on movies for update using (auth.uid() = uploader_id);
+ * create policy "User Delete" on movies for delete using (auth.uid() = uploader_id);
  */
+
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
   videoFile?: File | null, 
@@ -24,8 +51,8 @@ export const saveVideoToCloud = async (
       });
 
     if (error) {
-      if (error.message.includes('row-level security')) {
-        throw new Error(`Permission Denied: You must enable 'INSERT' and 'UPDATE' RLS policies for the '${bucket}' bucket in Supabase Storage.`);
+      if (error.message.includes('row-level security') || error.message.includes('403')) {
+        throw new Error(`STORAGE_RLS_ERROR: ${bucket}`);
       }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
@@ -41,7 +68,6 @@ export const saveVideoToCloud = async (
     let finalThumbnailUrl = movieMetadata.thumbnail;
     let finalVideoUrl = movieMetadata.videoUrl;
 
-    // 1. Handle File Uploads
     if (thumbnailFile) {
       finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
     }
@@ -52,22 +78,9 @@ export const saveVideoToCloud = async (
       if (onProgress) onProgress(80);
     }
 
-    if (!finalVideoUrl) {
-      throw new Error("A video source (file or link) is required.");
-    }
+    if (!finalVideoUrl) throw new Error("A video source is required.");
 
-    // Fallback for missing thumbnail
-    if (!finalThumbnailUrl) {
-      finalThumbnailUrl = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
-    }
-
-    // Determine if we are updating or inserting
     if (movieMetadata.id) {
-       // Pre-verify that we have an uploaderId to match against
-       if (!movieMetadata.uploaderId) {
-         throw new Error("Authentication context missing. Re-login and try again.");
-       }
-
        const { data, error: updateError } = await supabase
         .from('movies')
         .update({
@@ -78,30 +91,21 @@ export const saveVideoToCloud = async (
           video_url: finalVideoUrl
         })
         .eq('id', movieMetadata.id)
-        .eq('uploader_id', movieMetadata.uploaderId) // Ensure user owns the record
+        .eq('uploader_id', movieMetadata.uploaderId)
         .select();
         
       if (updateError) throw updateError;
+      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: UPDATE");
       
-      // If data is empty, the .eq('uploader_id') or RLS policy likely blocked the update
-      if (!data || data.length === 0) {
-        throw new Error(
-          "Update failed. This usually means your Supabase 'UPDATE' policy for the 'movies' table is missing or restricted. " +
-          "Ensure RLS is set to: 'USING (auth.uid() = uploader_id)'."
-        );
-      }
-      
-      if (onProgress) onProgress(100);
       return mapDbToMovie(data[0]);
     }
 
-    // Logic for new insertion
     const payload = {
-      title: movieMetadata.title || 'Untitled Video',
+      title: movieMetadata.title || 'Untitled',
       description: movieMetadata.description || '',
       thumbnail: finalThumbnailUrl,
       video_url: finalVideoUrl,
-      genre: movieMetadata.genre || 'General',
+      genre: movieMetadata.genre || 'Viral',
       year: movieMetadata.year || new Date().getFullYear(),
       rating: movieMetadata.rating || 'NR',
       views: 0,
@@ -116,11 +120,8 @@ export const saveVideoToCloud = async (
       .select();
 
     if (dbError) throw dbError;
-    if (!data || data.length === 0) {
-      throw new Error("Failed to retrieve the created movie record. Check your Supabase 'INSERT' RLS policies.");
-    }
+    if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: INSERT");
     
-    if (onProgress) onProgress(100);
     return mapDbToMovie(data[0]);
   } catch (error: any) {
     console.error("Supabase Operation Failed:", error);
@@ -128,52 +129,25 @@ export const saveVideoToCloud = async (
   }
 };
 
-/**
- * Deletes a video from the database.
- */
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in to delete content.");
+  if (!user) throw new Error("You must be signed in.");
 
   const { error } = await supabase
     .from('movies')
     .delete()
     .eq('id', movieId)
-    .eq('uploader_id', user.id); // Extra safety check
+    .eq('uploader_id', user.id);
 
-  if (error) {
-    console.error("Delete Error:", error);
-    throw new Error(`Failed to delete: ${error.message}. Ensure your 'DELETE' RLS policy is enabled.`);
-  }
+  if (error) throw new Error(`DATABASE_RLS_ERROR: DELETE`);
 };
 
-/**
- * Increments movie views in Supabase.
- */
 export const incrementMovieView = async (movieId: string) => {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
-  
   if (!isUuid) return;
-
   try {
-    const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
-    if (!rpcError) return;
-
-    const { data: current, error: fetchError } = await supabase
-      .from('movies')
-      .select('views')
-      .eq('id', movieId);
-      
-    if (!fetchError && current && current.length > 0) {
-      const nextViews = (Number(current[0].views) || 0) + 1;
-      await supabase
-        .from('movies')
-        .update({ views: nextViews })
-        .eq('id', movieId);
-    }
-  } catch (err) {
-    console.error("View increment system error:", err);
-  }
+    await supabase.rpc('increment_views', { movie_id: movieId });
+  } catch (err) {}
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
@@ -181,8 +155,6 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     .from('movies')
     .select('*')
     .order('created_at', { ascending: false });
-
-  if (error) return [];
   return (data || []).map(mapDbToMovie);
 };
 
