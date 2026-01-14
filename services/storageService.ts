@@ -2,10 +2,10 @@ import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 
 /**
- * FULL DATABASE SETUP (Run this in Supabase SQL Editor):
+ * FULL DATABASE & STORAGE SETUP (Run this in Supabase SQL Editor):
  * 
- * -- 1. Table Setup
- * create table movies (
+ * -- 1. Tables
+ * create table if not exists movies (
  *   id uuid default gen_random_uuid() primary key,
  *   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
  *   title text not null,
@@ -21,28 +21,25 @@ import { supabase } from './supabaseClient.ts';
  *   uploader_name text
  * );
  * 
- * -- 2. Row Level Security (RLS)
+ * -- 2. Table RLS
  * alter table movies enable row level security;
- * 
  * create policy "Public Select" on movies for select using (true);
- * create policy "User Insert" on movies for insert with check (auth.uid() = uploader_id);
- * create policy "User Update" on movies for update using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
- * create policy "User Delete" on movies for delete using (auth.uid() = uploader_id);
+ * create policy "User Management" on movies for all using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
  * 
- * -- 3. View Counter Function (RPC)
+ * -- 3. View Counter RPC
  * create or replace function increment_views(movie_id uuid)
  * returns void as $$
  * begin
- *   update movies
- *   set views = views + 1
- *   where id = movie_id;
+ *   update movies set views = views + 1 where id = movie_id;
  * end;
  * $$ language plpgsql security definer;
  * 
- * -- 4. Storage Bucket Setup (IMPORTANT)
- * -- Go to "Storage" in Supabase, create 'videos' and 'thumbnails' buckets.
- * -- Set them to "Public". 
- * -- Add policies: ALLOW ALL for authenticated users.
+ * -- 4. Storage Setup
+ * -- NOTE: Ensure you manually create 'videos' and 'thumbnails' buckets in Supabase Dashboard first!
+ * -- Go to Storage -> New Bucket -> Set to "Public".
+ * 
+ * create policy "Public Access" on storage.objects for select using (bucket_id in ('videos', 'thumbnails'));
+ * create policy "Authenticated Insert" on storage.objects for insert with check (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
  */
 
 export const saveVideoToCloud = async (
@@ -65,8 +62,9 @@ export const saveVideoToCloud = async (
       });
 
     if (error) {
-      if (error.message.includes('row-level security') || error.message.includes('403')) {
-        throw new Error(`STORAGE_RLS_ERROR: ${bucket}`);
+      console.error(`Storage Error [${bucket}]:`, error);
+      if (error.message.includes('row-level security') || error.message.includes('403') || error.message.includes('Policy')) {
+        throw new Error(`STORAGE_RLS_ERROR: ${bucket}. Make sure the bucket is Public and Policies are set.`);
       }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
@@ -87,13 +85,14 @@ export const saveVideoToCloud = async (
     }
     
     if (videoFile) {
-      if (onProgress) onProgress(30);
+      if (onProgress) onProgress(10);
       finalVideoUrl = await uploadFile('videos', videoFile);
       if (onProgress) onProgress(80);
     }
 
-    if (!finalVideoUrl) throw new Error("A video source is required.");
+    if (!finalVideoUrl) throw new Error("Missing video source.");
 
+    // Update existing movie
     if (movieMetadata.id) {
        const { data, error: updateError } = await supabase
         .from('movies')
@@ -108,12 +107,16 @@ export const saveVideoToCloud = async (
         .eq('uploader_id', movieMetadata.uploaderId)
         .select();
         
-      if (updateError) throw updateError;
-      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: UPDATE");
+      if (updateError) {
+        if (updateError.code === '42501') throw new Error("DATABASE_RLS_ERROR: UPDATE permission denied.");
+        throw updateError;
+      }
+      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: No row updated (check ownership).");
       
       return mapDbToMovie(data[0]);
     }
 
+    // Insert new movie
     const payload = {
       title: movieMetadata.title || 'Untitled',
       description: movieMetadata.description || '',
@@ -133,19 +136,22 @@ export const saveVideoToCloud = async (
       .insert([payload])
       .select();
 
-    if (dbError) throw dbError;
-    if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: INSERT");
+    if (dbError) {
+       if (dbError.code === '42501') throw new Error("DATABASE_RLS_ERROR: INSERT permission denied.");
+       throw dbError;
+    }
+    if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: Insert failed.");
     
     return mapDbToMovie(data[0]);
   } catch (error: any) {
-    console.error("Supabase Operation Failed:", error);
+    console.error("Upload Operation Error:", error);
     throw error;
   }
 };
 
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in.");
+  if (!user) throw new Error("Not signed in.");
 
   const { error } = await supabase
     .from('movies')

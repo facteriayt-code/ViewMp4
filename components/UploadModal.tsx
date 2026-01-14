@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -156,10 +156,31 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   };
 
   const isRlsError = error?.includes('RLS_ERROR');
-  const fullSqlFix = `alter table movies enable row level security;
+  
+  // Full, single-paste script for EVERYTHING
+  const fullSqlFix = `-- 1. Table Permissions
+alter table movies enable row level security;
+drop policy if exists "Public Select" on movies;
+drop policy if exists "User Management" on movies;
 create policy "Public Select" on movies for select using (true);
 create policy "User Management" on movies for all using (auth.uid() = uploader_id) with check (auth.uid() = uploader_id);
-create or replace function increment_views(movie_id uuid) returns void as $$ begin update movies set views = views + 1 where id = movie_id; end; $$ language plpgsql security definer;`;
+
+-- 2. View Counter Function
+create or replace function increment_views(movie_id uuid) returns void as $$ 
+begin 
+  update movies set views = views + 1 where id = movie_id; 
+end; 
+$$ language plpgsql security definer;
+
+-- 3. Storage Permissions (Make sure 'videos' and 'thumbnails' buckets exist!)
+insert into storage.buckets (id, name, public) 
+values ('videos', 'videos', true), ('thumbnails', 'thumbnails', true)
+on conflict (id) do update set public = true;
+
+create policy "Public Storage Access" on storage.objects for select using (bucket_id in ('videos', 'thumbnails'));
+create policy "Authenticated Storage Insert" on storage.objects for insert with check (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
+create policy "Authenticated Storage Update" on storage.objects for update using (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
+create policy "Authenticated Storage Delete" on storage.objects for delete using (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
@@ -178,38 +199,48 @@ create or replace function increment_views(movie_id uuid) returns void as $$ beg
         </div>
 
         {error && (
-          <div className="mx-5 mt-5 sm:mx-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col space-y-4">
+          <div className="mx-5 mt-5 sm:mx-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col space-y-4 animate-in shake-in">
             <div className="flex items-start space-x-3 text-red-500">
               <ShieldAlert className="w-6 h-6 shrink-0 mt-0.5" />
-              <div className="space-y-1 text-left">
-                <p className="font-black uppercase tracking-widest text-[10px]">Permission Error Detected</p>
-                <p className="text-xs opacity-90 leading-relaxed">
-                  Supabase RLS is blocking this operation. Please run the SQL fix below.
+              <div className="space-y-1 text-left flex-1">
+                <p className="font-black uppercase tracking-widest text-[10px]">Permission Denied (RLS)</p>
+                <p className="text-xs opacity-90 leading-relaxed font-bold">
+                  Supabase RLS is blocking this operation. Follow the 1-minute fix below to unlock your app:
                 </p>
               </div>
             </div>
             
-            {isRlsError && (
-              <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-4">
-                 <div className="space-y-2">
-                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest flex items-center">
-                      <Terminal className="w-3 h-3 mr-1" /> SQL Setup Script
-                    </p>
+            <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-4">
+                 <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest flex items-center">
+                        <Terminal className="w-3 h-3 mr-1" /> Steps to Fix:
+                      </p>
+                      <a href="https://supabase.com/dashboard/project/_/editor" target="_blank" className="text-[9px] text-blue-500 hover:underline flex items-center font-black">
+                        Open SQL Editor <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                      </a>
+                    </div>
+                    
+                    <ol className="text-[10px] text-gray-500 space-y-2 list-decimal ml-4">
+                      <li>Copy the script below.</li>
+                      <li>Go to your Supabase Dashboard -> SQL Editor.</li>
+                      <li>Paste and click <span className="text-white font-bold">RUN</span>.</li>
+                    </ol>
+
                     <div className="bg-black/60 p-3 rounded-lg border border-white/5 relative group">
-                        <pre className="text-[9px] text-blue-400 font-mono whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
+                        <pre className="text-[9px] text-blue-400 font-mono whitespace-pre-wrap break-all max-h-32 overflow-y-auto custom-scrollbar">
                           {fullSqlFix}
                         </pre>
                         <button 
                           onClick={() => copyToClipboard(fullSqlFix, 'fullsql')}
-                          className="absolute top-2 right-2 flex items-center space-x-1 bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition text-white shadow-lg"
+                          className="absolute top-2 right-2 flex items-center space-x-1 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition text-white shadow-lg active:scale-95"
                         >
                           {copiedField === 'fullsql' ? <CheckCircle2 className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                          <span className="text-[8px] uppercase font-black">{copiedField === 'fullsql' ? 'Copied' : 'Copy All SQL'}</span>
+                          <span className="text-[8px] uppercase font-black">{copiedField === 'fullsql' ? 'Copied!' : 'Copy Fix Script'}</span>
                         </button>
                     </div>
                  </div>
               </div>
-            )}
           </div>
         )}
 
@@ -395,6 +426,14 @@ create or replace function increment_views(movie_id uuid) returns void as $$ beg
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: rgba(229, 9, 20, 0.3);
           border-radius: 10px;
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .shake-in {
+          animation: shake 0.3s ease-in-out;
         }
       `}</style>
     </div>
