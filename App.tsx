@@ -111,7 +111,6 @@ const App: React.FC = () => {
             setSelectedMovie(updatedMovie);
           }
         } else if (payload.eventType === 'INSERT') {
-          // Fix: Property name 'video_url' changed to 'videoUrl' to match Movie interface
           const newMovie: Movie = {
             id: payload.new.id,
             title: payload.new.title,
@@ -149,7 +148,6 @@ const App: React.FC = () => {
       const autoplay = params.get('autoplay') === 'true';
       const category = params.get('cat');
 
-      // Handle Video Link
       if (videoId) {
         const target = movies.find(m => m.id === videoId);
         if (target) {
@@ -166,13 +164,20 @@ const App: React.FC = () => {
           setIsDeepLinking(true);
         }
       } 
-      // Handle Category Link
       else if (category) {
-        setSearchTerm(decodeURIComponent(category));
+        const decodedCat = decodeURIComponent(category);
+        setSearchTerm(decodedCat);
         setIsDeepLinking(false);
-        // Optional: Scroll to the search results or the specific row if not using search filter
-        // const targetRow = document.getElementById(`row-${category.replace(/\s+/g, '-').toLowerCase()}`);
-        // if (targetRow) targetRow.scrollIntoView({ behavior: 'smooth' });
+        
+        // Visual enhancement: Scroll to row after a short delay to ensure rendering
+        setTimeout(() => {
+          const targetRow = document.getElementById(`row-${decodedCat.replace(/\s+/g, '-').toLowerCase()}`);
+          if (targetRow) {
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRow.classList.add('ring-2', 'ring-red-600', 'ring-offset-8', 'ring-offset-[#141414]', 'rounded-xl');
+            setTimeout(() => targetRow.classList.remove('ring-2', 'ring-red-600'), 3000);
+          }
+        }, 800);
       }
       else {
         setIsDeepLinking(false);
@@ -225,4 +230,113 @@ const App: React.FC = () => {
       { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
       { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
       { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Premium Movies',
+      { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) }
+    ];
+  }, [filteredMovies]);
+
+  return (
+    <div className="min-h-screen pb-20 overflow-x-hidden">
+      {!isAgeVerified && <AgeDisclaimer onVerify={() => {
+        setIsAgeVerified(true);
+        localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
+      }} />}
+      
+      <Navbar 
+        user={user} 
+        onUploadClick={() => {
+          if (!user) setShowLoginModal(true);
+          else {
+            setEditingMovie(null);
+            setShowUploadModal(true);
+          }
+        }} 
+        onLoginClick={() => setShowLoginModal(true)} 
+        onLogout={handleLogout}
+        onSearch={setSearchTerm}
+      />
+
+      <Hero 
+        movie={movies[0]} 
+        onInfoClick={setSelectedMovie} 
+        onPlay={handlePlay} 
+      />
+
+      <div className="relative z-20 -mt-20 md:-mt-48 space-y-4">
+        {isSyncing && (
+          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg">
+             <Loader2 className="w-4 h-4 animate-spin" />
+             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
+          </div>
+        )}
+
+        {!isOnline && (
+          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce">
+             <WifiOff className="w-4 h-4" />
+             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {rows.map((row, idx) => (
+            <React.Fragment key={row.title}>
+              <MovieRow 
+                title={row.title} 
+                movies={row.movies} 
+                onMovieClick={setSelectedMovie} 
+                onPlay={handlePlay} 
+              />
+              {idx === 0 && <AdBanner />}
+              {idx === 2 && <NativeAd />}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {selectedMovie && (
+        <MovieDetails 
+          movie={selectedMovie} 
+          allMovies={movies} 
+          user={user}
+          onClose={() => setSelectedMovie(null)} 
+          onPlay={handlePlay}
+          onMovieSelect={setSelectedMovie}
+          onEdit={handleEdit}
+        />
+      )}
+
+      {playingMovie && (
+        <VideoPlayer 
+          movie={playingMovie} 
+          onClose={() => setPlayingMovie(null)} 
+        />
+      )}
+
+      {showUploadModal && user && (
+        <UploadModal 
+          user={user} 
+          onClose={() => setShowUploadModal(false)} 
+          onUpload={(newMovie) => {
+            if (editingMovie) {
+              setMovies(prev => prev.map(m => m.id === newMovie.id ? newMovie : m));
+            } else {
+              setMovies(prev => [newMovie, ...prev]);
+            }
+          }}
+          movieToEdit={editingMovie}
+        />
+      )}
+
+      {showLoginModal && (
+        <LoginModal 
+          onLogin={(u) => {
+            setUser(u);
+            setShowLoginModal(false);
+          }}
+          onClose={() => setShowLoginModal(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default App;
