@@ -139,13 +139,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       adTimeoutRef.current = window.setTimeout(() => {
         if (!isAdPlaying) {
           console.warn('IMA: Ad request timed out. Skipping.');
-          forceContentPlay();
+          forceContentPlayAction();
         }
       }, 7000);
     }
   };
 
-  const forceContentPlay = () => {
+  const forceContentPlayAction = () => {
     setIsAdPlaying(false);
     setAdLoading(false);
     if (playerRef.current) {
@@ -170,13 +170,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </button>
         
         <div className="text-center">
-          <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md uppercase tracking-tighter">
+          <h2 className="text-lg md:text-2xl font-bold truncate max-w-xs md:max-w-md uppercase tracking-tighter text-white">
             {isAdPlaying ? 'Advertisement' : movie.title}
           </h2>
         </div>
 
         <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors pointer-events-auto">
-          <X className="w-8 h-8" />
+          <X className="w-8 h-8 text-white" />
         </button>
       </div>
 
