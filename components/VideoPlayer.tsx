@@ -19,14 +19,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adLoading, setAdLoading] = useState(true);
-  const [needsClickToStart, setNeedsClickToStart] = useState(false);
+  const [needsClickToStart, setNeedsClickToStart] = useState(true);
 
   useEffect(() => {
     if (!videoRef.current) return;
 
     // 1. Initialize Video.js
     const player = videojs(videoRef.current, {
-      autoplay: false, // We'll handle play manually to ensure ad container initialization
+      autoplay: false,
       controls: true,
       muted: true,
       responsive: true,
@@ -42,7 +42,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     playerRef.current = player;
 
     const forceContentPlay = () => {
-      console.log('IMA: Returning to content.');
+      console.log('IMA: Returning to content playback.');
       if (adTimeoutRef.current) {
         clearTimeout(adTimeoutRef.current);
         adTimeoutRef.current = null;
@@ -54,14 +54,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       if (player) {
         player.removeClass('vjs-ad-playing');
         player.removeClass('vjs-ad-loading');
-        
-        // Ensure controls are visible
         player.controls(true);
         
         const playPromise = player.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // If play fails, we might need a user gesture
+          playPromise.catch((e: any) => {
+            console.warn('Playback resume failed - likely needs click:', e);
             setNeedsClickToStart(true);
           });
         }
@@ -76,8 +74,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           adTagUrl: 'https://s.magsrv.com/v1/vast.php?idzone=5828614',
           showCountdown: true,
           debug: false,
-          adsResponseTimeout: 8000, // Increased timeout for slower ad servers
-          preventLateAdStart: true
+          adsResponseTimeout: 8000,
+          adWillAutoPlay: true,
+          adWillPlayMuted: true
         };
 
         try {
@@ -85,7 +84,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
           // Events
           player.on('ads-ad-started', () => {
-            console.log('Ad Started');
+            console.log('IMA: Ad Started');
             if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
             setIsAdPlaying(true);
             setAdLoading(false);
@@ -94,47 +93,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           player.on('ads-ad-ended', forceContentPlay);
           player.on('ads-all-ads-completed', forceContentPlay);
           player.on('ads-error', (err: any) => {
-            console.warn('Ads Error (likely no inventory or blocked):', err);
+            console.warn('IMA: Ads Error (blocked or no inventory):', err);
             forceContentPlay();
           });
 
-          // Trigger for Ad Request
-          const startExperience = () => {
-            if (player.ima && player.ima.initializeAdDisplayContainer) {
-              player.ima.initializeAdDisplayContainer();
-              player.ima.requestAds();
-              
-              // Ad Request Fallback
-              adTimeoutRef.current = window.setTimeout(() => {
-                if (adLoading && !isAdPlaying) {
-                  console.warn('Ad server unresponsive. Bypassing.');
-                  forceContentPlay();
-                }
-              }, 9000);
-            } else {
-              forceContentPlay();
-            }
-          };
-
-          // We wait for the first play attempt
-          player.one('play', startExperience);
-          
-          // Try to trigger play (might be blocked by browser)
-          const initialPlay = player.play();
-          if (initialPlay !== undefined) {
-            initialPlay.catch(() => {
-              // Browser blocked autoplay, show a "Start" button
-              setNeedsClickToStart(true);
-              setAdLoading(false);
-            });
-          }
+          player.on('aderror', forceContentPlay);
+          player.on('contentresumerequested', forceContentPlay);
 
         } catch (e) {
-          console.error("IMA setup failure:", e);
+          console.error("IMA: Setup failure:", e);
           forceContentPlay();
         }
       } else {
-        console.warn('IMA Plugin not found on Video.js instance');
+        console.warn('IMA: Plugin not found');
         forceContentPlay();
       }
     });
@@ -154,6 +125,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const handleManualStart = () => {
     setNeedsClickToStart(false);
     setAdLoading(true);
+    
+    if (playerRef.current) {
+      // IMA requires this call inside a user gesture handler to allow the ad container to play
+      if (playerRef.current.ima && playerRef.current.ima.initializeAdDisplayContainer) {
+        playerRef.current.ima.initializeAdDisplayContainer();
+        playerRef.current.ima.requestAds();
+      }
+      
+      playerRef.current.play();
+
+      // Fail-safe: Skip if ad doesn't start in 7 seconds
+      adTimeoutRef.current = window.setTimeout(() => {
+        if (!isAdPlaying) {
+          console.warn('IMA: Ad request timed out. Skipping.');
+          forceContentPlay();
+        }
+      }, 7000);
+    }
+  };
+
+  const forceContentPlay = () => {
+    setIsAdPlaying(false);
+    setAdLoading(false);
     if (playerRef.current) {
       playerRef.current.play();
     }
@@ -190,20 +184,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         {adLoading && !error && !needsClickToStart && (
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
-            <p className="text-sm font-black uppercase tracking-widest text-white animate-pulse">Checking for Ads...</p>
+            <p className="text-sm font-black uppercase tracking-widest text-white animate-pulse">Initializing Ad Stream...</p>
           </div>
         )}
 
         {needsClickToStart && (
-          <div className="absolute inset-0 z-[216] flex flex-col items-center justify-center bg-black/90">
+          <div className="absolute inset-0 z-[216] flex flex-col items-center justify-center bg-black/90 px-6 text-center">
              <button 
               onClick={handleManualStart}
-              className="flex flex-col items-center space-y-4 hover:scale-105 transition-transform"
+              className="flex flex-col items-center space-y-6 hover:scale-105 transition-transform group/start"
              >
-                <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(229,9,20,0.5)]">
-                  <PlayCircle className="w-12 h-12 text-white fill-white/20" />
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-red-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(229,9,20,0.6)] group-hover/start:shadow-red-600/80 transition-shadow">
+                  <PlayCircle className="w-12 h-12 md:w-16 md:h-16 text-white fill-white/20" />
                 </div>
-                <span className="text-sm font-black uppercase tracking-[0.3em] text-white">Start Broadcast</span>
+                <div className="space-y-1">
+                  <span className="text-sm md:text-xl font-black uppercase tracking-[0.4em] text-white">Watch Now</span>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Sponsored content may play before video</p>
+                </div>
              </button>
           </div>
         )}
@@ -234,6 +231,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         .vjs-ima-ad-container { z-index: 215 !important; }
         .vjs-ad-playing .vjs-control-bar { display: none !important; }
         .video-js { width: 100%; height: 100%; background-color: black; }
+        .vjs-ad-loading .vjs-poster { display: block !important; }
       `}</style>
     </div>
   );
