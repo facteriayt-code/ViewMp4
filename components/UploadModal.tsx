@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, Terminal, Link, FileUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Film, Image as ImageIcon, Loader2, AlertCircle, Database, Cloud, Terminal, Link, FileUp, Save } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -7,24 +7,27 @@ interface UploadModalProps {
   user: User;
   onClose: () => void;
   onUpload: (newMovie: Movie) => void;
+  movieToEdit?: Movie | null;
 }
 
 type UploadType = 'file' | 'link';
 
-const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) => {
-  const [uploadType, setUploadType] = useState<UploadType>('file');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [genre, setGenre] = useState('Viral');
+const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
+  const [uploadType, setUploadType] = useState<UploadType>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
+  const [title, setTitle] = useState(movieToEdit?.title || '');
+  const [description, setDescription] = useState(movieToEdit?.description || '');
+  const [genre, setGenre] = useState(movieToEdit?.genre || 'Viral');
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState(movieToEdit?.videoUrl || '');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
+
+  const isEditMode = !!movieToEdit;
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -47,13 +50,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
     e.preventDefault();
     
     // Validations
-    if (uploadType === 'file' && (!videoFile || !title)) {
-      setUploadError("Please provide a title and select a video file.");
-      return;
-    }
-    if (uploadType === 'link' && (!videoUrl || !title)) {
-      setUploadError("Please provide a title and a valid video link.");
-      return;
+    if (!isEditMode) {
+      if (uploadType === 'file' && (!videoFile || !title)) {
+        setUploadError("Please provide a title and select a video file.");
+        return;
+      }
+      if (uploadType === 'link' && (!videoUrl || !title)) {
+        setUploadError("Please provide a title and a valid video link.");
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -62,16 +67,17 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
     
     try {
       const metadata: Partial<Movie> = {
+        id: movieToEdit?.id,
         title,
         description,
         genre,
-        year: new Date().getFullYear(),
-        rating: 'NR',
+        year: movieToEdit?.year || new Date().getFullYear(),
+        rating: movieToEdit?.rating || 'NR',
         isUserUploaded: true,
         uploaderId: user.id,
         uploaderName: user.name,
-        videoUrl: uploadType === 'link' ? videoUrl : undefined,
-        thumbnail: thumbnailUrl || undefined
+        videoUrl: uploadType === 'link' ? videoUrl : (movieToEdit?.videoUrl || undefined),
+        thumbnail: thumbnailUrl || (movieToEdit?.thumbnail || undefined)
       };
 
       const savedMovie = await saveVideoToCloud(
@@ -84,7 +90,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
       onUpload(savedMovie);
       onClose();
     } catch (err: any) {
-      setUploadError(err.message || "An unexpected error occurred during upload.");
+      setUploadError(err.message || "An unexpected error occurred.");
     } finally {
       setIsUploading(false);
     }
@@ -98,19 +104,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
         <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex flex-col">
             <h2 className="text-lg sm:text-xl font-black flex items-center text-white uppercase italic tracking-tighter">
-              <Cloud className="w-5 h-5 sm:w-6 h-6 mr-2 text-red-600" />
-              Upload Content
+              {isEditMode ? <Save className="w-5 h-5 sm:w-6 h-6 mr-2 text-blue-500" /> : <Cloud className="w-5 h-5 sm:w-6 h-6 mr-2 text-red-600" />}
+              {isEditMode ? 'Edit Content' : 'Upload Content'}
             </h2>
-            <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Global Broadcast Network</p>
+            <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+              {isEditMode ? `Editing ID: ${movieToEdit.id.split('-')[0]}...` : 'Global Broadcast Network'}
+            </p>
           </div>
           <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => setShowSetup(!showSetup)}
-              className="p-2 text-gray-500 hover:text-white transition"
-              title="Database Diagnostics"
-            >
-              <Terminal className="w-5 h-5" />
-            </button>
+            {!isEditMode && (
+              <button 
+                onClick={() => setShowSetup(!showSetup)}
+                className="p-2 text-gray-500 hover:text-white transition"
+                title="Database Diagnostics"
+              >
+                <Terminal className="w-5 h-5" />
+              </button>
+            )}
             <button onClick={onClose} className="text-gray-500 hover:text-red-500 transition p-2">
               <X className="w-6 h-6" />
             </button>
@@ -118,44 +128,22 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload }) =>
         </div>
 
         {/* Upload Mode Selector */}
-        <div className="flex bg-black/40 p-1 mx-5 mt-5 sm:mx-8 sm:mt-8 rounded-xl border border-white/5">
-           <button 
-             onClick={() => setUploadType('file')}
-             className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${uploadType === 'file' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-           >
-             <FileUp className="w-4 h-4" />
-             <span>File Upload</span>
-           </button>
-           <button 
-             onClick={() => setUploadType('link')}
-             className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${uploadType === 'link' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-           >
-             <Link className="w-4 h-4" />
-             <span>Video Link</span>
-           </button>
-        </div>
-
-        {/* Diagnostics Setup Panel */}
-        {showSetup && (
-          <div className="bg-blue-600/10 border-b border-white/10 p-4 sm:p-6 space-y-4 animate-in slide-in-from-top duration-300 mx-5 sm:mx-8 mt-4 rounded-xl">
-            <div className="flex items-center space-x-2 text-blue-400 font-black uppercase text-[10px] tracking-widest">
-              <Database className="w-4 h-4" />
-              <span>Real-time View Logic Setup</span>
-            </div>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              Copy and paste this into your <strong>Supabase SQL Editor</strong> to enable view tracking:
-            </p>
-            <div className="relative">
-              <pre className="bg-black/60 p-4 rounded-xl text-[9px] text-blue-300 overflow-x-auto border border-blue-500/20 font-mono">
-{`create or replace function increment_views(movie_id uuid)
-returns void as $$
-begin
-  update movies set views = views + 1
-  where id = movie_id;
-end;
-$$ language plpgsql security definer;`}
-              </pre>
-            </div>
+        {!isEditMode && (
+          <div className="flex bg-black/40 p-1 mx-5 mt-5 sm:mx-8 sm:mt-8 rounded-xl border border-white/5">
+             <button 
+               onClick={() => setUploadType('file')}
+               className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${uploadType === 'file' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               <FileUp className="w-4 h-4" />
+               <span>File Upload</span>
+             </button>
+             <button 
+               onClick={() => setUploadType('link')}
+               className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${uploadType === 'link' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               <Link className="w-4 h-4" />
+               <span>Video Link</span>
+             </button>
           </div>
         )}
 
@@ -165,7 +153,7 @@ $$ language plpgsql security definer;`}
             <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start space-x-3 text-red-500 text-sm animate-in shake duration-300">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-black uppercase tracking-widest text-[10px]">Transmission Error</p>
+                <p className="font-black uppercase tracking-widest text-[10px]">Error</p>
                 <p className="opacity-80 text-xs leading-snug">{uploadError}</p>
               </div>
             </div>
@@ -202,7 +190,7 @@ $$ language plpgsql security definer;`}
             )}
             
             <div>
-              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Channel / Category</label>
+              <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
               <select 
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
@@ -220,9 +208,9 @@ $$ language plpgsql security definer;`}
                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition group h-32 sm:h-40">
                     <Film className={`w-8 h-8 transition-colors ${videoFile ? 'text-green-500' : 'text-gray-600 group-hover:text-red-500'}`} />
                     <span className="text-[10px] mt-2 font-black uppercase tracking-tighter text-gray-500 text-center px-2 truncate w-full">
-                      {videoFile ? videoFile.name : 'Choose Video File'}
+                      {videoFile ? videoFile.name : (isEditMode ? 'Keep existing video' : 'Choose Video File')}
                     </span>
-                    <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} required />
+                    <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} />
                  </label>
                ) : (
                   <div className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-2xl p-4 bg-white/5 h-32 sm:h-40 opacity-60">
@@ -240,7 +228,7 @@ $$ language plpgsql security definer;`}
                     <ImageIcon className="w-8 h-8 text-gray-600 group-hover:text-red-500" />
                   )}
                   <span className="relative z-10 text-[10px] mt-2 font-black uppercase tracking-tighter text-white bg-black/40 px-2 py-1 rounded">
-                    {thumbnailFile ? 'Cover Set' : 'Set Thumbnail'}
+                    {thumbnailFile ? 'New Cover' : (isEditMode ? 'Change Cover' : 'Set Thumbnail')}
                   </span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} />
                </label>
@@ -267,7 +255,7 @@ $$ language plpgsql security definer;`}
           {isUploading && (
             <div className="space-y-2 animate-in fade-in duration-300">
               <div className="flex justify-between text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">
-                <span>Transmitting</span>
+                <span>Processing</span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
@@ -282,14 +270,14 @@ $$ language plpgsql security definer;`}
           <button 
             type="submit" 
             disabled={isUploading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 sm:py-5 rounded-2xl transition disabled:opacity-50 flex items-center justify-center shadow-xl active:scale-[0.98] uppercase tracking-[0.2em] text-xs sm:text-sm"
+            className={`w-full text-white font-black py-4 sm:py-5 rounded-2xl transition disabled:opacity-50 flex items-center justify-center shadow-xl active:scale-[0.98] uppercase tracking-[0.2em] text-xs sm:text-sm ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}
           >
             {isUploading ? (
               <div className="flex items-center">
                 <Loader2 className="w-4 h-4 animate-spin mr-3" />
-                Processing...
+                Wait...
               </div>
-            ) : uploadType === 'file' ? 'Push to Cloud' : 'Add Video Link'}
+            ) : isEditMode ? 'Update Broadcast' : 'Push to Cloud'}
           </button>
         </form>
       </div>

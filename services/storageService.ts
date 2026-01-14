@@ -60,11 +60,28 @@ export const saveVideoToCloud = async (
     }
 
     if (!finalThumbnailUrl) {
-      // Fallback thumbnail if none provided
       finalThumbnailUrl = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
     }
 
-    // 3. Insert metadata into 'movies' table
+    // Determine if we are updating or inserting
+    if (movieMetadata.id) {
+       const { data, error: updateError } = await supabase
+        .from('movies')
+        .update({
+          title: movieMetadata.title,
+          description: movieMetadata.description,
+          genre: movieMetadata.genre,
+          thumbnail: finalThumbnailUrl,
+          video_url: finalVideoUrl
+        })
+        .eq('id', movieMetadata.id)
+        .select()
+        .single();
+        
+      if (updateError) throw updateError;
+      return mapDbToMovie(data);
+    }
+
     const payload = {
       title: movieMetadata.title || 'Untitled Video',
       description: movieMetadata.description || '',
@@ -85,15 +102,26 @@ export const saveVideoToCloud = async (
       .select()
       .single();
 
-    if (dbError) {
-      console.error("Database Insert Error details:", dbError);
-      throw new Error(`Database Error: ${dbError.message}`);
-    }
-
+    if (dbError) throw dbError;
     return mapDbToMovie(data);
   } catch (error: any) {
     console.error("Supabase Operation Failed:", error);
     throw error;
+  }
+};
+
+/**
+ * Deletes a video from the database.
+ */
+export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('movies')
+    .delete()
+    .eq('id', movieId);
+
+  if (error) {
+    console.error("Delete Error:", error);
+    throw new Error(`Failed to delete video: ${error.message}`);
   }
 };
 
@@ -103,9 +131,7 @@ export const saveVideoToCloud = async (
 export const incrementMovieView = async (movieId: string) => {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
   
-  if (!isUuid) {
-    return;
-  }
+  if (!isUuid) return;
 
   try {
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
@@ -135,11 +161,7 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error("Supabase Fetch Error:", error);
-    return [];
-  }
-
+  if (error) return [];
   return (data || []).map(mapDbToMovie);
 };
 

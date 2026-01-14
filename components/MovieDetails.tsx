@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle } from 'lucide-react';
-import { Movie } from '../types.ts';
+import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, AlertCircle, Loader2 } from 'lucide-react';
+import { Movie, User } from '../types.ts';
+import { deleteVideoFromCloud } from '../services/storageService.ts';
 import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
   movie: Movie;
   allMovies: Movie[];
+  user: User | null;
   onClose: () => void;
   onPlay: (movie: Movie) => void;
   onMovieSelect: (movie: Movie) => void;
+  onEdit: (movie: Movie) => void;
 }
 
 const formatViews = (views: number) => {
@@ -17,8 +20,12 @@ const formatViews = (views: number) => {
   return views.toString();
 };
 
-const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, onPlay, onMovieSelect }) => {
+const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onClose, onPlay, onMovieSelect, onEdit }) => {
   const [copied, setCopied] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const isOwner = user && movie.uploaderId === user.id;
 
   useEffect(() => {
     const modal = document.querySelector('.modal-scroll-container');
@@ -40,6 +47,19 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, 
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy link:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!movie.id) return;
+    setIsDeleting(true);
+    try {
+      await deleteVideoFromCloud(movie.id);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setIsDeleting(false);
+      setShowConfirmDelete(false);
     }
   };
 
@@ -72,10 +92,58 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, 
                 <Play className="w-8 h-8 md:w-12 md:h-12 fill-white ml-1 md:ml-2" />
              </button>
           </div>
+
+          {/* Owner Badge */}
+          {isOwner && (
+            <div className="absolute top-4 left-4 flex items-center bg-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-xl border border-blue-400/30">
+              Your Upload
+            </div>
+          )}
         </div>
 
         {/* 2. Content Details & Actions */}
         <div className="p-5 md:p-8 space-y-5 md:space-y-6">
+          {/* Owner controls */}
+          {isOwner && (
+            <div className="flex items-center space-x-3 bg-white/5 p-4 rounded-xl border border-white/5">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mr-auto">Owner Controls</span>
+              <button 
+                onClick={() => onEdit(movie)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+              
+              {!showConfirmDelete ? (
+                <button 
+                  onClick={() => setShowConfirmDelete(true)}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-lg text-xs font-bold transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2 animate-in slide-in-from-right-2 duration-200">
+                  <span className="text-[10px] text-red-500 font-bold uppercase">Confirm?</span>
+                  <button 
+                    disabled={isDeleting}
+                    onClick={handleDelete}
+                    className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  >
+                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  </button>
+                  <button 
+                    onClick={() => setShowConfirmDelete(false)}
+                    className="p-1.5 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter italic leading-none">
               {movie.title}
@@ -128,18 +196,13 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, onClose, 
                 <div 
                   key={sug.id}
                   onClick={() => onMovieSelect(sug)}
-                  className="group cursor-pointer space-y-1.5"
+                  className="relative aspect-video rounded-lg overflow-hidden border border-white/5 cursor-pointer hover:scale-105 transition duration-300 group/sug shadow-lg"
                 >
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-900 border border-white/5 shadow-md">
-                    <img 
-                      src={sug.thumbnail} 
-                      alt={sug.title} 
-                      className="w-full h-full object-cover transition duration-300 group-hover:scale-110 group-hover:brightness-75" 
-                    />
-                  </div>
-                  <h4 className="text-[9px] md:text-xs font-bold text-gray-300 truncate group-hover:text-red-500 transition-colors uppercase italic">
-                    {sug.title}
-                  </h4>
+                   <img src={sug.thumbnail} alt={sug.title} className="w-full h-full object-cover brightness-75 group-hover/sug:brightness-100 transition" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-2">
+                      <p className="text-[10px] font-black text-white uppercase truncate">{sug.title}</p>
+                      <p className="text-[8px] font-bold text-gray-400">{sug.year} • {formatViews(sug.views)}</p>
+                   </div>
                 </div>
               ))}
             </div>

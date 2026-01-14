@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); 
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,10 +92,23 @@ const App: React.FC = () => {
       .channel('movies-realtime-global')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
-          const updatedViews = Number(payload.new.views) || 0;
-          setMovies(prev => prev.map(m => m.id === payload.new.id ? { ...m, views: updatedViews } : m));
-          if (selectedMovieRef.current?.id === payload.new.id) {
-            setSelectedMovie(prev => prev ? { ...prev, views: updatedViews } : null);
+          const updatedMovie: Movie = {
+            id: payload.new.id,
+            title: payload.new.title,
+            description: payload.new.description,
+            thumbnail: payload.new.thumbnail,
+            videoUrl: payload.new.video_url,
+            genre: payload.new.genre,
+            year: payload.new.year,
+            rating: payload.new.rating,
+            views: Number(payload.new.views) || 0,
+            isUserUploaded: payload.new.is_user_uploaded,
+            uploaderId: payload.new.uploader_id,
+            uploaderName: payload.new.uploader_name
+          };
+          setMovies(prev => prev.map(m => m.id === updatedMovie.id ? updatedMovie : m));
+          if (selectedMovieRef.current?.id === updatedMovie.id) {
+            setSelectedMovie(updatedMovie);
           }
         } else if (payload.eventType === 'INSERT') {
           const newMovie: Movie = {
@@ -112,6 +126,11 @@ const App: React.FC = () => {
             uploaderName: payload.new.uploader_name
           };
           setMovies(prev => [newMovie, ...prev]);
+        } else if (payload.eventType === 'DELETE') {
+          setMovies(prev => prev.filter(m => m.id !== payload.old.id));
+          if (selectedMovieRef.current?.id === payload.old.id) {
+            setSelectedMovie(null);
+          }
         }
       })
       .subscribe();
@@ -167,6 +186,11 @@ const App: React.FC = () => {
     setPlayingMovie(movie);
   };
 
+  const handleEdit = (movie: Movie) => {
+    setEditingMovie(movie);
+    setShowUploadModal(true);
+  };
+
   const filteredMovies = useMemo(() => {
     const term = searchTerm.toLowerCase();
     if (!term) return movies;
@@ -183,7 +207,7 @@ const App: React.FC = () => {
     return [
       { 
         title: 'Trending Now', 
-        movies: userUploadsOnly.sort((a,b) => b.views - a.views) 
+        movies: [...userUploadsOnly].sort((a,b) => b.views - a.views) 
       },
       { title: 'New Community Uploads', movies: userUploadsOnly.slice(0, 10) },
       { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
@@ -202,7 +226,10 @@ const App: React.FC = () => {
 
       <Navbar 
         user={user}
-        onUploadClick={() => user ? setShowUploadModal(true) : setShowLoginModal(true)} 
+        onUploadClick={() => {
+          setEditingMovie(null);
+          user ? setShowUploadModal(true) : setShowLoginModal(true);
+        }} 
         onLoginClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         onSearch={setSearchTerm}
@@ -263,9 +290,11 @@ const App: React.FC = () => {
         <MovieDetails 
           movie={selectedMovie} 
           allMovies={movies}
+          user={user}
           onClose={() => setSelectedMovie(null)} 
           onPlay={handlePlay} 
           onMovieSelect={setSelectedMovie}
+          onEdit={handleEdit}
         />
       )}
 
@@ -276,8 +305,18 @@ const App: React.FC = () => {
       {showUploadModal && user && (
         <UploadModal 
           user={user}
-          onClose={() => setShowUploadModal(false)} 
-          onUpload={(m) => setMovies(prev => [m, ...prev])} 
+          movieToEdit={editingMovie}
+          onClose={() => {
+            setShowUploadModal(false);
+            setEditingMovie(null);
+          }} 
+          onUpload={(m) => {
+            if (editingMovie) {
+               setMovies(prev => prev.map(old => old.id === m.id ? m : old));
+            } else {
+               setMovies(prev => [m, ...prev]);
+            }
+          }} 
         />
       )}
 
