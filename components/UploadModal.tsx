@@ -223,7 +223,7 @@ create policy "Authenticated Storage Delete" on storage.objects for delete using
                     
                     <ol className="text-[10px] text-gray-500 space-y-2 list-decimal ml-4">
                       <li>Copy the script below.</li>
-                      <li>Go to your Supabase Dashboard -> SQL Editor.</li>
+                      <li>Go to your Supabase Dashboard &rarr; SQL Editor.</li>
                       <li>Paste and click <span className="text-white font-bold">RUN</span>.</li>
                     </ol>
 
