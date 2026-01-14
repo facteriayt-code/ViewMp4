@@ -75,11 +75,13 @@ export const saveVideoToCloud = async (
           video_url: finalVideoUrl
         })
         .eq('id', movieMetadata.id)
-        .select()
-        .single();
+        .select();
         
       if (updateError) throw updateError;
-      return mapDbToMovie(data);
+      if (!data || data.length === 0) {
+        throw new Error("Could not find the video to update. It may have been deleted or you may not have permission.");
+      }
+      return mapDbToMovie(data[0]);
     }
 
     const payload = {
@@ -99,11 +101,13 @@ export const saveVideoToCloud = async (
     const { data, error: dbError } = await supabase
       .from('movies')
       .insert([payload])
-      .select()
-      .single();
+      .select();
 
     if (dbError) throw dbError;
-    return mapDbToMovie(data);
+    if (!data || data.length === 0) {
+      throw new Error("Failed to retrieve the created movie record.");
+    }
+    return mapDbToMovie(data[0]);
   } catch (error: any) {
     console.error("Supabase Operation Failed:", error);
     throw error;
@@ -140,11 +144,10 @@ export const incrementMovieView = async (movieId: string) => {
     const { data: current, error: fetchError } = await supabase
       .from('movies')
       .select('views')
-      .eq('id', movieId)
-      .single();
+      .eq('id', movieId);
       
-    if (!fetchError && current) {
-      const nextViews = (Number(current.views) || 0) + 1;
+    if (!fetchError && current && current.length > 0) {
+      const nextViews = (Number(current[0].views) || 0) + 1;
       await supabase
         .from('movies')
         .update({ views: nextViews })
