@@ -25,7 +25,7 @@ export const saveVideoToCloud = async (
 
     if (error) {
       if (error.message.includes('row-level security')) {
-        throw new Error(`Permission Denied: You must enable 'INSERT' RLS policies for the '${bucket}' bucket in Supabase Storage.`);
+        throw new Error(`Permission Denied: You must enable 'INSERT' and 'UPDATE' RLS policies for the '${bucket}' bucket in Supabase Storage.`);
       }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
@@ -41,30 +41,33 @@ export const saveVideoToCloud = async (
     let finalThumbnailUrl = movieMetadata.thumbnail;
     let finalVideoUrl = movieMetadata.videoUrl;
 
-    // 1. Upload Thumbnail if provided as file
+    // 1. Handle File Uploads
     if (thumbnailFile) {
       finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
     }
     
-    // 2. Upload Video if provided as file
     if (videoFile) {
-      if (onProgress) onProgress(50);
+      if (onProgress) onProgress(30);
       finalVideoUrl = await uploadFile('videos', videoFile);
-      if (onProgress) onProgress(100);
-    } else {
-      if (onProgress) onProgress(100);
+      if (onProgress) onProgress(80);
     }
 
     if (!finalVideoUrl) {
       throw new Error("A video source (file or link) is required.");
     }
 
+    // Fallback for missing thumbnail
     if (!finalThumbnailUrl) {
       finalThumbnailUrl = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
     }
 
     // Determine if we are updating or inserting
     if (movieMetadata.id) {
+       // Pre-verify that we have an uploaderId to match against
+       if (!movieMetadata.uploaderId) {
+         throw new Error("Authentication context missing. Re-login and try again.");
+       }
+
        const { data, error: updateError } = await supabase
         .from('movies')
         .update({
@@ -75,15 +78,24 @@ export const saveVideoToCloud = async (
           video_url: finalVideoUrl
         })
         .eq('id', movieMetadata.id)
+        .eq('uploader_id', movieMetadata.uploaderId) // Ensure user owns the record
         .select();
         
       if (updateError) throw updateError;
+      
+      // If data is empty, the .eq('uploader_id') or RLS policy likely blocked the update
       if (!data || data.length === 0) {
-        throw new Error("Could not find the video to update. It may have been deleted or you may not have permission.");
+        throw new Error(
+          "Update failed. This usually means your Supabase 'UPDATE' policy for the 'movies' table is missing or restricted. " +
+          "Ensure RLS is set to: 'USING (auth.uid() = uploader_id)'."
+        );
       }
+      
+      if (onProgress) onProgress(100);
       return mapDbToMovie(data[0]);
     }
 
+    // Logic for new insertion
     const payload = {
       title: movieMetadata.title || 'Untitled Video',
       description: movieMetadata.description || '',
@@ -105,8 +117,10 @@ export const saveVideoToCloud = async (
 
     if (dbError) throw dbError;
     if (!data || data.length === 0) {
-      throw new Error("Failed to retrieve the created movie record.");
+      throw new Error("Failed to retrieve the created movie record. Check your Supabase 'INSERT' RLS policies.");
     }
+    
+    if (onProgress) onProgress(100);
     return mapDbToMovie(data[0]);
   } catch (error: any) {
     console.error("Supabase Operation Failed:", error);
@@ -118,14 +132,18 @@ export const saveVideoToCloud = async (
  * Deletes a video from the database.
  */
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in to delete content.");
+
   const { error } = await supabase
     .from('movies')
     .delete()
-    .eq('id', movieId);
+    .eq('id', movieId)
+    .eq('uploader_id', user.id); // Extra safety check
 
   if (error) {
     console.error("Delete Error:", error);
-    throw new Error(`Failed to delete video: ${error.message}`);
+    throw new Error(`Failed to delete: ${error.message}. Ensure your 'DELETE' RLS policy is enabled.`);
   }
 };
 
