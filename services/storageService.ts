@@ -1,14 +1,13 @@
-
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 
 /**
- * Handles Video and Thumbnail uploads using Supabase Storage.
+ * Handles Video and Thumbnail saving. Supports both raw file uploads and direct URLs.
  */
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
-  videoFile: File, 
-  thumbnailFile: File,
+  videoFile?: File | null, 
+  thumbnailFile?: File | null,
   onProgress?: (progress: number) => void
 ): Promise<Movie> => {
   
@@ -39,20 +38,38 @@ export const saveVideoToCloud = async (
   };
 
   try {
-    // 1. Upload Thumbnail
-    const thumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
+    let finalThumbnailUrl = movieMetadata.thumbnail;
+    let finalVideoUrl = movieMetadata.videoUrl;
+
+    // 1. Upload Thumbnail if provided as file
+    if (thumbnailFile) {
+      finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
+    }
     
-    // 2. Upload Video
-    if (onProgress) onProgress(50);
-    const videoUrl = await uploadFile('videos', videoFile);
-    if (onProgress) onProgress(100);
+    // 2. Upload Video if provided as file
+    if (videoFile) {
+      if (onProgress) onProgress(50);
+      finalVideoUrl = await uploadFile('videos', videoFile);
+      if (onProgress) onProgress(100);
+    } else {
+      if (onProgress) onProgress(100);
+    }
+
+    if (!finalVideoUrl) {
+      throw new Error("A video source (file or link) is required.");
+    }
+
+    if (!finalThumbnailUrl) {
+      // Fallback thumbnail if none provided
+      finalThumbnailUrl = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
+    }
 
     // 3. Insert metadata into 'movies' table
     const payload = {
       title: movieMetadata.title || 'Untitled Video',
       description: movieMetadata.description || '',
-      thumbnail: thumbnailUrl,
-      video_url: videoUrl,
+      thumbnail: finalThumbnailUrl,
+      video_url: finalVideoUrl,
       genre: movieMetadata.genre || 'General',
       year: movieMetadata.year || new Date().getFullYear(),
       rating: movieMetadata.rating || 'NR',
@@ -82,28 +99,18 @@ export const saveVideoToCloud = async (
 
 /**
  * Increments movie views in Supabase.
- * It first tries the optimized RPC function, then falls back to a direct update.
  */
 export const incrementMovieView = async (movieId: string) => {
-  // Regex to check if ID is a valid UUID (Supabase generated)
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
   
   if (!isUuid) {
-    console.debug("Local movie detected. Skipping cloud view increment.");
     return;
   }
 
   try {
-    // Attempt 1: Using RPC (Atomic increment on server)
     const { error: rpcError } = await supabase.rpc('increment_views', { movie_id: movieId });
-    
-    if (!rpcError) {
-      console.log("View successfully counted (RPC)");
-      return;
-    }
+    if (!rpcError) return;
 
-    // Attempt 2: Direct update fallback if RPC fails
-    console.warn("RPC failed, trying direct increment fallback...");
     const { data: current, error: fetchError } = await supabase
       .from('movies')
       .select('views')
@@ -112,16 +119,10 @@ export const incrementMovieView = async (movieId: string) => {
       
     if (!fetchError && current) {
       const nextViews = (Number(current.views) || 0) + 1;
-      const { error: updateError } = await supabase
+      await supabase
         .from('movies')
         .update({ views: nextViews })
         .eq('id', movieId);
-        
-      if (updateError) {
-        console.error("Direct view update failed:", updateError.message);
-      } else {
-        console.log("View counted via Direct Update");
-      }
     }
   } catch (err) {
     console.error("View increment system error:", err);
