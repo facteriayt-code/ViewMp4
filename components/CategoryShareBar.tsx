@@ -30,14 +30,17 @@ const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick }) 
 
   return (
     <div className="sticky top-[60px] md:top-[70px] z-[40] w-full bg-[#141414]/80 backdrop-blur-md border-b border-white/5 py-3">
-      <div className="flex items-center space-x-3 overflow-x-auto px-4 md:px-12 no-scrollbar">
+      <div 
+        className="flex items-center space-x-3 overflow-x-auto px-4 md:px-12 no-scrollbar scroll-snap-x-mandatory"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap mr-2">
           Quick Share:
         </span>
         {CATEGORIES.map((cat) => (
           <div
             key={cat.name}
-            className="flex items-center group shrink-0"
+            className="flex items-center group shrink-0 scroll-snap-align-start"
           >
             <button
               onClick={() => onCategoryClick(cat.name)}
@@ -72,6 +75,12 @@ const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick }) 
         .no-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        .scroll-snap-x-mandatory {
+          scroll-snap-type: x mandatory;
+        }
+        .scroll-snap-align-start {
+          scroll-snap-align: start;
         }
       `}</style>
     </div>

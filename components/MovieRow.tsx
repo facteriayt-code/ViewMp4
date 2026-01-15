@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye, Link } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
@@ -23,7 +23,9 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
-      const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
+      // We scroll by clientWidth minus a bit of padding to keep context
+      const scrollAmount = clientWidth * 0.8;
+      const scrollTo = direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
       rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
     }
   };
@@ -90,31 +92,32 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
       <div className="group relative flex items-center">
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4"
+          className="absolute left-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4 active:scale-90"
         >
           <ChevronLeft className="w-8 h-8" />
         </button>
 
         <div 
           ref={rowRef}
-          className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 scroll-smooth py-4"
+          className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 scroll-smooth py-4 no-scrollbar scroll-snap-x-mandatory"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((movie) => (
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none w-48 h-28 md:w-80 md:h-44 cursor-pointer transition-all duration-500 hover:scale-105 hover:z-20 rounded-2xl overflow-hidden bg-zinc-900 group/card shadow-2xl hover:shadow-red-600/30 border border-white/5"
+              className="relative flex-none w-48 h-28 md:w-80 md:h-44 cursor-pointer transition-all duration-500 hover:scale-105 hover:z-20 rounded-2xl overflow-hidden bg-zinc-900 group/card shadow-2xl hover:shadow-red-600/30 border border-white/5 scroll-snap-align-start"
             >
               <img 
                 src={movie.thumbnail} 
                 alt={movie.title} 
-                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 transition-all duration-500"
+                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 transition-all duration-500 pointer-events-none"
               />
               
               <div className="absolute top-2 right-2 z-30 flex flex-col space-y-2 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 translate-y-2 group-hover/card:translate-y-0">
                 <button 
                   onClick={(e) => handleShareMovie(e, movie)}
-                  className="p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-red-600 transition-colors shadow-lg"
+                  className="p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-red-600 transition-colors shadow-lg active:scale-90"
                 >
                   {copiedId === movie.id ? <Check className="w-4 h-4 text-white" /> : <Share2 className="w-4 h-4 text-white" />}
                 </button>
@@ -140,11 +143,26 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4"
+          className="absolute right-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4 active:scale-90"
         >
           <ChevronRight className="w-8 h-8" />
         </button>
       </div>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scroll-snap-x-mandatory {
+          scroll-snap-type: x mandatory;
+        }
+        .scroll-snap-align-start {
+          scroll-snap-align: start;
+        }
+      `}</style>
     </div>
   );
 };
