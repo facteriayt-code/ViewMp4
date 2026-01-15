@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,6 +41,14 @@
             margin-top: -40px !important;
             margin-left: -40px !important;
         }
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+        .pulse-premium {
+            animation: pulse-gold 2s infinite;
+        }
     </style>
     <script type="importmap">
 {
@@ -66,6 +75,14 @@
 <body>
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
+
+    <!-- Smart Link Floating Ad -->
+    <div class="fixed bottom-24 left-4 z-[101]">
+        <a href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" target="_blank" class="pulse-premium bg-gradient-to-r from-yellow-600 to-red-600 hover:from-yellow-500 hover:to-red-500 text-white text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 transition-all active:scale-95 border border-white/20">
+            <span class="flex h-2 w-2 rounded-full bg-white animate-ping"></span>
+            <span>Premium Access</span>
+        </a>
+    </div>
 
     <!-- Ad Placements -->
     <div class="fixed bottom-4 left-4 z-[100] max-w-[300px]">

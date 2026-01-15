@@ -162,38 +162,37 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Only process deep link once movies are loaded and we haven't done it yet
-    if (movies.length > INITIAL_MOVIES.length && !deepLinkProcessed.current) {
-      const processDeepLink = () => {
-        const params = new URLSearchParams(window.location.search);
-        const videoId = params.get('v');
-        const autoplay = params.get('autoplay') === 'true';
-        const category = params.get('cat');
+    // Check deep link as soon as movies are available
+    if (movies.length > 0 && !deepLinkProcessed.current) {
+      const params = new URLSearchParams(window.location.search);
+      const videoId = params.get('v');
+      const category = params.get('cat');
 
-        if (videoId) {
-          const target = movies.find(m => m.id === videoId);
-          if (target) {
-            if (autoplay) {
-              setPlayingMovie(target);
-              setSelectedMovie(null);
-            } else {
-              setSelectedMovie(target);
-              setPlayingMovie(null);
-            }
-            deepLinkProcessed.current = true;
+      if (videoId) {
+        const target = movies.find(m => m.id === videoId);
+        if (target) {
+          // Default to playing the movie if v is in URL, unless explicitly set to false
+          const autoplay = params.get('autoplay') !== 'false';
+          
+          if (autoplay) {
+            setPlayingMovie(target);
+            setSelectedMovie(null);
+          } else {
+            setSelectedMovie(target);
+            setPlayingMovie(null);
           }
-        } 
-        else if (category) {
-          const decodedCat = decodeURIComponent(category);
-          setTimeout(() => handleCategoryScroll(decodedCat), 1000);
-          deepLinkProcessed.current = true;
-        } else {
-          // If no relevant params, mark as processed anyway to avoid re-checking
           deepLinkProcessed.current = true;
         }
-      };
-
-      processDeepLink();
+        // If target not found yet, we wait for next movies update (sync)
+      } 
+      else if (category) {
+        const decodedCat = decodeURIComponent(category);
+        setTimeout(() => handleCategoryScroll(decodedCat), 1000);
+        deepLinkProcessed.current = true;
+      } else {
+        // No deep link params found
+        deepLinkProcessed.current = true;
+      }
     }
   }, [movies]);
 

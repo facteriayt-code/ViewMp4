@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User as UserIcon, Plus, Film, LogOut } from 'lucide-react';
+import { Search, Bell, User as UserIcon, Plus, Film, LogOut, Crown } from 'lucide-react';
 import { User } from '../types.ts';
 
 interface NavbarProps {
@@ -55,6 +55,17 @@ const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLo
             onChange={handleSearchChange}
           />
         </div>
+
+        {/* Smart Link Ad Integration */}
+        <a 
+          href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-lg transition shadow-lg active:scale-95 group"
+        >
+          <Crown className="w-4 h-4 fill-black group-hover:animate-bounce" />
+          <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
+        </a>
         
         <button 
           onClick={onUploadClick}
