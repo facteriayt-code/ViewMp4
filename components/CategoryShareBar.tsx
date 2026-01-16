@@ -31,7 +31,7 @@ const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick }) 
   return (
     <div className="sticky top-[60px] md:top-[70px] z-[40] w-full bg-[#141414]/80 backdrop-blur-md border-b border-white/5 py-3">
       <div 
-        className="flex items-center space-x-3 overflow-x-auto px-4 md:px-12 no-scrollbar scroll-snap-x-mandatory"
+        className="flex items-center space-x-3 overflow-x-auto px-4 md:px-12 no-scrollbar scroll-snap-x-mandatory scroll-pl-4 md:scroll-pl-12"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap mr-2">
@@ -81,6 +81,14 @@ const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick }) 
         }
         .scroll-snap-align-start {
           scroll-snap-align: start;
+        }
+        .scroll-pl-4 {
+          scroll-padding-left: 1rem;
+        }
+        .md\\:scroll-pl-12 {
+          @media (min-width: 768px) {
+            scroll-padding-left: 3rem;
+          }
         }
       `}</style>
     </div>

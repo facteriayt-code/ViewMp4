@@ -23,7 +23,6 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
-      // We scroll by clientWidth minus a bit of padding to keep context
       const scrollAmount = clientWidth * 0.8;
       const scrollTo = direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
       rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
@@ -99,7 +98,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
         <div 
           ref={rowRef}
-          className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 scroll-smooth py-4 no-scrollbar scroll-snap-x-mandatory"
+          className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 py-4 no-scrollbar scroll-snap-x-mandatory scroll-pl-4 md:scroll-pl-12"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((movie) => (
@@ -161,6 +160,14 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
         }
         .scroll-snap-align-start {
           scroll-snap-align: start;
+        }
+        .scroll-pl-4 {
+          scroll-padding-left: 1rem;
+        }
+        .md\\:scroll-pl-12 {
+          @media (min-width: 768px) {
+            scroll-padding-left: 3rem;
+          }
         }
       `}</style>
     </div>
