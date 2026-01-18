@@ -36,11 +36,50 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   
   const selectedMovieRef = useRef<Movie | null>(null);
+  const playingMovieRef = useRef<Movie | null>(null);
+  const showUploadModalRef = useRef<boolean>(false);
   const deepLinkProcessed = useRef(false);
   
+  // Update refs to avoid stale closures in event listeners
   useEffect(() => {
     selectedMovieRef.current = selectedMovie;
-  }, [selectedMovie]);
+    playingMovieRef.current = playingMovie;
+    showUploadModalRef.current = showUploadModal;
+  }, [selectedMovie, playingMovie, showUploadModal]);
+
+  // Handle Browser Back Button (Popstate)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // If any modal is open, close it and prevent navigation
+      if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
+        setPlayingMovie(null);
+        setSelectedMovie(null);
+        setShowUploadModal(false);
+        setEditingMovie(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Helper to update URL without reload and push history state
+  const pushState = (params: Record<string, string | null>) => {
+    const url = new URL(window.location.href);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    });
+    window.history.pushState({ modal: true }, '', url.toString());
+  };
+
+  const clearModalUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('v');
+    url.searchParams.delete('play');
+    url.searchParams.delete('autoplay');
+    window.history.replaceState({}, '', url.toString());
+  };
 
   useEffect(() => {
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
@@ -171,26 +210,20 @@ const App: React.FC = () => {
       if (videoId) {
         const target = movies.find(m => m.id === videoId);
         if (target) {
-          // Default to playing the movie if v is in URL, unless explicitly set to false
           const autoplay = params.get('autoplay') !== 'false';
-          
           if (autoplay) {
             setPlayingMovie(target);
-            setSelectedMovie(null);
           } else {
             setSelectedMovie(target);
-            setPlayingMovie(null);
           }
           deepLinkProcessed.current = true;
         }
-        // If target not found yet, we wait for next movies update (sync)
       } 
       else if (category) {
         const decodedCat = decodeURIComponent(category);
         setTimeout(() => handleCategoryScroll(decodedCat), 1000);
         deepLinkProcessed.current = true;
       } else {
-        // No deep link params found
         deepLinkProcessed.current = true;
       }
     }
@@ -208,11 +241,18 @@ const App: React.FC = () => {
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
     setPlayingMovie(movie);
+    pushState({ v: movie.id, autoplay: 'true' });
+  };
+
+  const handleSelectMovie = (movie: Movie) => {
+    setSelectedMovie(movie);
+    pushState({ v: movie.id, autoplay: 'false' });
   };
 
   const handleEdit = (movie: Movie) => {
     setEditingMovie(movie);
     setShowUploadModal(true);
+    pushState({ edit: movie.id });
   };
 
   const filteredMovies = useMemo(() => {
@@ -255,6 +295,7 @@ const App: React.FC = () => {
           else {
             setEditingMovie(null);
             setShowUploadModal(true);
+            pushState({ action: 'upload' });
           }
         }} 
         onLoginClick={() => setShowLoginModal(true)} 
@@ -264,7 +305,7 @@ const App: React.FC = () => {
 
       <Hero 
         movie={movies[0]} 
-        onInfoClick={setSelectedMovie} 
+        onInfoClick={handleSelectMovie} 
         onPlay={handlePlay} 
       />
 
@@ -291,7 +332,7 @@ const App: React.FC = () => {
               <MovieRow 
                 title={row.title} 
                 movies={row.movies} 
-                onMovieClick={setSelectedMovie} 
+                onMovieClick={handleSelectMovie} 
                 onPlay={handlePlay} 
               />
               {idx === 0 && <AdBanner />}
@@ -306,9 +347,12 @@ const App: React.FC = () => {
           movie={selectedMovie} 
           allMovies={movies} 
           user={user}
-          onClose={() => setSelectedMovie(null)} 
+          onClose={() => {
+            setSelectedMovie(null);
+            clearModalUrl();
+          }} 
           onPlay={handlePlay}
-          onMovieSelect={setSelectedMovie}
+          onMovieSelect={handleSelectMovie}
           onEdit={handleEdit}
         />
       )}
@@ -316,14 +360,23 @@ const App: React.FC = () => {
       {playingMovie && (
         <VideoPlayer 
           movie={playingMovie} 
-          onClose={() => setPlayingMovie(null)} 
+          onClose={() => {
+            setPlayingMovie(null);
+            clearModalUrl();
+          }} 
         />
       )}
 
       {showUploadModal && user && (
         <UploadModal 
           user={user} 
-          onClose={() => setShowUploadModal(false)} 
+          onClose={() => {
+            setShowUploadModal(false);
+            const url = new URL(window.location.href);
+            url.searchParams.delete('action');
+            url.searchParams.delete('edit');
+            window.history.replaceState({}, '', url.toString());
+          }} 
           onUpload={(newMovie) => {
             if (editingMovie) {
               setMovies(prev => prev.map(m => m.id === newMovie.id ? newMovie : m));
