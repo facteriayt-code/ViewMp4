@@ -16,6 +16,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const playerRef = useRef<any>(null);
   const adTimeoutRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const lastTapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null });
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -28,6 +29,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [showControls, setShowControls] = useState(true);
   const [isHoveringProgressBar, setIsHoveringProgressBar] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [seekFeedback, setSeekFeedback] = useState<'forward' | 'backward' | null>(null);
 
   // Auto-hide controls logic
   const resetControlsTimeout = useCallback(() => {
@@ -36,7 +38,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     if (isPlaying && !isHoveringProgressBar) {
       controlsTimeoutRef.current = window.setTimeout(() => {
         setShowControls(false);
-      }, 3500); // Slightly longer for mobile readability
+      }, 3500);
     }
   }, [isPlaying, isHoveringProgressBar]);
 
@@ -50,6 +52,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       muted: true,
       responsive: true,
       fluid: true,
+      preload: 'auto',
       poster: movie.thumbnail,
       sources: movie.videoUrl ? [{
         src: movie.videoUrl,
@@ -103,9 +106,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       }
     });
 
+    player.on('loadedmetadata', () => {
+      setDuration(player.duration());
+    });
+
     player.on('timeupdate', () => {
       setCurrentTime(player.currentTime());
-      setDuration(player.duration());
+      // Handle edge cases where duration might update during play
+      if (duration === 0 || isNaN(duration)) {
+        setDuration(player.duration());
+      }
     });
 
     player.on('play', () => setIsPlaying(true));
@@ -151,7 +161,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     }
   };
 
-  const togglePlay = (e?: React.MouseEvent) => {
+  const togglePlay = (e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
     if (playerRef.current) {
       if (playerRef.current.paused()) {
@@ -163,11 +173,38 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     }
   };
 
-  const seek = (seconds: number, e?: React.MouseEvent) => {
+  const seek = (seconds: number, e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
     if (playerRef.current) {
-      const newTime = playerRef.current.currentTime() + seconds;
-      playerRef.current.currentTime(Math.max(0, Math.min(newTime, duration)));
+      const current = playerRef.current.currentTime();
+      const dur = playerRef.current.duration();
+      const newTime = current + seconds;
+      
+      playerRef.current.currentTime(Math.max(0, Math.min(newTime, dur)));
+      setCurrentTime(playerRef.current.currentTime());
+      
+      // Visual feedback
+      setSeekFeedback(seconds > 0 ? 'forward' : 'backward');
+      setTimeout(() => setSeekFeedback(null), 500);
+      
+      resetControlsTimeout();
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (needsClickToStart || isAdPlaying) return;
+    
+    const touch = e.touches[0];
+    const screenWidth = window.innerWidth;
+    const side = touch.clientX < screenWidth / 2 ? 'left' : 'right';
+    const now = Date.now();
+    
+    // Double tap detection
+    if (lastTapRef.current.side === side && now - lastTapRef.current.time < 300) {
+      seek(side === 'left' ? -10 : 10, e);
+      lastTapRef.current = { time: 0, side: null }; // Reset
+    } else {
+      lastTapRef.current = { time: now, side };
       resetControlsTimeout();
     }
   };
@@ -223,10 +260,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     <div 
       className={`fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500 overflow-hidden ${showControls ? '' : 'md:cursor-none'}`}
       onMouseMove={() => resetControlsTimeout()}
-      onTouchStart={() => resetControlsTimeout()}
+      onTouchStart={handleTouchStart}
     >
-      {/* Top Header Overlay - Responsive Padding */}
-      <div className={`absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-[220] bg-gradient-to-b from-black/90 to-transparent transition-opacity duration-500 ${showControls || needsClickToStart ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+      {/* Top Header Overlay */}
+      <div className={`absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-[220] bg-gradient-to-b from-black/90 to-transparent transition-all duration-500 ${showControls || needsClickToStart ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
         <button onClick={onClose} className="flex items-center text-white hover:text-gray-300 transition-colors group p-2">
           <ArrowLeft className="w-6 h-6 md:w-8 md:h-8 mr-1 md:mr-2 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm md:text-xl font-bold tracking-tight">Back</span>
@@ -247,6 +284,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         className="w-full h-full flex items-center justify-center bg-black relative group" 
         onClick={() => !needsClickToStart && !isAdPlaying && togglePlay()}
       >
+        {/* Seek Visual Feedback */}
+        {seekFeedback && (
+          <div className="absolute inset-0 z-[215] flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center bg-black/40 backdrop-blur-md p-6 rounded-full animate-in zoom-in-95 fade-in duration-200">
+               {seekFeedback === 'forward' ? <RotateCw className="w-12 h-12 text-white animate-pulse" /> : <RotateCcw className="w-12 h-12 text-white animate-pulse" />}
+               <span className="text-white font-black mt-2 text-xl">{seekFeedback === 'forward' ? '+10s' : '-10s'}</span>
+            </div>
+          </div>
+        )}
+
         {/* Loading States */}
         {adLoading && !needsClickToStart && (
           <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -287,27 +334,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
         {/* Custom Playback Controls Overlay */}
         {!isAdPlaying && !needsClickToStart && (
-          <div className={`absolute inset-0 z-[210] flex flex-col justify-end bg-gradient-to-t from-black/90 via-transparent to-black/50 transition-all duration-500 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`absolute inset-0 z-[210] flex flex-col justify-end bg-gradient-to-t from-black/90 via-transparent to-black/50 transition-all duration-500 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-4'}`}>
             
-            {/* Center Play/Pause Large Toggle - Scaled for Mobile */}
+            {/* Center Controls */}
             <div className="absolute inset-0 flex items-center justify-center space-x-8 md:space-x-20 pointer-events-none">
-              <button onClick={(e) => seek(-10, e)} className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto">
-                <RotateCcw className="w-6 h-6 md:w-10 md:h-10 text-white" />
+              <button 
+                onClick={(e) => seek(-10, e)} 
+                className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto shadow-xl group/seek"
+              >
+                <RotateCcw className="w-8 h-8 md:w-12 md:h-12 text-white group-hover/seek:rotate-[-45deg] transition-transform" />
               </button>
               
-              <button onClick={togglePlay} className="w-16 h-16 md:w-24 md:h-24 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 transition-all active:scale-95 pointer-events-auto shadow-2xl">
-                {isPlaying ? <Pause className="w-8 h-8 md:w-12 md:h-12 text-white fill-white" /> : <Play className="w-8 h-8 md:w-12 md:h-12 text-white fill-white ml-1 md:ml-2" />}
+              <button 
+                onClick={togglePlay} 
+                className="w-16 h-16 md:w-28 md:h-28 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-95 pointer-events-auto shadow-2xl"
+              >
+                {isPlaying ? <Pause className="w-8 h-8 md:w-14 md:h-14 text-white fill-white" /> : <Play className="w-8 h-8 md:w-14 md:h-14 text-white fill-white ml-1 md:ml-2" />}
               </button>
 
-              <button onClick={(e) => seek(10, e)} className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto">
-                <RotateCw className="w-6 h-6 md:w-10 md:h-10 text-white" />
+              <button 
+                onClick={(e) => seek(10, e)} 
+                className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto shadow-xl group/seek"
+              >
+                <RotateCw className="w-8 h-8 md:w-12 md:h-12 text-white group-hover/seek:rotate-[45deg] transition-transform" />
               </button>
             </div>
 
             {/* Bottom Controls Bar */}
             <div className="px-4 pb-6 md:px-8 md:pb-8 space-y-2 md:space-y-4" onClick={(e) => e.stopPropagation()}>
               
-              {/* Progress Slider with Larger Hit Area for Mobile */}
+              {/* Progress Slider */}
               <div 
                 className="relative flex flex-col group/progress pt-8 pb-2"
                 onMouseEnter={() => setIsHoveringProgressBar(true)}
@@ -332,10 +388,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                         style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} 
                       />
                    </div>
-                   {/* Thumb for visual feedback */}
                    <div 
-                    className="absolute h-3 w-3 md:h-4 md:w-4 bg-red-600 rounded-full border-2 border-white shadow-lg pointer-events-none transition-all z-10" 
-                    style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - ${currentTime > duration / 2 ? '12px' : '0px'})` }}
+                    className="absolute h-3 w-3 md:h-5 md:w-5 bg-red-600 rounded-full border-2 border-white shadow-lg pointer-events-none transition-all z-10" 
+                    style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - ${currentTime > duration / 2 ? '14px' : '0px'})` }}
                    />
                 </div>
               </div>
@@ -391,14 +446,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         }
         .vjs-control-bar { display: none !important; }
         .vjs-tech { object-fit: contain !important; }
-        
-        /* Fix for mobile scroll and touch issues */
         .vjs-touch-enabled { pointer-events: auto !important; }
         
         @supports (padding: env(safe-area-inset-bottom)) {
           .pb-safe {
             padding-bottom: env(safe-area-inset-bottom);
           }
+        }
+
+        /* Prevent system highlights on double tap */
+        .video-player-container {
+          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>
