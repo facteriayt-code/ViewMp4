@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
@@ -10,6 +11,7 @@ import AgeDisclaimer from './components/AgeDisclaimer.tsx';
 import NativeAd from './components/NativeAd.tsx';
 import AdBanner from './components/AdBanner.tsx';
 import CategoryShareBar from './components/CategoryShareBar.tsx';
+import IntermissionAd from './components/IntermissionAd.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
@@ -34,6 +36,10 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+
+  // Forced Ad State
+  const [showIntermissionAd, setShowIntermissionAd] = useState(false);
+  const [pendingMovie, setPendingMovie] = useState<{ movie: Movie; type: 'select' | 'play' } | null>(null);
   
   const selectedMovieRef = useRef<Movie | null>(null);
   const playingMovieRef = useRef<Movie | null>(null);
@@ -51,17 +57,18 @@ const App: React.FC = () => {
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // If any modal is open, close it and prevent navigation
-      if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
+      if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current || showIntermissionAd) {
         setPlayingMovie(null);
         setSelectedMovie(null);
         setShowUploadModal(false);
         setEditingMovie(null);
+        setShowIntermissionAd(false);
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [showIntermissionAd]);
 
   // Helper to update URL without reload and push history state
   const pushState = (params: Record<string, string | null>) => {
@@ -239,14 +246,28 @@ const App: React.FC = () => {
   };
 
   const handlePlay = (movie: Movie) => {
-    setSelectedMovie(null);
-    setPlayingMovie(movie);
-    pushState({ v: movie.id, autoplay: 'true' });
+    setPendingMovie({ movie, type: 'play' });
+    setShowIntermissionAd(true);
   };
 
   const handleSelectMovie = (movie: Movie) => {
-    setSelectedMovie(movie);
-    pushState({ v: movie.id, autoplay: 'false' });
+    setPendingMovie({ movie, type: 'select' });
+    setShowIntermissionAd(true);
+  };
+
+  const completeAdAction = () => {
+    if (pendingMovie) {
+      if (pendingMovie.type === 'play') {
+        setSelectedMovie(null);
+        setPlayingMovie(pendingMovie.movie);
+        pushState({ v: pendingMovie.movie.id, autoplay: 'true' });
+      } else {
+        setSelectedMovie(pendingMovie.movie);
+        pushState({ v: pendingMovie.movie.id, autoplay: 'false' });
+      }
+    }
+    setShowIntermissionAd(false);
+    setPendingMovie(null);
   };
 
   const handleEdit = (movie: Movie) => {
@@ -288,6 +309,8 @@ const App: React.FC = () => {
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
       }} />}
       
+      {showIntermissionAd && <IntermissionAd onClose={completeAdAction} />}
+
       <Navbar 
         user={user} 
         onUploadClick={() => {
