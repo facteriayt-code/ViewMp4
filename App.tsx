@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
@@ -42,6 +43,17 @@ const App: React.FC = () => {
   const showUploadModalRef = useRef<boolean>(false);
   const deepLinkProcessed = useRef(false);
   
+  // 1. Global Click Listener for Pop-ups/Ads
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      // This empty listener encourages the browser to allow script-triggered popups 
+      // from the ad networks included in index.html
+      console.debug("User interaction captured for ad-sync");
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // Update refs to avoid stale closures in event listeners
   useEffect(() => {
     selectedMovieRef.current = selectedMovie;

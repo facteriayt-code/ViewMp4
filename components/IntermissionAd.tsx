@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, MousePointer2, ExternalLink, CheckCircle2, Lock, ArrowRight, Sparkles, Loader2, ShieldAlert } from 'lucide-react';
 
@@ -8,31 +9,12 @@ interface IntermissionAdProps {
 const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
   const [hasClicked, setHasClicked] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const adContainerRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
-    // Inject the specific Native Ad script and Pop-under tag
-    if (adContainerRef.current && !initialized.current) {
-      initialized.current = true;
-      
-      // 1. Native Ad Script (92100ea7c1b81dec5e887cbf56a2c891)
-      const nativeScript = document.createElement('script');
-      nativeScript.type = 'text/javascript';
-      nativeScript.src = "https://pl28466918.effectivegatecpm.com/92100ea7c1b81dec5e887cbf56a2c891/invoke.js";
-      nativeScript.async = true;
-      nativeScript.setAttribute('data-cfasync', 'false');
-      adContainerRef.current.appendChild(nativeScript);
-
-      // 2. Pop-under Ad Script (cd6c2a20f9d7644f313ec50ba131207a)
-      const popUnderScript = document.createElement('script');
-      popUnderScript.type = 'text/javascript';
-      popUnderScript.src = "https://pl28466582.effectivegatecpm.com/cd/6c/2a/cd6c2a20f9d7644f313ec50ba131207a.js";
-      popUnderScript.async = true;
-      adContainerRef.current.appendChild(popUnderScript);
-    }
-
-    // Click Detection logic using window blur (iframe interaction)
+    // 1. Interaction Detection
+    // We listen for window blur because ad-clicks (especially pop-unders) 
+    // usually trigger a tab focus change or window blur event.
     const handleBlur = () => {
       setIsVerifying(true);
       // Simulate a "Verification" process after the user interacts with the ad
@@ -68,7 +50,7 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
           <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-3 shadow-2xl relative group max-w-md mx-auto">
             <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl"></div>
             <p className="relative z-10 text-gray-300 text-sm md:text-base font-bold uppercase tracking-tight leading-relaxed">
-              Verify your session by interacting with our sponsors to unlock high-definition playback.
+              Security verification required. Interact with our sponsors to confirm you are not a bot and unlock high-definition playback.
             </p>
             <div className="flex items-center justify-center space-x-3 text-yellow-500">
               <MousePointer2 className="w-5 h-5 animate-bounce" />
@@ -91,11 +73,8 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
           <div 
             className={`relative w-full min-h-[220px] bg-zinc-900/60 rounded-[2.5rem] border-2 transition-all duration-700 flex flex-col items-center justify-center overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] ${hasClicked ? 'border-green-500 ring-[15px] ring-green-500/10 scale-[1.02]' : 'border-white/10 hover:border-red-600/40'}`}
           >
-            {/* The actual native ad container requested by user */}
+            {/* The actual native ad container requested by user (Initialized by index.html script) */}
             <div id="container-92100ea7c1b81dec5e887cbf56a2c891" className="w-full relative z-10"></div>
-            
-            {/* Hidden script mounting point for both native and pop-under */}
-            <div ref={adContainerRef} className="hidden invisible h-0 w-0 overflow-hidden"></div>
             
             {(!hasClicked && !isVerifying) && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-black/40 backdrop-blur-[1px]">
@@ -142,7 +121,7 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
                  <span className="text-[10px] font-black uppercase tracking-[0.6em] text-gray-500">Awaiting Signal</span>
                </div>
                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em] text-center px-10 leading-loose max-w-sm">
-                 Security protocol v6.1: Interaction with sponsored media ensures you are not a bot and keeps our premium catalog free.
+                 Security protocol v7.0: All interactions are securely logged. Sponsored pop-ups ensure our high-speed streaming infrastructure remains free of charge.
                </p>
             </div>
           )}
