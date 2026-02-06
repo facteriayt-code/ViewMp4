@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, AlertCircle, Loader2, Sparkles, Brain } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { deleteVideoFromCloud } from '../services/storageService.ts';
+import { getMovieAIInsight } from '../services/geminiService.ts';
 import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
@@ -24,13 +26,31 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false);
 
   const isOwner = user && movie.uploaderId === user.id;
 
   useEffect(() => {
     const modal = document.querySelector('.modal-scroll-container');
     if (modal) modal.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [movie.id]);
+    
+    // Fetch AI Insight when movie changes
+    const fetchInsight = async () => {
+      setIsLoadingInsight(true);
+      setAiInsight(null);
+      try {
+        const insight = await getMovieAIInsight(movie.title);
+        setAiInsight(insight);
+      } catch (err) {
+        setAiInsight("AI insight is currently resting.");
+      } finally {
+        setIsLoadingInsight(false);
+      }
+    };
+    
+    fetchInsight();
+  }, [movie.id, movie.title]);
 
   const suggestions = useMemo(() => {
     return allMovies
@@ -65,7 +85,7 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/90 backdrop-blur-md overflow-y-auto modal-scroll-container">
-      <div className="relative bg-[#141414] w-full max-w-3xl min-h-screen md:min-h-0 md:rounded-2xl overflow-hidden shadow-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-[#141414] w-full max-w-3xl min-h-screen md:min-h-0 md:rounded-2xl overflow-hidden shadow-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200 mb-10 md:mb-0">
         
         {/* Close Button */}
         <button 
@@ -162,6 +182,37 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
           <p className="text-gray-400 text-sm md:text-base leading-relaxed line-clamp-4">
             {movie.description}
           </p>
+
+          {/* AI Insights Section */}
+          <div className="relative overflow-hidden group/ai">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-600/5 to-purple-600/5 rounded-2xl border border-white/5 group-hover/ai:border-white/10 transition-colors"></div>
+            <div className="relative p-4 md:p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="bg-red-600/10 p-1.5 rounded-lg border border-red-600/20">
+                    <Sparkles className="w-4 h-4 text-red-600" />
+                  </div>
+                  <h3 className="text-[10px] md:text-xs font-black text-white uppercase tracking-[0.2em] italic">AI Insights Powered by Gemini</h3>
+                </div>
+                {isLoadingInsight && <Loader2 className="w-3 h-3 text-red-600 animate-spin" />}
+              </div>
+              
+              <div className="min-h-[60px]">
+                {isLoadingInsight ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-3 bg-white/5 rounded-full w-full"></div>
+                    <div className="h-3 bg-white/5 rounded-full w-3/4"></div>
+                  </div>
+                ) : aiInsight ? (
+                  <p className="text-gray-300 text-xs md:text-sm leading-relaxed font-medium italic animate-in fade-in slide-in-from-bottom-1 duration-500">
+                    "{aiInsight}"
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-xs italic">Insight pending...</p>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button 
