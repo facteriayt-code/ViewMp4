@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Clock, ShieldAlert } from 'lucide-react';
 
@@ -21,17 +20,17 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
       scriptOptions.type = 'text/javascript';
       scriptOptions.innerHTML = `
         atOptions = {
-          'key' : '201dc5784b8560e8fc14374de361d99b',
+          'key' : '513013030b1823cbe0510f0f770e2443',
           'format' : 'iframe',
-          'height' : 60,
-          'width' : 468,
+          'height' : 250,
+          'width' : 300,
           'params' : {}
         };
       `;
       
       const scriptInvoke = document.createElement('script');
       scriptInvoke.type = 'text/javascript';
-      scriptInvoke.src = "https://www.highperformanceformat.com/201dc5784b8560e8fc14374de361d99b/invoke.js";
+      scriptInvoke.src = "https://www.highperformanceformat.com/513013030b1823cbe0510f0f770e2443/invoke.js";
       scriptInvoke.async = true;
 
       adRef.current.appendChild(scriptOptions);
@@ -81,12 +80,12 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
           </p>
         </div>
 
-        {/* Ad Container */}
+        {/* Ad Container - Optimized for 300x250 */}
         <div className="relative group origin-center transition-transform duration-500 scale-[0.8] sm:scale-100">
           <div className="absolute -inset-2 bg-gradient-to-r from-red-600/20 via-transparent to-red-600/20 blur opacity-50"></div>
           <div 
             ref={adRef} 
-            className="relative min-h-[60px] w-[468px] bg-[#181818] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl"
+            className="relative min-h-[250px] w-[300px] bg-[#181818] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl"
           >
             {/* Ad Iframe will be injected here */}
             {!canClose && (
