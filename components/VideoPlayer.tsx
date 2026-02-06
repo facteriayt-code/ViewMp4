@@ -14,7 +14,6 @@ interface VideoPlayerProps {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
-  const adTimeoutRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
   const lastTapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null });
   
@@ -23,8 +22,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isAdPlaying, setIsAdPlaying] = useState(false);
-  const [adLoading, setAdLoading] = useState(false);
   const [needsClickToStart, setNeedsClickToStart] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const [isHoveringProgressBar, setIsHoveringProgressBar] = useState(false);
@@ -62,48 +59,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     playerRef.current = player;
 
-    const finalizeAndPlay = () => {
-      setIsAdPlaying(false);
-      setAdLoading(false);
-      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
-      if (player) {
-        player.removeClass('vjs-ad-playing');
-        player.removeClass('vjs-ad-loading');
-        player.play();
-        setIsPlaying(true);
-      }
-    };
-
-    // 2. IMA Initialization
     player.ready(() => {
-      if (player.ima) {
-        const imaOptions = {
-          id: 'my-video',
-          adTagUrl: 'https://improbablehospital.com/dOm.FfzgddGkNWvTZLGNUn/XeimA9euBZUUQlwkNP/TmY/3lNeDwg_xwMej/MFtfNxjNcj0ROEDjEpyPNJCAZGsta-WG1-pndaDk0/xp',
-          showCountdown: false,
-          debug: false,
-          adsResponseTimeout: 8000,
-          adWillAutoPlay: true
-        };
-
-        try {
-          player.ima(imaOptions);
-          player.on('ads-ad-started', () => {
-            setIsAdPlaying(true);
-            setAdLoading(false);
-            if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
-          });
-          player.on('ads-ad-ended', finalizeAndPlay);
-          player.on('ads-all-ads-completed', finalizeAndPlay);
-          player.on('ads-error', finalizeAndPlay);
-          player.on('aderror', finalizeAndPlay);
-          player.on('contentresumerequested', finalizeAndPlay);
-        } catch (e) {
-          finalizeAndPlay();
-        }
-      } else {
-        finalizeAndPlay();
-      }
+      // Content is ready to play
+      if (movie.id) incrementMovieView(movie.id);
     });
 
     player.on('loadedmetadata', () => {
@@ -112,7 +70,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
     player.on('timeupdate', () => {
       setCurrentTime(player.currentTime());
-      // Handle edge cases where duration might update during play
       if (duration === 0 || isNaN(duration)) {
         setDuration(player.duration());
       }
@@ -125,12 +82,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       setVolume(player.volume());
     });
 
-    player.on('contentplay', () => {
-      if (movie.id) incrementMovieView(movie.id);
-    });
-
     return () => {
-      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       if (playerRef.current) playerRef.current.dispose();
     };
@@ -139,23 +91,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const handleStartBroadcast = (e: React.MouseEvent) => {
     e.stopPropagation();
     setNeedsClickToStart(false);
-    setAdLoading(true);
     if (playerRef.current) {
-      if (playerRef.current.ima && playerRef.current.ima.initializeAdDisplayContainer) {
-        playerRef.current.ima.initializeAdDisplayContainer();
-        playerRef.current.ima.requestAds();
-      }
-      playerRef.current.play();
-      adTimeoutRef.current = window.setTimeout(() => {
-        if (!isAdPlaying) finalizeContentPlay();
-      }, 8000);
-    }
-  };
-
-  const finalizeContentPlay = () => {
-    setIsAdPlaying(false);
-    setAdLoading(false);
-    if (playerRef.current) {
+      playerRef.current.muted(false);
       playerRef.current.play();
       setIsPlaying(true);
     }
@@ -192,7 +129,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (needsClickToStart || isAdPlaying) return;
+    if (needsClickToStart) return;
     
     const touch = e.touches[0];
     const screenWidth = window.innerWidth;
@@ -271,7 +208,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         
         <div className="text-center flex-1 mx-2 overflow-hidden">
           <h2 className="text-xs md:text-2xl font-black truncate uppercase tracking-tighter text-white">
-            {isAdPlaying ? 'Advertisement' : movie.title}
+            {movie.title}
           </h2>
         </div>
 
@@ -282,7 +219,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
       <div 
         className="w-full h-full flex items-center justify-center bg-black relative group" 
-        onClick={() => !needsClickToStart && !isAdPlaying && togglePlay()}
+        onClick={() => !needsClickToStart && togglePlay()}
       >
         {/* Seek Visual Feedback */}
         {seekFeedback && (
@@ -291,14 +228,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                {seekFeedback === 'forward' ? <RotateCw className="w-12 h-12 text-white animate-pulse" /> : <RotateCcw className="w-12 h-12 text-white animate-pulse" />}
                <span className="text-white font-black mt-2 text-xl">{seekFeedback === 'forward' ? '+10s' : '-10s'}</span>
             </div>
-          </div>
-        )}
-
-        {/* Loading States */}
-        {adLoading && !needsClickToStart && (
-          <div className="absolute inset-0 z-[215] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
-            <Loader2 className="w-8 h-8 md:w-12 md:h-12 text-red-600 animate-spin mb-4" />
-            <p className="text-[10px] md:text-sm font-black uppercase tracking-widest text-white px-4 text-center">Establishing High Speed Stream...</p>
           </div>
         )}
 
@@ -315,25 +244,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         )}
 
-        {isAdPlaying && (
-          <div className="absolute bottom-20 md:bottom-24 right-0 z-[220] flex items-end justify-end">
-            <button 
-              onClick={(e) => { e.stopPropagation(); if (playerRef.current?.ima?.getAdsManager()) playerRef.current.ima.getAdsManager().skip(); }}
-              className="flex items-center space-x-2 px-4 py-2 md:px-6 md:py-3 bg-black/70 border-y border-l border-white/10 text-white hover:bg-white/20"
-            >
-              <span className="text-[10px] md:text-sm font-black uppercase tracking-widest">Skip Ad</span>
-              <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </div>
-        )}
-
         {/* Video Surface */}
         <div data-vjs-player className="w-full h-full flex items-center justify-center">
           <video id="my-video" ref={videoRef} className="video-js vjs-big-play-centered" playsInline />
         </div>
 
         {/* Custom Playback Controls Overlay */}
-        {!isAdPlaying && !needsClickToStart && (
+        {!needsClickToStart && (
           <div className={`absolute inset-0 z-[210] flex flex-col justify-end bg-gradient-to-t from-black/90 via-transparent to-black/50 transition-all duration-500 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-4'}`}>
             
             {/* Center Controls */}
@@ -437,7 +354,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </div>
 
       <style>{`
-        .vjs-ima-ad-container { z-index: 215 !important; }
         .video-js { 
           width: 100% !important; 
           height: 100% !important; 
@@ -454,7 +370,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           }
         }
 
-        /* Prevent system highlights on double tap */
         .video-player-container {
           -webkit-tap-highlight-color: transparent;
         }
