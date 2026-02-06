@@ -9,6 +9,7 @@ import LoginModal from './components/LoginModal.tsx';
 import AgeDisclaimer from './components/AgeDisclaimer.tsx';
 import NativeAd from './components/NativeAd.tsx';
 import AdBanner from './components/AdBanner.tsx';
+import IntermissionAd from './components/IntermissionAd.tsx';
 import CategoryShareBar from './components/CategoryShareBar.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
 
   const selectedMovieRef = useRef<Movie | null>(null);
   const playingMovieRef = useRef<Movie | null>(null);
@@ -50,12 +52,12 @@ const App: React.FC = () => {
   // Handle Browser Back Button (Popstate)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      // If any modal is open, close it and prevent navigation
       if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
         setPlayingMovie(null);
         setSelectedMovie(null);
         setShowUploadModal(false);
         setEditingMovie(null);
+        setMovieToUnlock(null);
       }
     };
 
@@ -63,7 +65,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Helper to update URL without reload and push history state
   const pushState = (params: Record<string, string | null>) => {
     const url = new URL(window.location.href);
     Object.entries(params).forEach(([key, value]) => {
@@ -201,7 +202,6 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Check deep link as soon as movies are available
     if (movies.length > 0 && !deepLinkProcessed.current) {
       const params = new URLSearchParams(window.location.search);
       const videoId = params.get('v');
@@ -212,7 +212,7 @@ const App: React.FC = () => {
         if (target) {
           const autoplay = params.get('autoplay') !== 'false';
           if (autoplay) {
-            setPlayingMovie(target);
+            setMovieToUnlock(target); // Force unlock for deep links
           } else {
             setSelectedMovie(target);
           }
@@ -240,8 +240,7 @@ const App: React.FC = () => {
 
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
-    setPlayingMovie(movie);
-    pushState({ v: movie.id, autoplay: 'true' });
+    setMovieToUnlock(movie); // Trigger IntermissionAd
   };
 
   const handleSelectMovie = (movie: Movie) => {
@@ -341,6 +340,16 @@ const App: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {movieToUnlock && (
+        <IntermissionAd 
+          onClose={() => {
+            setPlayingMovie(movieToUnlock);
+            setMovieToUnlock(null);
+            pushState({ v: movieToUnlock.id, autoplay: 'true' });
+          }} 
+        />
+      )}
 
       {selectedMovie && (
         <MovieDetails 
