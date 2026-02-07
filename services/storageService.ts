@@ -25,7 +25,7 @@ export const saveVideoToCloud = async (
 
     if (error) {
       console.error(`Storage Error [${bucket}]:`, error);
-      throw new Error(`Storage Error (${bucket}): ${error.message}`);
+      throw new Error(`Cloud Storage Failure (${bucket}): ${error.message}`);
     }
 
     const { data: { publicUrl } } = supabase.storage
@@ -36,23 +36,30 @@ export const saveVideoToCloud = async (
   };
 
   try {
-    // Ensure we ALWAYS have a thumbnail string to avoid DB constraint errors
-    let finalThumbnailUrl = movieMetadata.thumbnail || DEFAULT_THUMBNAIL;
-    let finalVideoUrl = movieMetadata.videoUrl;
+    // 1. Resolve Thumbnail URL
+    let finalThumbnailUrl = movieMetadata.thumbnail;
 
+    // If a new thumbnail file was provided (manual OR auto-extracted first-frame)
     if (thumbnailFile) {
       finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
     }
     
+    // Safety check: ensure finalThumbnailUrl is NEVER null or empty string to avoid DB constraint violation
+    if (!finalThumbnailUrl || finalThumbnailUrl === "") {
+      finalThumbnailUrl = DEFAULT_THUMBNAIL;
+    }
+
+    // 2. Resolve Video URL
+    let finalVideoUrl = movieMetadata.videoUrl;
     if (videoFile) {
       if (onProgress) onProgress(10);
       finalVideoUrl = await uploadFile('videos', videoFile);
       if (onProgress) onProgress(80);
     }
 
-    if (!finalVideoUrl) throw new Error("Missing video source.");
+    if (!finalVideoUrl) throw new Error("A valid video source is required for deployment.");
 
-    // Update existing movie
+    // 3. Update or Insert Database Record
     if (movieMetadata.id) {
        const { data, error: updateError } = await supabase
         .from('movies')
@@ -68,16 +75,15 @@ export const saveVideoToCloud = async (
         .select();
         
       if (updateError) throw updateError;
-      if (!data || data.length === 0) throw new Error("Update failed.");
+      if (!data || data.length === 0) throw new Error("The update signal was not received by the server.");
       
       return mapDbToMovie(data[0]);
     }
 
-    // Insert new movie
     const payload = {
-      title: movieMetadata.title || 'Untitled',
-      description: movieMetadata.description || '',
-      thumbnail: finalThumbnailUrl, // This will now be DEFAULT_THUMBNAIL instead of NULL if missing
+      title: movieMetadata.title || 'Untitled Broadcast',
+      description: movieMetadata.description || 'No data provided.',
+      thumbnail: finalThumbnailUrl, 
       video_url: finalVideoUrl,
       genre: movieMetadata.genre || 'Viral',
       year: movieMetadata.year || new Date().getFullYear(),
@@ -93,19 +99,23 @@ export const saveVideoToCloud = async (
       .insert([payload])
       .select();
 
-    if (dbError) throw dbError;
-    if (!data || data.length === 0) throw new Error("Insert failed.");
+    if (dbError) {
+      console.error("Database Insert Error:", dbError);
+      throw new Error(`Metadata Deployment Failed: ${dbError.message}`);
+    }
+    
+    if (!data || data.length === 0) throw new Error("Metadata was rejected by the cloud server.");
     
     return mapDbToMovie(data[0]);
   } catch (error: any) {
-    console.error("Upload Operation Error:", error);
+    console.error("Cloud Operation Error:", error);
     throw error;
   }
 };
 
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not signed in.");
+  if (!user) throw new Error("Authentication required.");
 
   const { error } = await supabase
     .from('movies')
