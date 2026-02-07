@@ -9,6 +9,17 @@
     <meta name="clckd" content="8f95429892fd6ff713903651a9121d5e" />
     <title>GeminiStream - The Future of Entertainment</title>
     
+    <script>
+      // Global error suppression for external script noise
+      window.onerror = function(message, source, lineno, colno, error) {
+        if (message === 'Script error.') {
+          console.debug('Caught external script error (hidden by browser security)');
+          return true; // Suppress the error from surfacing as a crash
+        }
+        return false;
+      };
+    </script>
+
     <!-- Video.js and VAST/IMA Requirements -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/videojs-ima@2.1.0/dist/videojs.ima.css" rel="stylesheet" />
@@ -42,14 +53,6 @@
             margin-top: -40px !important;
             margin-left: -40px !important;
         }
-        @keyframes pulse-gold {
-            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
-        }
-        .pulse-premium {
-            animation: pulse-gold 2s infinite;
-        }
     </style>
     <script type="importmap">
 {
@@ -73,22 +76,9 @@
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 
-    <!-- Global Ad Scripts (Loaded Once) -->
-    <script async="async" data-cfasync="false" src="https://pl28466918.effectivegatecpm.com/92100ea7c1b81dec5e887cbf56a2c891/invoke.js"></script>
-    <script async src="https://pl28466582.effectivegatecpm.com/cd/6c/2a/cd6c2a20f9d7644f313ec50ba131207a.js"></script>
-    <script async src="https://pl28466939.effectivegatecpm.com/1a/7d/47/1a7d475132606696bfc5a57e0376a4ca.js"></script>
-
-    <!-- Ad Placements -->
-    <div class="fixed bottom-4 left-4 z-[100] max-w-[300px]">
-        <ins class="682178b6" data-key="c0252cb89039bfd2089ca6443bf95d77"></ins>
-        <script async src="https://cdn77.aj2532.bid/95316cff.js"></script>
-    </div>
-
-    <!-- Outstream Ad Placement -->
-    <div class="fixed bottom-4 right-4 z-[100] max-w-[300px] bg-black/40 p-2 rounded-xl backdrop-blur-sm border border-white/5">
-      <script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script> 
-      <ins class="eas6a97888e37" data-zoneid="5828618"></ins> 
-      <script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
-    </div>
+    <!-- Global Ad Scripts with Error Handling -->
+    <script crossorigin="anonymous" async="async" data-cfasync="false" src="https://pl28466918.effectivegatecpm.com/92100ea7c1b81dec5e887cbf56a2c891/invoke.js"></script>
+    <script crossorigin="anonymous" async src="https://pl28466582.effectivegatecpm.com/cd/6c/2a/cd6c2a20f9d7644f313ec50ba131207a.js"></script>
+    <script crossorigin="anonymous" async src="https://pl28466939.effectivegatecpm.com/1a/7d/47/1a7d475132606696bfc5a57e0376a4ca.js"></script>
 </body>
 </html>
