@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink, Sparkles, RefreshCw } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -39,6 +39,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   
   const [linkEntries, setLinkEntries] = useState<LinkEntry[]>([
     { title: movieToEdit?.title || '', url: movieToEdit?.videoUrl || '' }
@@ -48,6 +49,61 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const generateThumbnail = (file: File) => {
+    setIsGeneratingThumbnail(true);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(file);
+
+    video.onloadedmetadata = () => {
+      // Seek to 1 second or half of duration if video is shorter
+      const seekTime = Math.min(1, video.duration / 2);
+      video.currentTime = seekTime;
+    };
+
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const thumbnailFile = new File([blob], 'auto-thumbnail.jpg', { type: 'image/jpeg' });
+            setThumbnailFile(thumbnailFile);
+            setThumbnailPreview(URL.createObjectURL(blob));
+          }
+          setIsGeneratingThumbnail(false);
+          // Cleanup
+          URL.revokeObjectURL(video.src);
+        }, 'image/jpeg', 0.85);
+      } else {
+        setIsGeneratingThumbnail(false);
+      }
+    };
+
+    video.onerror = () => {
+      console.error("Error generating thumbnail");
+      setIsGeneratingThumbnail(false);
+    };
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      // Auto-populate title if empty
+      if (!title) {
+        const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        setTitle(cleanTitle);
+      }
+      generateThumbnail(file);
+    }
+  };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -373,15 +429,35 @@ create policy "Authenticated Storage Delete" on storage.objects for delete using
                     <span className="text-[10px] mt-2 font-black uppercase text-gray-500 truncate w-full text-center px-2">
                       {videoFile ? videoFile.name : 'Select Video'}
                     </span>
-                    <input type="file" accept="video/*" className="hidden" onChange={(e) => setVideoFile(e.target.files?.[0] || null)} />
+                    <input type="file" accept="video/*" className="hidden" onChange={handleVideoChange} />
                  </label>
                )}
 
                <label className={`relative flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 cursor-pointer hover:border-red-600/50 hover:bg-white/5 transition h-32 overflow-hidden ${uploadType === 'link' ? 'col-span-2' : ''}`}>
-                  {thumbnailPreview || thumbnailUrl ? (
-                    <img src={thumbnailPreview || thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                  {(thumbnailPreview || thumbnailUrl) && !isGeneratingThumbnail ? (
+                    <img src={thumbnailPreview || thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition" />
+                  ) : isGeneratingThumbnail ? (
+                    <div className="flex flex-col items-center justify-center">
+                       <Loader2 className="w-6 h-6 animate-spin text-red-600" />
+                       <span className="text-[8px] font-black uppercase text-gray-500 mt-2">AI Framing...</span>
+                    </div>
                   ) : <ImageIcon className="w-8 h-8 text-gray-600" />}
-                  <span className="relative z-10 text-[10px] mt-2 font-black uppercase text-white bg-black/40 px-2 py-1 rounded">Thumbnail</span>
+                  
+                  <div className="relative z-10 flex flex-col items-center">
+                    <span className="text-[10px] font-black uppercase text-white bg-black/60 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm flex items-center">
+                      {isGeneratingThumbnail ? 'Generating' : 'Thumbnail'}
+                      {!isGeneratingThumbnail && thumbnailPreview && <Sparkles className="w-2.5 h-2.5 ml-1 text-yellow-400" />}
+                    </span>
+                    {videoFile && !isGeneratingThumbnail && (
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); generateThumbnail(videoFile); }}
+                        className="mt-2 text-[8px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 flex items-center bg-black/40 px-2 py-1 rounded transition"
+                      >
+                        <RefreshCw className="w-2 h-2 mr-1" /> Re-capture
+                      </button>
+                    )}
+                  </div>
                   <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailChange} />
                </label>
             </div>
@@ -400,7 +476,7 @@ create policy "Authenticated Storage Delete" on storage.objects for delete using
 
           <button 
             type="submit" 
-            disabled={isUploading}
+            disabled={isUploading || isGeneratingThumbnail}
             className={`w-full text-white font-black py-4 rounded-2xl transition disabled:opacity-50 flex items-center justify-center uppercase tracking-[0.2em] text-xs ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}
           >
             {isUploading ? (
