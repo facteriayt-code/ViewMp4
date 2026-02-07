@@ -17,7 +17,7 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2, X } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, Search as SearchIcon } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -43,25 +43,20 @@ const App: React.FC = () => {
   const showUploadModalRef = useRef<boolean>(false);
   const deepLinkProcessed = useRef(false);
   
-  // 1. Global Click Listener for Pop-ups/Ads
   useEffect(() => {
     const handleGlobalClick = () => {
-      // This empty listener encourages the browser to allow script-triggered popups 
-      // from the ad networks included in index.html
       console.debug("User interaction captured for ad-sync");
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  // Update refs to avoid stale closures in event listeners
   useEffect(() => {
     selectedMovieRef.current = selectedMovie;
     playingMovieRef.current = playingMovie;
     showUploadModalRef.current = showUploadModal;
   }, [selectedMovie, playingMovie, showUploadModal]);
 
-  // Handle Browser Back Button (Popstate)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
@@ -224,7 +219,7 @@ const App: React.FC = () => {
         if (target) {
           const autoplay = params.get('autoplay') !== 'false';
           if (autoplay) {
-            setMovieToUnlock(target); // Force unlock for deep links
+            setMovieToUnlock(target);
           } else {
             setSelectedMovie(target);
           }
@@ -252,7 +247,7 @@ const App: React.FC = () => {
 
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
-    setMovieToUnlock(movie); // Trigger IntermissionAd
+    setMovieToUnlock(movie);
   };
 
   const handleSelectMovie = (movie: Movie) => {
@@ -267,16 +262,24 @@ const App: React.FC = () => {
   };
 
   const filteredMovies = useMemo(() => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
     if (!term) return movies;
-    return movies.filter(m => 
-      m.title.toLowerCase().includes(term) || 
-      m.genre.toLowerCase().includes(term) ||
-      (m.uploaderName && m.uploaderName.toLowerCase().includes(term))
-    );
+    return movies.filter(m => {
+      const title = (m.title || "").toLowerCase();
+      const genre = (m.genre || "").toLowerCase();
+      const uploader = (m.uploaderName || "").toLowerCase();
+      return title.includes(term) || genre.includes(term) || uploader.includes(term);
+    });
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
+    // If searching, only show a search result row
+    if (searchTerm.trim()) {
+      return [
+        { title: 'Search Results', movies: filteredMovies }
+      ];
+    }
+
     const userUploadsOnly = filteredMovies.filter(m => m.isUserUploaded === true);
     
     return [
@@ -290,7 +293,7 @@ const App: React.FC = () => {
       { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
       { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) }
     ];
-  }, [filteredMovies]);
+  }, [filteredMovies, searchTerm]);
 
   return (
     <div className="min-h-screen pb-20 overflow-x-hidden">
@@ -314,15 +317,18 @@ const App: React.FC = () => {
         onSearch={setSearchTerm}
       />
 
-      <Hero 
-        movie={movies[0]} 
-        onInfoClick={handleSelectMovie} 
-        onPlay={handlePlay} 
-      />
+      {/* Hide Hero when searching for cleaner results view */}
+      {!searchTerm && (
+        <Hero 
+          movie={movies[0]} 
+          onInfoClick={handleSelectMovie} 
+          onPlay={handlePlay} 
+        />
+      )}
 
-      <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+      {!searchTerm && <CategoryShareBar onCategoryClick={handleCategoryScroll} />}
 
-      <div className="relative z-20 space-y-4">
+      <div className={`relative z-20 space-y-4 ${searchTerm ? 'pt-24 md:pt-32' : ''}`}>
         {isSyncing && (
           <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
              <Loader2 className="w-4 h-4 animate-spin" />
@@ -346,10 +352,26 @@ const App: React.FC = () => {
                 onMovieClick={handleSelectMovie} 
                 onPlay={handlePlay} 
               />
-              {idx === 0 && <AdBanner />}
-              {idx === 2 && <NativeAd />}
+              {!searchTerm && idx === 0 && <AdBanner />}
+              {!searchTerm && idx === 2 && <NativeAd />}
             </React.Fragment>
           ))}
+          
+          {searchTerm && filteredMovies.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in slide-in-from-bottom-4">
+               <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 mb-6">
+                 <SearchIcon className="w-16 h-16 text-gray-700" />
+               </div>
+               <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">No signals found</h3>
+               <p className="text-gray-500 text-sm mt-2 max-w-xs font-medium">We couldn't find any broadcasts matching "{searchTerm}". Try a different frequency.</p>
+               <button 
+                onClick={() => setSearchTerm('')}
+                className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20"
+               >
+                 Clear Search
+               </button>
+            </div>
+          )}
         </div>
       </div>
 
