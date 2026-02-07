@@ -1,51 +1,8 @@
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
 
-/**
- * FULL DATABASE & STORAGE SETUP (Run this in Supabase SQL Editor):
- * 
- * -- 1. Create the movies table
- * create table if not exists public.movies (
- *   id uuid default gen_random_uuid() primary key,
- *   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
- *   title text not null,
- *   description text,
- *   thumbnail text,
- *   video_url text,
- *   genre text,
- *   year integer,
- *   rating text default 'NR',
- *   views bigint default 0,
- *   is_user_uploaded boolean default true,
- *   uploader_id uuid references auth.users(id) on delete cascade,
- *   uploader_name text
- * );
- * 
- * -- 2. Enable Row Level Security
- * alter table public.movies enable row level security;
- * 
- * -- 3. Create Table Policies
- * create policy "Allow public read access" on public.movies for select using (true);
- * create policy "Allow individual insert" on public.movies for insert with check (auth.uid() = uploader_id);
- * create policy "Allow individual update" on public.movies for update using (auth.uid() = uploader_id);
- * create policy "Allow individual delete" on public.movies for delete using (auth.uid() = uploader_id);
- * 
- * -- 4. Create the view increment function
- * create or replace function public.increment_views(movie_id uuid)
- * returns void as $$
- * begin
- *   update public.movies set views = views + 1 where id = movie_id;
- * end;
- * $$ language plpgsql security definer;
- * 
- * -- 5. Storage Bucket Setup (Public Buckets)
- * insert into storage.buckets (id, name, public) values ('videos', 'videos', true), ('thumbnails', 'thumbnails', true)
- * on conflict (id) do update set public = true;
- * 
- * -- 6. Storage Policies
- * create policy "Public Access" on storage.objects for select using (bucket_id in ('videos', 'thumbnails'));
- * create policy "Authenticated Manage" on storage.objects for all using (bucket_id in ('videos', 'thumbnails') AND auth.role() = 'authenticated');
- */
+// High-quality fallback if everything else fails
+const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
 
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
@@ -68,9 +25,6 @@ export const saveVideoToCloud = async (
 
     if (error) {
       console.error(`Storage Error [${bucket}]:`, error);
-      if (error.message.includes('row-level security') || error.message.includes('403') || error.message.includes('Policy')) {
-        throw new Error(`STORAGE_RLS_ERROR: ${bucket}. Ensure bucket is Public and Policies are set.`);
-      }
       throw new Error(`Storage Error (${bucket}): ${error.message}`);
     }
 
@@ -82,7 +36,8 @@ export const saveVideoToCloud = async (
   };
 
   try {
-    let finalThumbnailUrl = movieMetadata.thumbnail;
+    // Ensure we ALWAYS have a thumbnail string to avoid DB constraint errors
+    let finalThumbnailUrl = movieMetadata.thumbnail || DEFAULT_THUMBNAIL;
     let finalVideoUrl = movieMetadata.videoUrl;
 
     if (thumbnailFile) {
@@ -112,11 +67,8 @@ export const saveVideoToCloud = async (
         .eq('uploader_id', movieMetadata.uploaderId)
         .select();
         
-      if (updateError) {
-        if (updateError.code === '42501') throw new Error("DATABASE_RLS_ERROR: UPDATE permission denied.");
-        throw updateError;
-      }
-      if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: Update failed (check ownership).");
+      if (updateError) throw updateError;
+      if (!data || data.length === 0) throw new Error("Update failed.");
       
       return mapDbToMovie(data[0]);
     }
@@ -125,7 +77,7 @@ export const saveVideoToCloud = async (
     const payload = {
       title: movieMetadata.title || 'Untitled',
       description: movieMetadata.description || '',
-      thumbnail: finalThumbnailUrl,
+      thumbnail: finalThumbnailUrl, // This will now be DEFAULT_THUMBNAIL instead of NULL if missing
       video_url: finalVideoUrl,
       genre: movieMetadata.genre || 'Viral',
       year: movieMetadata.year || new Date().getFullYear(),
@@ -141,11 +93,8 @@ export const saveVideoToCloud = async (
       .insert([payload])
       .select();
 
-    if (dbError) {
-       if (dbError.code === '42501') throw new Error("DATABASE_RLS_ERROR: INSERT permission denied.");
-       throw dbError;
-    }
-    if (!data || data.length === 0) throw new Error("DATABASE_RLS_ERROR: Insert failed.");
+    if (dbError) throw dbError;
+    if (!data || data.length === 0) throw new Error("Insert failed.");
     
     return mapDbToMovie(data[0]);
   } catch (error: any) {
@@ -164,7 +113,7 @@ export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
     .eq('id', movieId)
     .eq('uploader_id', user.id);
 
-  if (error) throw new Error(`DATABASE_RLS_ERROR: DELETE`);
+  if (error) throw new Error(`DATABASE_ERROR: DELETE`);
 };
 
 export const incrementMovieView = async (movieId: string) => {
