@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink, Sparkles, RefreshCw, Layers, LayoutGrid, FileVideo } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link as LinkIcon, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink, Sparkles, RefreshCw, Layers, LayoutGrid, FileVideo, PlusCircle, ClipboardList } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { saveVideoToCloud } from '../services/storageService.ts';
 
@@ -24,7 +24,8 @@ const CATEGORY_OPTIONS = [
 
 interface BulkItem {
   id: string;
-  file: File;
+  file?: File;
+  url?: string;
   thumbnailFile: File | null;
   thumbnailPreview: string | null;
   title: string;
@@ -36,6 +37,7 @@ interface BulkItem {
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
   const isEditMode = !!movieToEdit;
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>(isEditMode ? 'single' : 'single');
+  const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
   
   // Single Upload States
@@ -43,6 +45,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [description, setDescription] = useState(movieToEdit?.description || '');
   const [genre, setGenre] = useState(movieToEdit?.genre || 'Viral');
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState(movieToEdit?.videoUrl || '');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -116,7 +119,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       }));
       setBulkItems(prev => [...prev, ...newItems]);
       
-      // Auto-extract thumbnails for bulk
       for (const item of newItems) {
         setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'extracting' } : i));
         try {
@@ -134,31 +136,48 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
+  const addBulkLinkRow = () => {
+    const newItem: BulkItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      url: '',
+      thumbnailFile: null,
+      thumbnailPreview: null,
+      title: '',
+      genre: 'Viral',
+      status: 'pending',
+      progress: 0
+    };
+    setBulkItems(prev => [...prev, newItem]);
+  };
+
   const handleBulkUpload = async () => {
     setIsUploading(true);
     setIsBatchProcessing(true);
     setError(null);
 
     let completedCount = 0;
+    const itemsToProcess = bulkItems.filter(i => i.status !== 'success');
     const totalItems = bulkItems.length;
 
     for (const item of bulkItems) {
       if (item.status === 'success') continue;
+      if (item.url === '' && !item.file) continue;
       
       setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' } : i));
       
       try {
         const result = await saveVideoToCloud(
           {
-            title: item.title,
-            description: `Bulk deployment part of batch series. Filename: ${item.file.name}`,
+            title: item.title || (item.url ? 'Remote Link' : 'File Broadcast'),
+            description: item.url ? `Bulk link deployment. Source: ${item.url}` : `Bulk file deployment. Filename: ${item.file?.name}`,
             genre: item.genre,
             uploaderId: user.id,
             uploaderName: user.name,
+            videoUrl: item.url || undefined,
             year: new Date().getFullYear(),
             rating: 'NR'
           },
-          item.file,
+          item.file || null,
           item.thumbnailFile,
           (prog) => {
             setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, progress: prog } : i));
@@ -197,10 +216,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           genre,
           uploaderId: user.id,
           uploaderName: user.name,
-          videoUrl: uploadType === 'link' ? undefined : undefined,
+          videoUrl: uploadType === 'link' ? videoUrl : undefined,
           thumbnail: thumbnailUrl, 
           year: movieToEdit?.year || new Date().getFullYear(),
-          rating: movieToEdit?.rating || 'NR'
+          rating: 'NR'
         },
         uploadType === 'file' ? videoFile : null,
         thumbnailFile,
@@ -217,82 +236,82 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
-      <div className="relative bg-[#121212] w-full max-w-5xl min-h-screen md:min-h-0 md:rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(229,9,20,0.2)] border border-white/5 animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative bg-[#0d0d0d] w-full max-w-5xl min-h-screen md:min-h-0 md:rounded-[2.5rem] overflow-hidden shadow-[0_0_120px_rgba(229,9,20,0.15)] border border-white/5 animate-in fade-in zoom-in-95 duration-300">
         
-        {/* Header with Mode Toggle */}
-        <div className="p-6 md:p-10 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-r from-red-600/5 to-transparent gap-6">
-          <div className="flex items-center space-x-4">
-            <div className="bg-red-600 p-3 rounded-2xl shadow-lg shadow-red-600/20">
+        {/* Header with Premium Accents */}
+        <div className="p-6 md:p-10 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-r from-red-600/[0.03] to-transparent gap-6">
+          <div className="flex items-center space-x-5">
+            <div className="bg-red-600 p-4 rounded-3xl shadow-[0_0_30px_rgba(229,9,20,0.4)]">
               {isEditMode ? <RefreshCw className="w-6 h-6 text-white" /> : <FileUp className="w-6 h-6 text-white" />}
             </div>
             <div>
-              <h2 className="text-xl md:text-3xl font-black text-white uppercase italic tracking-tighter">
+              <h2 className="text-xl md:text-4xl font-black text-white uppercase italic tracking-tighter">
                 {isEditMode ? 'Modify Signal' : 'Signal Deployment'}
               </h2>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em]">Channel: {user.name}</p>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.4em] mt-1">Operator: {user.name}</p>
             </div>
           </div>
 
           {!isEditMode && (
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 self-start md:self-center">
+            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 self-start md:self-center backdrop-blur-md">
               <button 
                 onClick={() => setUploadMode('single')}
-                className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'single' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                className={`flex items-center space-x-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${uploadMode === 'single' ? 'bg-white text-black shadow-[0_10px_20px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-white'}`}
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
+                <LayoutGrid className="w-4 h-4" />
                 <span>Single</span>
               </button>
               <button 
                 onClick={() => setUploadMode('bulk')}
-                className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'bulk' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                className={`flex items-center space-x-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${uploadMode === 'bulk' ? 'bg-white text-black shadow-[0_10px_20px_rgba(255,255,255,0.1)]' : 'text-gray-500 hover:text-white'}`}
               >
-                <Layers className="w-3.5 h-3.5" />
+                <Layers className="w-4 h-4" />
                 <span>Bulk</span>
               </button>
             </div>
           )}
 
-          <button onClick={onClose} className="absolute top-6 right-6 p-3 hover:bg-white/5 rounded-full transition-all active:scale-90 border border-white/5 md:relative md:top-0 md:right-0">
-            <X className="w-6 h-6 text-gray-400" />
+          <button onClick={onClose} className="absolute top-6 right-6 p-4 hover:bg-white/5 rounded-full transition-all active:scale-90 border border-white/5 group">
+            <X className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
           </button>
         </div>
 
         <div className="p-6 md:p-10">
           {error && (
-            <div className="mb-8 bg-red-500/10 border border-red-500/20 p-5 rounded-2xl text-red-500 text-xs font-black uppercase tracking-widest flex items-center animate-in slide-in-from-top-2">
+            <div className="mb-8 bg-red-500/10 border border-red-500/20 p-5 rounded-3xl text-red-500 text-xs font-black uppercase tracking-widest flex items-center animate-in slide-in-from-top-2">
               <ShieldAlert className="w-5 h-5 mr-3 shrink-0" />
               {error}
             </div>
           )}
 
           {uploadMode === 'single' ? (
-            <form onSubmit={handleSingleUpload} className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <div className="lg:col-span-7 space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Signal Title</label>
+            <form onSubmit={handleSingleUpload} className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <div className="lg:col-span-7 space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Signal Meta Title</label>
                     <div className="relative group">
-                      <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-red-600 opacity-50 group-focus-within:opacity-100 transition-opacity" />
+                      <Terminal className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-red-600 opacity-50 group-focus-within:opacity-100 transition-opacity" />
                       <input 
                         type="text" 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-red-600/50 transition text-sm font-bold"
-                        placeholder="BROADCAST_NAME"
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-14 pr-6 py-5 outline-none focus:border-red-600/50 focus:bg-white/[0.05] transition-all text-sm font-bold placeholder:text-gray-700"
+                        placeholder="ENTER_SIGNAL_IDENTIFIER"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Category</label>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Category Registry</label>
                       <div className="relative">
-                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <Tag className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                         <select 
                           value={genre}
                           onChange={(e) => setGenre(e.target.value)}
-                          className="w-full bg-[#181818] border border-white/10 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-red-600/50 transition text-sm font-bold appearance-none cursor-pointer"
+                          className="w-full bg-[#141414] border border-white/10 rounded-2xl pl-14 pr-6 py-5 outline-none focus:border-red-600/50 focus:bg-white/[0.05] transition-all text-sm font-bold appearance-none cursor-pointer"
                         >
                           {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
@@ -300,47 +319,81 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Meta Description</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Transmission Log</label>
                     <textarea 
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-red-600/50 transition h-40 resize-none text-sm font-medium leading-relaxed"
-                      placeholder="Transmission details..."
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-5 outline-none focus:border-red-600/50 focus:bg-white/[0.05] transition-all h-48 resize-none text-sm font-medium leading-relaxed"
+                      placeholder="Input encoded transmission details..."
                     />
                   </div>
                 </div>
 
-                <div className="lg:col-span-5 space-y-6">
-                  <div className="relative aspect-video rounded-3xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-6 text-center hover:border-red-600/40 transition group cursor-pointer bg-white/[0.02]">
-                    <input 
-                      type="file" 
-                      accept="video/*"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    />
-                    <Cloud className={`w-12 h-12 mb-4 transition-transform duration-500 ${videoFile ? 'text-green-500 scale-110' : 'text-gray-600 group-hover:scale-110 group-hover:text-red-600'}`} />
-                    <p className="text-xs font-black uppercase tracking-widest text-white truncate max-w-full px-4">
-                      {videoFile ? videoFile.name : 'Select Data Packet'}
-                    </p>
+                <div className="lg:col-span-5 space-y-8">
+                  <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                    <button 
+                      type="button"
+                      onClick={() => setUploadType('file')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadType === 'file' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      File
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setUploadType('link')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadType === 'link' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Link
+                    </button>
                   </div>
 
+                  {uploadType === 'file' ? (
+                    <div className="relative aspect-video rounded-[2.5rem] border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-8 text-center hover:border-red-600/40 transition-all group cursor-pointer bg-white/[0.02] hover:bg-white/[0.04]">
+                      <input 
+                        type="file" 
+                        accept="video/*"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      />
+                      <Cloud className={`w-14 h-14 mb-5 transition-all duration-700 ${videoFile ? 'text-red-600 scale-110' : 'text-gray-700 group-hover:text-red-600 group-hover:scale-110'}`} />
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-white truncate max-w-full px-6">
+                        {videoFile ? videoFile.name : 'Ingest Signal Packet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Remote Link URL</label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <input 
+                          type="url" 
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-14 pr-6 py-5 outline-none focus:border-red-600/50 transition-all text-sm font-mono text-red-500"
+                          placeholder="https://cloud.relay/stream.mp4"
+                          required={uploadType === 'link'}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Signal Cover</label>
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-zinc-900 border border-white/5 group shadow-2xl">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] ml-1">Visual Signal Poster</label>
+                    <div className="relative aspect-video rounded-[2.5rem] overflow-hidden bg-black border border-white/10 group shadow-2xl">
                       {(thumbnailPreview || thumbnailUrl) ? (
                         <img src={thumbnailPreview || thumbnailUrl} alt="Signal Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                       ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700">
-                          <ImageIcon className="w-10 h-10 mb-2 opacity-20" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Visual Signal</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-800">
+                          <ImageIcon className="w-12 h-12 mb-3 opacity-20" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">No Visual Signal</span>
                         </div>
                       )}
                       
                       {isGeneratingThumbnail && (
                         <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-20">
-                          <Loader2 className="w-10 h-10 text-red-600 animate-spin mb-4" />
-                          <span className="text-[10px] font-black text-white uppercase tracking-[0.5em] animate-pulse">Capturing Frame...</span>
+                          <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-5" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-[0.6em] animate-pulse">EXTRACTING_FRAME...</span>
                         </div>
                       )}
                     </div>
@@ -351,118 +404,162 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
               <div className="pt-10 border-t border-white/5">
                 <button 
                   type="submit"
-                  disabled={isUploading || isGeneratingThumbnail || (!videoFile && !isEditMode)}
-                  className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.4em] transition-all shadow-[0_20px_40px_rgba(229,9,20,0.3)]"
+                  disabled={isUploading || isGeneratingThumbnail || (!videoFile && uploadType === 'file' && !isEditMode)}
+                  className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-6 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.5em] transition-all shadow-[0_30px_60px_rgba(229,9,20,0.3)] active:scale-95"
                 >
-                  {isUploading ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : <span>Initialize Broadcast</span>}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] pointer-events-none" />
+                  {isUploading ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : <span>Initialize Single Broadcast</span>}
                 </button>
               </div>
             </form>
           ) : (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-              {/* Bulk Dropzone */}
-              {bulkItems.length === 0 ? (
-                <div className="relative aspect-[21/9] rounded-[3rem] border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-12 text-center hover:border-red-600/40 transition group cursor-pointer bg-white/[0.02]">
-                  <input 
-                    type="file" 
-                    accept="video/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  />
-                  <Layers className="w-16 h-16 mb-6 text-gray-600 group-hover:scale-110 group-hover:text-red-600 transition-all duration-500" />
-                  <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Mass Broadcast Deployment</h3>
-                  <p className="text-xs text-gray-500 font-bold mt-2 uppercase tracking-widest">Drop multiple video signals to queue for transmission</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-red-600/10 px-4 py-2 rounded-full border border-red-600/20">
-                        <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Queue: {bulkItems.length} Signals</span>
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Mode Sub-Toggle for Bulk */}
+              <div className="flex bg-white/5 p-1 rounded-3xl border border-white/10 w-fit mx-auto backdrop-blur-md">
+                <button 
+                  onClick={() => { setBulkType('file'); setBulkItems([]); }}
+                  className={`flex items-center space-x-3 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${bulkType === 'file' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                >
+                  <FileVideo className="w-4 h-4" />
+                  <span>Files</span>
+                </button>
+                <button 
+                  onClick={() => { setBulkType('link'); setBulkItems([{ id: 'init', url: '', title: '', genre: 'Viral', status: 'pending', progress: 0, thumbnailFile: null, thumbnailPreview: null }]); }}
+                  className={`flex items-center space-x-3 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${bulkType === 'link' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>Links</span>
+                </button>
+              </div>
+
+              {bulkType === 'file' ? (
+                bulkItems.length === 0 ? (
+                  <div className="relative aspect-[21/9] rounded-[3rem] border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-14 text-center hover:border-red-600/40 transition-all group cursor-pointer bg-white/[0.01] hover:bg-white/[0.02]">
+                    <input 
+                      type="file" 
+                      accept="video/*"
+                      multiple
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    <Layers className="w-20 h-20 mb-8 text-gray-700 group-hover:scale-110 group-hover:text-red-600 transition-all duration-700" />
+                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Mass Signal Extraction</h3>
+                    <p className="text-xs text-gray-500 font-bold mt-3 uppercase tracking-widest opacity-60">Parallel transcode and upload from local storage</p>
+                  </div>
+                ) : null
+              ) : null}
+
+              {(bulkItems.length > 0 || bulkType === 'link') && (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center space-x-4">
+                      <div className="bg-red-600/10 px-6 py-3 rounded-full border border-red-600/20">
+                        <span className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em]">Batch Registry: {bulkItems.length}</span>
                       </div>
                       <button 
                         onClick={() => setBulkItems([])}
-                        className="text-[10px] font-black text-gray-500 uppercase hover:text-white transition tracking-widest"
+                        className="text-[10px] font-black text-gray-600 uppercase hover:text-white transition tracking-widest"
                       >
-                        Clear All
+                        Wipe Queue
                       </button>
                     </div>
-                    <button 
-                      onClick={() => document.getElementById('bulk-add').click()}
-                      className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-white bg-white/5 hover:bg-white/10 px-6 py-3 rounded-xl border border-white/10 transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add More</span>
-                      <input id="bulk-add" type="file" accept="video/*" multiple onChange={handleFileChange} className="hidden" />
-                    </button>
+                    {bulkType === 'file' ? (
+                      <button 
+                        onClick={() => document.getElementById('bulk-add-file').click()}
+                        className="flex items-center space-x-3 text-[10px] font-black uppercase tracking-widest text-white bg-white/5 hover:bg-white/10 px-8 py-4 rounded-2xl border border-white/10 transition shadow-xl"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Files</span>
+                        <input id="bulk-add-file" type="file" accept="video/*" multiple onChange={handleFileChange} className="hidden" />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={addBulkLinkRow}
+                        className="flex items-center space-x-3 text-[10px] font-black uppercase tracking-widest text-white bg-white/5 hover:bg-white/10 px-8 py-4 rounded-2xl border border-white/10 transition shadow-xl"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        <span>Add Link Row</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                     {bulkItems.map((item) => (
-                      <div key={item.id} className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center space-x-4 group hover:bg-white/[0.08] transition-all relative overflow-hidden">
-                        <div className="w-32 aspect-video bg-black rounded-xl overflow-hidden relative shrink-0">
+                      <div key={item.id} className="bg-white/[0.02] border border-white/10 rounded-[2.5rem] p-6 flex items-center space-x-6 group hover:bg-white/[0.05] transition-all relative overflow-hidden backdrop-blur-sm">
+                        <div className="w-36 aspect-video bg-black rounded-2xl overflow-hidden relative shrink-0 shadow-xl border border-white/5">
                           {item.thumbnailPreview ? (
-                            <img src={item.thumbnailPreview} className="w-full h-full object-cover" alt="" />
+                            <img src={item.thumbnailPreview} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              {item.status === 'extracting' ? <Loader2 className="w-5 h-5 text-red-600 animate-spin" /> : <FileVideo className="w-5 h-5 text-gray-700" />}
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
+                              {item.status === 'extracting' ? <Loader2 className="w-6 h-6 text-red-600 animate-spin" /> : <LinkIcon className="w-6 h-6 text-zinc-800" />}
                             </div>
                           )}
                           {item.status === 'success' && (
-                            <div className="absolute inset-0 bg-green-500/80 flex items-center justify-center backdrop-blur-sm">
-                              <CheckCircle2 className="w-8 h-8 text-white" />
+                            <div className="absolute inset-0 bg-green-500/90 flex items-center justify-center backdrop-blur-md animate-in fade-in">
+                              <CheckCircle2 className="w-10 h-10 text-white" />
                             </div>
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-4">
                           <input 
                             type="text" 
+                            placeholder="SIGNAL_TITLE"
                             value={item.title}
                             onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, title: e.target.value } : i))}
-                            className="w-full bg-transparent border-none text-xs font-black text-white uppercase tracking-tight outline-none focus:text-red-600 transition truncate"
+                            className="w-full bg-transparent border-none text-[11px] font-black text-white uppercase tracking-wider outline-none focus:text-red-500 transition-colors truncate"
                           />
-                          <div className="flex items-center space-x-3">
+                          
+                          {bulkType === 'link' && (
+                            <input 
+                              type="url" 
+                              placeholder="SIGNAL_URL"
+                              value={item.url}
+                              onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, url: e.target.value } : i))}
+                              className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-mono text-gray-500 focus:text-red-600 focus:border-red-600/30 outline-none transition-all"
+                            />
+                          )}
+
+                          <div className="flex items-center justify-between">
                             <select 
                               value={item.genre}
                               onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, genre: e.target.value } : i))}
-                              className="bg-black/40 text-[9px] font-black uppercase text-gray-400 rounded-lg px-2 py-1 outline-none border border-white/5"
+                              className="bg-black border border-white/10 text-[9px] font-black uppercase text-gray-500 rounded-xl px-3 py-1.5 outline-none hover:text-white transition-colors"
                             >
                               {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
-                            <span className="text-[9px] font-bold text-gray-600 uppercase">{(item.file.size / (1024 * 1024)).toFixed(1)}MB</span>
+                            {bulkType === 'file' && <span className="text-[9px] font-bold text-gray-700 uppercase tracking-widest">{(item.file.size / (1024 * 1024)).toFixed(1)}MB</span>}
                           </div>
                           
                           {item.status === 'uploading' && (
-                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full bg-red-600 transition-all duration-300" style={{ width: `${item.progress}%` }} />
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div className="h-full bg-red-600 transition-all duration-300 shadow-[0_0_10px_rgba(229,9,20,0.5)]" style={{ width: `${item.progress}%` }} />
                             </div>
                           )}
                         </div>
 
                         <button 
                           onClick={() => setBulkItems(prev => prev.filter(i => i.id !== item.id))}
-                          className="p-2 text-gray-600 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute top-4 right-4 p-2 text-gray-800 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-10 border-t border-white/5 flex flex-col space-y-6">
+                  <div className="pt-12 border-t border-white/5 flex flex-col space-y-8">
                     {isUploading && (
-                      <div className="w-full space-y-3">
+                      <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex justify-between items-end">
                           <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-red-600">Batch Transmission Active</span>
-                            <p className="text-[9px] text-gray-500 font-bold uppercase">Processing parallel signals...</p>
+                            <span className="text-[10px] font-black uppercase tracking-[0.6em] text-red-600">Batch Stream Active</span>
+                            <p className="text-[9px] text-gray-500 font-bold uppercase opacity-60">Synchronizing remote clusters...</p>
                           </div>
-                          <span className="text-2xl font-black italic text-white">{uploadProgress}%</span>
+                          <span className="text-4xl font-black italic text-white tracking-tighter">{uploadProgress}%</span>
                         </div>
-                        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-red-600 transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
+                        <div className="w-full h-2.5 bg-white/[0.03] rounded-full overflow-hidden border border-white/5">
+                          <div className="h-full bg-gradient-to-r from-red-800 to-red-600 transition-all duration-700" style={{ width: `${uploadProgress}%` }} />
                         </div>
                       </div>
                     )}
@@ -470,15 +567,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     <button 
                       onClick={handleBulkUpload}
                       disabled={isUploading || bulkItems.length === 0}
-                      className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-6 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.4em] transition-all shadow-[0_40px_80px_rgba(229,9,20,0.3)] active:scale-95"
+                      className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-7 rounded-[2.5rem] text-[12px] font-black uppercase tracking-[0.6em] transition-all shadow-[0_40px_100px_rgba(229,9,20,0.4)] active:scale-95"
                     >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] pointer-events-none" />
                       {isUploading ? (
-                        <div className="flex items-center justify-center space-x-3">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Transmitting Batch...</span>
+                        <div className="flex items-center justify-center space-x-4">
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                          <span>SYNCHRONIZING_BATCH...</span>
                         </div>
                       ) : (
-                        <span>Initialize Bulk Deployment</span>
+                        <span>Initialize Batch Deployment</span>
                       )}
                     </button>
                   </div>
@@ -488,6 +586,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(229, 9, 20, 0.3);
+        }
+      `}</style>
     </div>
   );
 };
