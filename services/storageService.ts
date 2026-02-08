@@ -45,7 +45,8 @@ export const saveVideoToCloud = async (
     }
     
     // Safety check: ensure finalThumbnailUrl is NEVER null or empty string to avoid DB constraint violation
-    if (!finalThumbnailUrl || finalThumbnailUrl === "") {
+    // This is critical to fix the "null value in column 'thumbnail'" error.
+    if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
       finalThumbnailUrl = DEFAULT_THUMBNAIL;
     }
 
