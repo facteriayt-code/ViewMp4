@@ -22,6 +22,42 @@ try {
   process.exit(1);
 }
 
+// Supabase Configuration
+const supabaseUrl = process.env.SUPABASE_URL || 'https://diurandrwkqhefhwclyv.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_-wW999bVAki7iV8KJjiNng_goaBCqlI';
+
+// Validate and normalize Supabase URL
+let normalizedSupabaseUrl = supabaseUrl;
+if (normalizedSupabaseUrl && !normalizedSupabaseUrl.startsWith('http')) {
+  console.error("CRITICAL: SUPABASE_URL must be a full URL (starting with https://), not just a project ID.");
+  normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
+  console.log("Attempting to normalize Supabase URL to:", normalizedSupabaseUrl);
+}
+
+let supabase: any;
+try {
+  supabase = createClient(normalizedSupabaseUrl, supabaseKey);
+  console.log("Supabase client initialized with URL:", normalizedSupabaseUrl);
+} catch (e: any) {
+  console.error("Failed to initialize Supabase client:", e.message);
+}
+
+// Firebase Admin Configuration
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      projectId: firebaseConfig.projectId
+    });
+    console.log("Firebase Admin initialized for project:", firebaseConfig.projectId);
+  } catch (e: any) {
+    console.error("Failed to initialize Firebase Admin:", e.message);
+  }
+}
+
+const db = firebaseConfig.firestoreDatabaseId 
+  ? admin.firestore(firebaseConfig.firestoreDatabaseId)
+  : admin.firestore();
+
 // --- Vite Integration ---
 async function startServer() {
   const app = express();
@@ -37,18 +73,18 @@ async function startServer() {
   });
 
   // --- Health Check ---
-  app.get("/api/health", (req, res) => {
+  app.get(["/api/health", "/api/health/"], (req, res) => {
     console.log("Health check requested");
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.get("/api/ping", (req, res) => {
+  app.get(["/api/ping", "/api/ping/"], (req, res) => {
     console.log("Ping requested");
     res.send("pong");
   });
 
   // --- Connection Test Logic ---
-  app.get("/api/test-connections", async (req, res) => {
+  app.get(["/api/test-connections", "/api/test-connections/"], async (req, res) => {
     console.log("Handling /api/test-connections request");
     const results: any = {
       supabase: { status: "pending", message: "" },
@@ -79,7 +115,7 @@ async function startServer() {
   });
 
   // --- Migration Logic ---
-  app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
+  app.get(["/api/migrate-supabase-to-firestore", "/api/migrate-supabase-to-firestore/"], async (req, res) => {
     try {
       console.log("Starting migration from Supabase to Firestore...");
       
@@ -300,4 +336,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("FATAL: Failed to start server:", err);
+  process.exit(1);
+});
