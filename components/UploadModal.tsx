@@ -39,7 +39,20 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'telegram'>(isEditMode ? 'single' : 'single');
   const [telegramStatus, setTelegramStatus] = useState<{message: string, url?: string} | null>(null);
   const [isSettingUpTelegram, setIsSettingUpTelegram] = useState(false);
-  const [migrationStatus, setMigrationStatus] = useState<{message: string, details?: any} | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<any>(null);
+  const [testResults, setTestResults] = useState<any>(null);
+
+  const handleTestConnections = async () => {
+    setMigrationStatus({ message: "Testing connections..." });
+    try {
+      const response = await fetch('/api/test-connections');
+      const data = await response.json();
+      setTestResults(data);
+      setMigrationStatus(null);
+    } catch (err: any) {
+      setMigrationStatus({ message: "Test failed", error: err.message });
+    }
+  };
   const [isMigrating, setIsMigrating] = useState(false);
   const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
@@ -416,14 +429,46 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-6">
                       Transfer all existing movie metadata from Supabase to your new Firebase Firestore database.
                     </p>
-                    <button 
-                      onClick={handleMigration}
-                      disabled={isMigrating}
-                      className="w-full bg-white/5 text-white py-4 rounded-xl text-[9px] font-black uppercase tracking-[0.3em] hover:bg-red-600 transition-all flex items-center justify-center space-x-3 border border-white/10"
-                    >
-                      {isMigrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                      <span>{isMigrating ? "Migrating Data..." : "Start Migration"}</span>
-                    </button>
+                    <div className="flex gap-2 mb-6">
+                      <button 
+                        onClick={handleMigration}
+                        disabled={isMigrating}
+                        className="flex-1 bg-white/5 text-white py-4 rounded-xl text-[9px] font-black uppercase tracking-[0.3em] hover:bg-red-600 transition-all flex items-center justify-center space-x-3 border border-white/10"
+                      >
+                        {isMigrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        <span>{isMigrating ? "Migrating Data..." : "Start Migration"}</span>
+                      </button>
+                      <button 
+                        onClick={handleTestConnections}
+                        className="px-6 bg-white/5 text-white py-4 rounded-xl text-[9px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all flex items-center justify-center border border-white/10"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {testResults && (
+                      <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/5 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[8px] text-gray-500 font-bold uppercase">Supabase Status</span>
+                            <span className={`text-[8px] font-black uppercase ${testResults.supabase.status === 'ok' ? 'text-green-500' : 'text-red-500'}`}>
+                              {testResults.supabase.status === 'ok' ? 'Connected' : 'Error'}
+                            </span>
+                          </div>
+                          <p className="text-[7px] text-gray-400/70 truncate">{testResults.supabase.message}</p>
+                        </div>
+                        
+                        <div className="pt-3 border-t border-white/5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[8px] text-gray-500 font-bold uppercase">Firestore Status</span>
+                            <span className={`text-[8px] font-black uppercase ${testResults.firestore.status === 'ok' ? 'text-green-500' : 'text-red-500'}`}>
+                              {testResults.firestore.status === 'ok' ? 'Connected' : 'Error'}
+                            </span>
+                          </div>
+                          <p className="text-[7px] text-gray-400/70 truncate">{testResults.firestore.message}</p>
+                        </div>
+                      </div>
+                    )}
                     {migrationStatus && (
                       <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/5">
                          <p className={`text-[9px] font-black uppercase tracking-widest ${migrationStatus.error ? 'text-red-500' : 'text-green-500'}`}>

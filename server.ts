@@ -26,9 +26,72 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 admin.initializeApp({
   projectId: firebaseConfig.projectId
 });
-const db = admin.firestore();
+// Use the specific database ID from the config if it exists
+const db = firebaseConfig.firestoreDatabaseId 
+  ? admin.firestore(firebaseConfig.firestoreDatabaseId)
+  : admin.firestore();
 
 app.use(bodyParser.json());
+
+// --- Connection Test Logic ---
+app.get("/api/test-connections", async (req, res) => {
+  const results: any = {
+    supabase: { status: "pending", message: "" },
+    firestore: { status: "pending", message: "" }
+  };
+
+  try {
+    // Test Supabase
+    const { data, error } = await supabase.from('movies').select('count', { count: 'exact', head: true });
+    if (error) {
+      results.supabase = { status: "error", message: `Supabase Error: [${error.code}] ${error.message}` };
+    } else {
+      results.supabase = { status: "ok", message: `Connected! Found ${data?.length || 0} movies.` };
+    }
+  } catch (e: any) {
+    results.supabase = { status: "error", message: `Supabase Fatal: ${e.message}` };
+  }
+
+  try {
+    // Test Firestore
+    const snap = await db.collection('movies').limit(1).get();
+    results.firestore = { status: "ok", message: `Connected! Found ${snap.size} movies.` };
+  } catch (e: any) {
+    results.firestore = { status: "error", message: `Firestore Fatal: ${e.message}` };
+  }
+
+  res.json(results);
+});
+
+// --- Connection Test Logic ---
+app.get("/api/test-connections", async (req, res) => {
+  const results: any = {
+    supabase: { status: "pending", message: "" },
+    firestore: { status: "pending", message: "" }
+  };
+
+  try {
+    // Test Supabase
+    const { data, error } = await supabase.from('movies').select('count', { count: 'exact', head: true });
+    if (error) {
+      results.supabase = { status: "error", message: `Supabase Error: [${error.code}] ${error.message}` };
+    } else {
+      results.supabase = { status: "ok", message: `Connected! Found ${data?.length || 0} movies.` };
+    }
+  } catch (e: any) {
+    results.supabase = { status: "error", message: `Supabase Fatal: ${e.message}` };
+  }
+
+  try {
+    // Test Firestore
+    const snap = await db.collection('movies').limit(1).get();
+    results.firestore = { status: "ok", message: `Connected! Found ${snap.size} movies.` };
+  } catch (e: any) {
+    results.firestore = { status: "error", message: `Firestore Fatal: ${e.message}` };
+  }
+
+  res.json(results);
+});
 
 // --- Migration Logic ---
 app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
