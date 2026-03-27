@@ -39,6 +39,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'telegram'>(isEditMode ? 'single' : 'single');
   const [telegramStatus, setTelegramStatus] = useState<{message: string, url?: string} | null>(null);
   const [isSettingUpTelegram, setIsSettingUpTelegram] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<{message: string, details?: any} | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
   
@@ -264,6 +266,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
+  const handleMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const res = await fetch('/api/migrate-supabase-to-firestore');
+      const data = await res.json();
+      setMigrationStatus(data);
+    } catch (err) {
+      setMigrationStatus({ message: "Migration failed." });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
       <div className="relative bg-[#0a0a0a] w-full max-w-5xl min-h-screen md:min-h-0 md:rounded-[3rem] overflow-hidden shadow-[0_0_150px_rgba(229,9,20,0.1)] border border-white/5 animate-in fade-in zoom-in-95 duration-500">
@@ -390,6 +405,35 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
                       Add a caption to your video message in Telegram to set the title of the movie on the website automatically.
                     </p>
+                  </div>
+
+                  {/* Migration Section */}
+                  <div className="bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <RefreshCw className="w-5 h-5 text-red-600" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Database Migration</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-6">
+                      Transfer all existing movie metadata from Supabase to your new Firebase Firestore database.
+                    </p>
+                    <button 
+                      onClick={handleMigration}
+                      disabled={isMigrating}
+                      className="w-full bg-white/5 text-white py-4 rounded-xl text-[9px] font-black uppercase tracking-[0.3em] hover:bg-red-600 transition-all flex items-center justify-center space-x-3 border border-white/10"
+                    >
+                      {isMigrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      <span>{isMigrating ? "Migrating Data..." : "Start Migration"}</span>
+                    </button>
+                    {migrationStatus && (
+                      <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/5">
+                         <p className="text-[9px] font-black text-green-500 uppercase tracking-widest">{migrationStatus.message}</p>
+                         {migrationStatus.migrated !== undefined && (
+                           <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                             Migrated: {migrationStatus.migrated} | Skipped: {migrationStatus.skipped} | Total: {migrationStatus.totalFound}
+                           </p>
+                         )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -6,7 +6,7 @@ import bodyParser from "body-parser";
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +28,65 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 app.use(bodyParser.json());
+
+// --- Migration Logic ---
+app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
+  try {
+    console.log("Starting migration from Supabase to Firestore...");
+    
+    // 1. Fetch all movies from Supabase
+    const { data: supabaseMovies, error: supabaseError } = await supabase
+      .from('movies')
+      .select('*');
+
+    if (supabaseError) throw supabaseError;
+    if (!supabaseMovies || supabaseMovies.length === 0) {
+      return res.json({ message: "No movies found in Supabase to migrate." });
+    }
+
+    console.log(`Found ${supabaseMovies.length} movies in Supabase.`);
+
+    // 2. Fetch existing movies from Firestore to avoid duplicates
+    const firestoreMoviesSnap = await getDocs(collection(db, 'movies'));
+    const existingVideoUrls = new Set(firestoreMoviesSnap.docs.map(doc => doc.data().video_url));
+
+    let migratedCount = 0;
+    let skippedCount = 0;
+
+    // 3. Migrate each movie
+    for (const movie of supabaseMovies) {
+      if (existingVideoUrls.has(movie.video_url)) {
+        skippedCount++;
+        continue;
+      }
+
+      await addDoc(collection(db, 'movies'), {
+        title: movie.title,
+        description: movie.description || "",
+        video_url: movie.video_url,
+        thumbnail: movie.thumbnail || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop",
+        genre: movie.genre || "Uncategorized",
+        year: movie.year || new Date().getFullYear(),
+        rating: movie.rating || "NR",
+        views: movie.views || 0,
+        is_user_uploaded: movie.is_user_uploaded || false,
+        uploader_name: movie.uploader_name || "System",
+        created_at: movie.created_at ? new Date(movie.created_at) : serverTimestamp()
+      });
+      migratedCount++;
+    }
+
+    res.json({
+      message: "Migration completed successfully",
+      totalFound: supabaseMovies.length,
+      migrated: migratedCount,
+      skipped: skippedCount
+    });
+  } catch (error: any) {
+    console.error("Migration Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // --- Telegram Bot Logic ---
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
