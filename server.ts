@@ -29,9 +29,13 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 // Validate and normalize Supabase URL
 let normalizedSupabaseUrl = supabaseUrl;
 if (normalizedSupabaseUrl && !normalizedSupabaseUrl.startsWith('http')) {
-  console.error("CRITICAL: SUPABASE_URL must be a full URL (starting with https://), not just a project ID.");
-  normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
-  console.log("Attempting to normalize Supabase URL to:", normalizedSupabaseUrl);
+  console.log("Normalizing Supabase URL:", normalizedSupabaseUrl);
+  if (normalizedSupabaseUrl.includes('.supabase.co')) {
+    normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}`;
+  } else {
+    normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
+  }
+  console.log("Normalized Supabase URL to:", normalizedSupabaseUrl);
 }
 
 let supabase: any;
