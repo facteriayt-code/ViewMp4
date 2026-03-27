@@ -264,15 +264,34 @@ async function startServer() {
     });
   }
 
+  apiRouter.get("/test", (req, res) => {
+    res.json({ message: "API is working" });
+  });
+
   apiRouter.get("/setup-telegram", async (req, res) => {
+    console.log("API: setup-telegram requested");
     if (!TELEGRAM_TOKEN) {
+      console.error("TELEGRAM_BOT_TOKEN is missing");
       return res.status(400).json({ error: "TELEGRAM_BOT_TOKEN is not set in environment variables." });
     }
-    const appUrl = process.env.APP_URL || `https://${req.get('host')}`;
-    const webhookUrl = `${appUrl}/api/telegram-webhook`;
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook?url=${webhookUrl}`);
-    const data = await response.json();
-    res.json({ message: "Telegram Webhook Setup Attempted", webhookUrl, telegramResponse: data });
+    try {
+      const appUrl = process.env.APP_URL || `https://${req.get('host')}`;
+      const webhookUrl = `${appUrl}/api/telegram-webhook`;
+      console.log(`Setting webhook to: ${webhookUrl}`);
+      
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook?url=${webhookUrl}`);
+      const data = await response.json();
+      
+      console.log("Telegram response:", JSON.stringify(data));
+      res.json({ 
+        message: "Telegram Webhook Setup Attempted", 
+        webhookUrl, 
+        telegramResponse: data 
+      });
+    } catch (error: any) {
+      console.error("Setup Telegram Error:", error);
+      res.status(500).json({ error: "Failed to setup Telegram webhook", details: error.message });
+    }
   });
 
   // Mount API Router
