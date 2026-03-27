@@ -35,24 +35,42 @@ app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
   try {
     console.log("Starting migration from Supabase to Firestore...");
     
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Supabase URL or Key is missing from environment variables.");
+    }
+
     // 1. Fetch all movies from Supabase
+    console.log("Fetching from Supabase URL:", supabaseUrl);
     const { data: supabaseMovies, error: supabaseError } = await supabase
       .from('movies')
       .select('*');
 
-    if (supabaseError) throw supabaseError;
-    if (!supabaseMovies || supabaseMovies.length === 0) {
-      return res.json({ message: "No movies found in Supabase to migrate." });
+    if (supabaseError) {
+      console.error("Supabase Fetch Error:", supabaseError);
+      throw new Error(`Supabase Fetch Error: [${supabaseError.code}] ${supabaseError.message}. Hint: Check your SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Settings.`);
     }
 
-    console.log(`Found ${supabaseMovies.length} movies in Supabase.`);
+    if (!supabaseMovies || supabaseMovies.length === 0) {
+      console.log("No movies found in Supabase.");
+      return res.json({ message: "No movies found in Supabase to migrate. Make sure your Supabase project is correct." });
+    }
+
+    console.log(`Found ${supabaseMovies.length} movies in Supabase. First row keys:`, Object.keys(supabaseMovies[0]));
 
     // 2. Fetch existing movies from Firestore to avoid duplicates
-    const firestoreMoviesSnap = await db.collection('movies').get();
+    let firestoreMoviesSnap;
+    try {
+      firestoreMoviesSnap = await db.collection('movies').get();
+    } catch (fsError: any) {
+      console.error("Firestore Fetch Error:", fsError);
+      throw new Error(`Firestore Fetch Error: ${fsError.message}`);
+    }
+
     const existingVideoUrls = new Set(firestoreMoviesSnap.docs.map(doc => doc.data().video_url));
 
     let migratedCount = 0;
     let skippedCount = 0;
+    let errors = [];
 
     // 3. Migrate each movie
     for (const movie of supabaseMovies) {
@@ -61,31 +79,41 @@ app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
         continue;
       }
 
-      await db.collection('movies').add({
-        title: movie.title,
-        description: movie.description || "",
-        video_url: movie.video_url,
-        thumbnail: movie.thumbnail || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop",
-        genre: movie.genre || "Uncategorized",
-        year: movie.year || new Date().getFullYear(),
-        rating: movie.rating || "NR",
-        views: movie.views || 0,
-        is_user_uploaded: movie.is_user_uploaded || false,
-        uploader_name: movie.uploader_name || "System",
-        created_at: movie.created_at ? admin.firestore.Timestamp.fromDate(new Date(movie.created_at)) : admin.firestore.FieldValue.serverTimestamp()
-      });
-      migratedCount++;
+      try {
+        await db.collection('movies').add({
+          title: movie.title,
+          description: movie.description || "",
+          video_url: movie.video_url,
+          thumbnail: movie.thumbnail || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop",
+          genre: movie.genre || "Uncategorized",
+          year: movie.year || new Date().getFullYear(),
+          rating: movie.rating || "NR",
+          views: movie.views || 0,
+          is_user_uploaded: movie.is_user_uploaded || false,
+          uploader_name: movie.uploader_name || "System",
+          created_at: movie.created_at ? admin.firestore.Timestamp.fromDate(new Date(movie.created_at)) : admin.firestore.FieldValue.serverTimestamp()
+        });
+        migratedCount++;
+      } catch (addError: any) {
+        console.error(`Error migrating movie ${movie.title}:`, addError);
+        errors.push(`${movie.title}: ${addError.message}`);
+      }
     }
 
     res.json({
-      message: "Migration completed successfully",
+      message: errors.length > 0 ? "Migration completed with some errors" : "Migration completed successfully",
       totalFound: supabaseMovies.length,
       migrated: migratedCount,
-      skipped: skippedCount
+      skipped: skippedCount,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error: any) {
-    console.error("Migration Error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Migration Fatal Error:", error);
+    res.status(500).json({ 
+      message: "Migration failed", 
+      error: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
   }
 });
 

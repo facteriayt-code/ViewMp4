@@ -426,11 +426,26 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     </button>
                     {migrationStatus && (
                       <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/5">
-                         <p className="text-[9px] font-black text-green-500 uppercase tracking-widest">{migrationStatus.message}</p>
+                         <p className={`text-[9px] font-black uppercase tracking-widest ${migrationStatus.error ? 'text-red-500' : 'text-green-500'}`}>
+                           {migrationStatus.message}
+                         </p>
+                         {migrationStatus.error && (
+                           <p className="text-[8px] text-red-400/70 font-bold uppercase tracking-widest mt-2">
+                             Error: {migrationStatus.error}
+                           </p>
+                         )}
                          {migrationStatus.migrated !== undefined && (
                            <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-1">
                              Migrated: {migrationStatus.migrated} | Skipped: {migrationStatus.skipped} | Total: {migrationStatus.totalFound}
                            </p>
+                         )}
+                         {migrationStatus.errors && migrationStatus.errors.length > 0 && (
+                           <div className="mt-2 pt-2 border-t border-white/5">
+                             <p className="text-[7px] text-red-400/50 font-bold uppercase mb-1">Detailed Errors:</p>
+                             {migrationStatus.errors.map((err: string, i: number) => (
+                               <p key={i} className="text-[7px] text-red-400/40 truncate">{err}</p>
+                             ))}
+                           </div>
                          )}
                       </div>
                     )}
