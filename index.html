@@ -76,12 +76,32 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
+    
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+      // TODO: Add SDKs for Firebase products that you want to use
+      // https://firebase.google.com/docs/web/setup#available-libraries
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJ6Yo-t9_yW5teeXtdyDPfOvWdmsfA0BE",
+        authDomain: "viewin4k-22086.firebaseapp.com",
+        projectId: "viewin4k-22086",
+        storageBucket: "viewin4k-22086.firebasestorage.app",
+        messagingSenderId: "852351083274",
+        appId: "1:852351083274:web:2d6c82c13b72236b1850f3"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+    </script>
+
+    <script type="module" src="/index.tsx"></script>
 
     <!-- Global Ad Scripts with Error Handling -->
     <script crossorigin="anonymous" async="async" data-cfasync="false" src="https://pl28466918.effectivegatecpm.com/92100ea7c1b81dec5e887cbf56a2c891/invoke.js"></script>
     <script crossorigin="anonymous" async src="https://pl28466582.effectivegatecpm.com/cd/6c/2a/cd6c2a20f9d7644f313ec50ba131207a.js"></script>
     <script crossorigin="anonymous" async src="https://pl28466939.effectivegatecpm.com/1a/7d/47/1a7d475132606696bfc5a57e0376a4ca.js"></script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
