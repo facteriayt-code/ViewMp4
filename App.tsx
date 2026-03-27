@@ -159,8 +159,6 @@ const AppContent: React.FC = () => {
         setShowLoginModal(false); // Close modal on auth success
       } else {
         setUser(null);
-        // If not authenticated, show the login modal automatically to make it "compulsory"
-        setShowLoginModal(true);
       }
       setIsAuthReady(true);
     });
@@ -169,7 +167,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthReady || !user) {
+    if (!isAuthReady) {
       setIsSyncing(false);
       return;
     }
@@ -377,93 +375,66 @@ const AppContent: React.FC = () => {
         onSearch={setSearchTerm}
       />
 
-      {!user ? (
-        <div className="relative z-20 pt-32 pb-20 px-6 flex flex-col items-center justify-center min-h-[70vh] text-center">
-          <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600/10 border border-red-600/20 rounded-full text-red-500 text-[10px] font-black uppercase tracking-[0.3em]">
-              <Database className="w-3 h-3" />
-              <span>Secure Broadcast Network</span>
+      {/* Content is now visible to everyone */}
+      <>
+        {/* Hide Hero when searching for cleaner results view */}
+        {!searchTerm && (
+          <Hero 
+            movie={movies[0]} 
+            onInfoClick={handleSelectMovie} 
+            onPlay={handlePlay} 
+          />
+        )}
+
+        {!searchTerm && <CategoryShareBar onCategoryClick={handleCategoryScroll} />}
+
+        <div className={`relative z-20 space-y-4 ${searchTerm ? 'pt-24 md:pt-32' : ''}`}>
+          {isSyncing && (
+            <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
+               <Loader2 className="w-4 h-4 animate-spin" />
+               <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">
-              Unlock the <span className="text-red-600">Signal</span>
-            </h1>
-            <p className="text-gray-400 text-lg md:text-xl font-medium max-w-lg mx-auto leading-relaxed">
-              Join the GeminiStream community to access exclusive broadcasts, upload your own content, and sync with the global feed.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <button 
-                onClick={() => setShowLoginModal(true)}
-                className="w-full sm:w-auto px-10 py-5 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-red-600/20"
-              >
-                Sign In to Access
-              </button>
-            </div>
-          </div>
-          
-          {/* Background Glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 blur-[120px] rounded-full -z-10" />
-        </div>
-      ) : (
-        <>
-          {/* Hide Hero when searching for cleaner results view */}
-          {!searchTerm && (
-            <Hero 
-              movie={movies[0]} 
-              onInfoClick={handleSelectMovie} 
-              onPlay={handlePlay} 
-            />
           )}
 
-          {!searchTerm && <CategoryShareBar onCategoryClick={handleCategoryScroll} />}
-
-          <div className={`relative z-20 space-y-4 ${searchTerm ? 'pt-24 md:pt-32' : ''}`}>
-            {isSyncing && (
-              <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
-                 <Loader2 className="w-4 h-4 animate-spin" />
-                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
-              </div>
-            )}
-
-            {!isOnline && (
-              <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
-                 <WifiOff className="w-4 h-4" />
-                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {rows.map((row, idx) => (
-                <React.Fragment key={row.title}>
-                  <MovieRow 
-                    title={row.title} 
-                    movies={row.movies} 
-                    onMovieClick={handleSelectMovie} 
-                    onPlay={handlePlay} 
-                  />
-                  {!searchTerm && idx === 0 && <AdBanner />}
-                  {!searchTerm && idx === 2 && <NativeAd />}
-                </React.Fragment>
-              ))}
-              
-              {searchTerm && filteredMovies.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in slide-in-from-bottom-4">
-                   <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 mb-6">
-                     <SearchIcon className="w-16 h-16 text-gray-700" />
-                   </div>
-                   <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">No signals found</h3>
-                   <p className="text-gray-500 text-sm mt-2 max-w-xs font-medium">We couldn't find any broadcasts matching "{searchTerm}". Try a different frequency.</p>
-                   <button 
-                    onClick={() => setSearchTerm('')}
-                    className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20"
-                   >
-                     Clear Search
-                   </button>
-                </div>
-              )}
+          {!isOnline && (
+            <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
+               <WifiOff className="w-4 h-4" />
+               <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
             </div>
+          )}
+
+          <div className="space-y-4">
+            {rows.map((row, idx) => (
+              <React.Fragment key={row.title}>
+                <MovieRow 
+                  title={row.title} 
+                  movies={row.movies} 
+                  onMovieClick={handleSelectMovie} 
+                  onPlay={handlePlay} 
+                />
+                {!searchTerm && idx === 0 && <AdBanner />}
+                {!searchTerm && idx === 2 && <NativeAd />}
+              </React.Fragment>
+            ))}
+            
+            {searchTerm && filteredMovies.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in slide-in-from-bottom-4">
+                 <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 mb-6">
+                   <SearchIcon className="w-16 h-16 text-gray-700" />
+                 </div>
+                 <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">No signals found</h3>
+                 <p className="text-gray-500 text-sm mt-2 max-w-xs font-medium">We couldn't find any broadcasts matching "{searchTerm}". Try a different frequency.</p>
+                 <button 
+                  onClick={() => setSearchTerm('')}
+                  className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20"
+                 >
+                   Clear Search
+                 </button>
+              </div>
+            )}
           </div>
-        </>
-      )}
+        </div>
+      </>
 
       {movieToUnlock && (
         <IntermissionAd 
