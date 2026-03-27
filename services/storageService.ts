@@ -1,10 +1,61 @@
 import { Movie } from '../types.ts';
-import { supabase } from './supabaseClient.ts';
-import { db } from '../firebase.ts';
+import { db, storage, auth } from '../firebase.ts';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp, increment } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 // High-quality fallback if everything else fails
 const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
@@ -13,28 +64,32 @@ export const saveVideoToCloud = async (
   onProgress?: (progress: number) => void
 ): Promise<Movie> => {
   
-  const uploadFile = async (bucket: string, file: File) => {
+  const uploadFile = async (folder: string, file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const storageRef = ref(storage, `${folder}/${fileName}`);
 
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    if (error) {
-      console.error(`Storage Error [${bucket}]:`, error);
-      throw new Error(`Cloud Storage Failure (${bucket}): ${error.message}`);
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    return new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          if (onProgress && folder === 'videos') {
+            onProgress(progress);
+          }
+        },
+        (error) => {
+          console.error(`Storage Error [${folder}]:`, error);
+          reject(new Error(`Cloud Storage Failure (${folder}): ${error.message}`));
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        }
+      );
+    });
   };
 
   try {
@@ -54,9 +109,7 @@ export const saveVideoToCloud = async (
     // 2. Resolve Video URL
     let finalVideoUrl = movieMetadata.videoUrl;
     if (videoFile) {
-      if (onProgress) onProgress(10);
       finalVideoUrl = await uploadFile('videos', videoFile);
-      if (onProgress) onProgress(80);
     }
 
     if (!finalVideoUrl) throw new Error("A valid video source is required for deployment.");
@@ -64,14 +117,18 @@ export const saveVideoToCloud = async (
     // 3. Update or Insert Database Record in Firestore
     if (movieMetadata.id) {
       const movieRef = doc(db, 'movies', movieMetadata.id);
-      await updateDoc(movieRef, {
-        title: movieMetadata.title,
-        description: movieMetadata.description,
-        genre: movieMetadata.genre,
-        thumbnail: finalThumbnailUrl,
-        video_url: finalVideoUrl,
-        updated_at: serverTimestamp()
-      });
+      try {
+        await updateDoc(movieRef, {
+          title: movieMetadata.title,
+          description: movieMetadata.description,
+          genre: movieMetadata.genre,
+          thumbnail: finalThumbnailUrl,
+          video_url: finalVideoUrl,
+          updated_at: serverTimestamp()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `movies/${movieMetadata.id}`);
+      }
       
       return {
         ...movieMetadata,
@@ -95,22 +152,27 @@ export const saveVideoToCloud = async (
       created_at: serverTimestamp()
     };
 
-    const docRef = await addDoc(collection(db, 'movies'), payload);
-    
-    return {
-      id: docRef.id,
-      title: payload.title,
-      description: payload.description,
-      thumbnail: payload.thumbnail,
-      videoUrl: payload.video_url,
-      genre: payload.genre,
-      year: payload.year,
-      rating: payload.rating,
-      views: payload.views,
-      isUserUploaded: payload.is_user_uploaded,
-      uploaderId: payload.uploader_id,
-      uploaderName: payload.uploader_name
-    };
+    try {
+      const docRef = await addDoc(collection(db, 'movies'), payload);
+      
+      return {
+        id: docRef.id,
+        title: payload.title,
+        description: payload.description,
+        thumbnail: payload.thumbnail,
+        videoUrl: payload.video_url,
+        genre: payload.genre,
+        year: payload.year,
+        rating: payload.rating,
+        views: payload.views,
+        isUserUploaded: payload.is_user_uploaded,
+        uploaderId: payload.uploader_id,
+        uploaderName: payload.uploader_name
+      };
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'movies');
+      throw error; // unreachable but for TS
+    }
   } catch (error: any) {
     console.error("Cloud Operation Error:", error);
     throw error;
@@ -119,7 +181,11 @@ export const saveVideoToCloud = async (
 
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
   const movieRef = doc(db, 'movies', movieId);
-  await deleteDoc(movieRef);
+  try {
+    await deleteDoc(movieRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `movies/${movieId}`);
+  }
 };
 
 export const incrementMovieView = async (movieId: string) => {
@@ -128,16 +194,24 @@ export const incrementMovieView = async (movieId: string) => {
     await updateDoc(movieRef, {
       views: increment(1)
     });
-  } catch (err) {}
+  } catch (err) {
+    // Silently fail view increments or log them
+    console.warn("View increment failed", err);
+  }
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
-  const q = query(collection(db, 'movies'), orderBy('created_at', 'desc'));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as any)).map(mapDbToMovie);
+  try {
+    const q = query(collection(db, 'movies'), orderBy('created_at', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as any)).map(mapDbToMovie);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'movies');
+    return []; // unreachable but for TS
+  }
 };
 
 const mapDbToMovie = (item: any): Movie => ({

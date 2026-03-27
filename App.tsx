@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useMemo, useEffect, useRef, ErrorInfo, ReactNode } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Hero from './components/Hero.tsx';
 import MovieRow from './components/MovieRow.tsx';
@@ -14,20 +15,75 @@ import IntermissionAd from './components/IntermissionAd.tsx';
 import CategoryShareBar from './components/CategoryShareBar.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User } from './types.ts';
-import { getAllVideosFromCloud } from './services/storageService.ts';
-import { supabase } from './services/supabaseClient.ts';
+import { getAllVideosFromCloud, handleFirestoreError, OperationType } from './services/storageService.ts';
 import { signOut } from './services/authService.ts';
-import { db } from './firebase.ts';
+import { db, auth } from './firebase.ts';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, getDocFromServer, doc } from 'firebase/firestore';
-import { Database, Wifi, WifiOff, Loader2, X, Search as SearchIcon } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, Search as SearchIcon, AlertTriangle } from 'lucide-react';
+
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-red-600/10 border border-red-600/20 p-12 rounded-[3rem] max-w-lg space-y-6">
+            <AlertTriangle className="w-20 h-20 text-red-600 mx-auto" />
+            <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter">System Failure</h1>
+            <p className="text-gray-400 text-sm font-medium leading-relaxed">
+              A critical error has occurred in the broadcast stream. We're working to restore the signal.
+            </p>
+            <div className="bg-black/40 p-4 rounded-2xl border border-white/5 text-left">
+              <p className="text-[10px] font-mono text-red-500 break-all">
+                {this.state.error?.message || "Unknown Error"}
+              </p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Restart Signal
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
   AGE_VERIFIED: 'geministream_age_verified'
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
@@ -95,29 +151,30 @@ const App: React.FC = () => {
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
     setIsAgeVerified(verified === 'true');
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
         setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
-        });
-      }
-    });
-
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
         });
       } else {
         setUser(null);
       }
+      setIsAuthReady(true);
     });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthReady || !user) {
+      setIsSyncing(false);
+      return;
+    }
+
+    let unsubscribeMovies: (() => void) | undefined;
 
     const syncCloudData = async () => {
       setIsSyncing(true);
@@ -147,7 +204,7 @@ const App: React.FC = () => {
     syncCloudData();
 
     const q = query(collection(db, 'movies'), orderBy('created_at', 'desc'));
-    const unsubscribeMovies = onSnapshot(q, (snapshot) => {
+    unsubscribeMovies = onSnapshot(q, (snapshot) => {
       const cloudMovies = snapshot.docs.map(doc => ({
         id: doc.id,
         title: doc.data().title,
@@ -175,14 +232,13 @@ const App: React.FC = () => {
         }
       }
     }, (error) => {
-      console.error("Firestore Snapshot Error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'movies');
     });
 
     return () => {
-      authSub.unsubscribe();
-      unsubscribeMovies();
+      if (unsubscribeMovies) unsubscribeMovies();
     };
-  }, []);
+  }, [isAuthReady, user]);
 
   const handleCategoryScroll = (categoryName: string) => {
     const targetId = `row-${categoryName.replace(/\s+/g, '-').toLowerCase()}`;
@@ -291,6 +347,14 @@ const App: React.FC = () => {
     ];
   }, [filteredMovies, searchTerm]);
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-20 overflow-x-hidden">
       {!isAgeVerified && <AgeDisclaimer onVerify={() => {
@@ -313,63 +377,93 @@ const App: React.FC = () => {
         onSearch={setSearchTerm}
       />
 
-      {/* Hide Hero when searching for cleaner results view */}
-      {!searchTerm && (
-        <Hero 
-          movie={movies[0]} 
-          onInfoClick={handleSelectMovie} 
-          onPlay={handlePlay} 
-        />
-      )}
-
-      {!searchTerm && <CategoryShareBar onCategoryClick={handleCategoryScroll} />}
-
-      <div className={`relative z-20 space-y-4 ${searchTerm ? 'pt-24 md:pt-32' : ''}`}>
-        {isSyncing && (
-          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
-             <Loader2 className="w-4 h-4 animate-spin" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
-          </div>
-        )}
-
-        {!isOnline && (
-          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
-             <WifiOff className="w-4 h-4" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {rows.map((row, idx) => (
-            <React.Fragment key={row.title}>
-              <MovieRow 
-                title={row.title} 
-                movies={row.movies} 
-                onMovieClick={handleSelectMovie} 
-                onPlay={handlePlay} 
-              />
-              {!searchTerm && idx === 0 && <AdBanner />}
-              {!searchTerm && idx === 2 && <NativeAd />}
-            </React.Fragment>
-          ))}
-          
-          {searchTerm && filteredMovies.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in slide-in-from-bottom-4">
-               <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 mb-6">
-                 <SearchIcon className="w-16 h-16 text-gray-700" />
-               </div>
-               <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">No signals found</h3>
-               <p className="text-gray-500 text-sm mt-2 max-w-xs font-medium">We couldn't find any broadcasts matching "{searchTerm}". Try a different frequency.</p>
-               <button 
-                onClick={() => setSearchTerm('')}
-                className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20"
-               >
-                 Clear Search
-               </button>
+      {!user ? (
+        <div className="relative z-20 pt-32 pb-20 px-6 flex flex-col items-center justify-center min-h-[70vh] text-center">
+          <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600/10 border border-red-600/20 rounded-full text-red-500 text-[10px] font-black uppercase tracking-[0.3em]">
+              <Database className="w-3 h-3" />
+              <span>Secure Broadcast Network</span>
             </div>
-          )}
+            <h1 className="text-5xl md:text-7xl font-black text-white uppercase italic tracking-tighter leading-none">
+              Unlock the <span className="text-red-600">Signal</span>
+            </h1>
+            <p className="text-gray-400 text-lg md:text-xl font-medium max-w-lg mx-auto leading-relaxed">
+              Join the GeminiStream community to access exclusive broadcasts, upload your own content, and sync with the global feed.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="w-full sm:w-auto px-10 py-5 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-black uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-red-600/20"
+              >
+                Sign In to Access
+              </button>
+            </div>
+          </div>
+          
+          {/* Background Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 blur-[120px] rounded-full -z-10" />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Hide Hero when searching for cleaner results view */}
+          {!searchTerm && (
+            <Hero 
+              movie={movies[0]} 
+              onInfoClick={handleSelectMovie} 
+              onPlay={handlePlay} 
+            />
+          )}
+
+          {!searchTerm && <CategoryShareBar onCategoryClick={handleCategoryScroll} />}
+
+          <div className={`relative z-20 space-y-4 ${searchTerm ? 'pt-24 md:pt-32' : ''}`}>
+            {isSyncing && (
+              <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
+                 <Loader2 className="w-4 h-4 animate-spin" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
+              </div>
+            )}
+
+            {!isOnline && (
+              <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
+                 <WifiOff className="w-4 h-4" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {rows.map((row, idx) => (
+                <React.Fragment key={row.title}>
+                  <MovieRow 
+                    title={row.title} 
+                    movies={row.movies} 
+                    onMovieClick={handleSelectMovie} 
+                    onPlay={handlePlay} 
+                  />
+                  {!searchTerm && idx === 0 && <AdBanner />}
+                  {!searchTerm && idx === 2 && <NativeAd />}
+                </React.Fragment>
+              ))}
+              
+              {searchTerm && filteredMovies.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in slide-in-from-bottom-4">
+                   <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 mb-6">
+                     <SearchIcon className="w-16 h-16 text-gray-700" />
+                   </div>
+                   <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">No signals found</h3>
+                   <p className="text-gray-500 text-sm mt-2 max-w-xs font-medium">We couldn't find any broadcasts matching "{searchTerm}". Try a different frequency.</p>
+                   <button 
+                    onClick={() => setSearchTerm('')}
+                    className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-red-600/20"
+                   >
+                     Clear Search
+                   </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {movieToUnlock && (
         <IntermissionAd 
@@ -437,6 +531,14 @@ const App: React.FC = () => {
         />
       )}
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 };
 

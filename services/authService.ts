@@ -1,62 +1,74 @@
 
 import { User } from '../types.ts';
-import { supabase } from './supabaseClient.ts';
+import { auth } from '../firebase.ts';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut as firebaseSignOut,
+  updateProfile
+} from 'firebase/auth';
 
 /**
- * Real Supabase Authentication Service
+ * Firebase Authentication Service
  */
 
 export const signUpEmail = async (name: string, email: string, password: string): Promise<User> => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: name,
-        avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=E50914&color=fff`
-      }
-    }
-  });
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
 
-  if (error) throw error;
-  if (!data.user) throw new Error("Registration failed.");
+    // Update profile with display name
+    await updateProfile(firebaseUser, {
+      displayName: name,
+      photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=E50914&color=fff`
+    });
 
-  return {
-    id: data.user.id,
-    name: data.user.user_metadata.full_name || 'New User',
-    email: data.user.email || email,
-    avatar: data.user.user_metadata.avatar_url
-  };
+    return {
+      id: firebaseUser.uid,
+      name: name,
+      email: firebaseUser.email || email,
+      avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=E50914&color=fff`
+    };
+  } catch (error: any) {
+    console.error("Firebase Sign Up Error:", error);
+    throw error;
+  }
 };
 
 export const loginEmail = async (email: string, password: string): Promise<User> => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
 
-  if (error) throw error;
-  if (!data.user) throw new Error("Login failed.");
-
-  return {
-    id: data.user.id,
-    name: data.user.user_metadata.full_name || 'Streamer',
-    email: data.user.email || email,
-    avatar: data.user.user_metadata.avatar_url
-  };
+    return {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || 'Streamer',
+      email: firebaseUser.email || email,
+      avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+    };
+  } catch (error: any) {
+    console.error("Firebase Login Error:", error);
+    throw error;
+  }
 };
 
 export const signInWithGoogle = async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin
-    }
-  });
-  if (error) throw error;
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    console.error("Firebase Google Sign-In Error:", error);
+    throw error;
+  }
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    await firebaseSignOut(auth);
+  } catch (error: any) {
+    console.error("Firebase Sign Out Error:", error);
+    throw error;
+  }
 };

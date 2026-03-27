@@ -1,3 +1,5 @@
+console.log("SERVER.TS LOADED - " + new Date().toISOString());
+
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -14,9 +16,31 @@ console.log("Starting server initialization...");
 
 // --- Vite Integration ---
 async function startServer() {
-  console.log("Initializing startServer...");
+  console.log("Initializing startServer function...");
   const app = express();
   const PORT = 3000;
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Request logging middleware - VERY EARLY
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
+  const apiRouter = express.Router();
+
+  // --- Health Check ---
+  apiRouter.get("/health", (req, res) => {
+    console.log("API: Health check requested");
+    res.json({ status: "ok", timestamp: new Date().toISOString(), env: process.env.NODE_ENV });
+  });
+
+  apiRouter.get("/ping", (req, res) => {
+    console.log("API: Ping requested");
+    res.send("pong");
+  });
 
   // Load Firebase Config inside startServer to be safer
   let firebaseConfig: any;
@@ -25,7 +49,6 @@ async function startServer() {
     console.log("Firebase config loaded for project:", firebaseConfig.projectId);
   } catch (err) {
     console.error("CRITICAL: Failed to load firebase-applet-config.json:", err);
-    // Don't exit, just log and try to continue or handle gracefully
     firebaseConfig = { projectId: process.env.GOOGLE_CLOUD_PROJECT || 'unknown' };
   }
 
@@ -36,19 +59,17 @@ async function startServer() {
   // Validate and normalize Supabase URL
   let normalizedSupabaseUrl = supabaseUrl;
   if (normalizedSupabaseUrl && !normalizedSupabaseUrl.startsWith('http')) {
-    console.log("Normalizing Supabase URL:", normalizedSupabaseUrl);
     if (normalizedSupabaseUrl.includes('.supabase.co')) {
       normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}`;
     } else {
       normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
     }
-    console.log("Normalized Supabase URL to:", normalizedSupabaseUrl);
   }
 
   let supabase: any;
   try {
     supabase = createClient(normalizedSupabaseUrl, supabaseKey);
-    console.log("Supabase client initialized with URL:", normalizedSupabaseUrl);
+    console.log("Supabase client initialized");
   } catch (e: any) {
     console.error("Failed to initialize Supabase client:", e.message);
   }
@@ -59,7 +80,7 @@ async function startServer() {
       admin.initializeApp({
         projectId: firebaseConfig.projectId
       });
-      console.log("Firebase Admin initialized for project:", firebaseConfig.projectId);
+      console.log("Firebase Admin initialized");
     } catch (e: any) {
       console.error("Failed to initialize Firebase Admin:", e.message);
     }
@@ -69,36 +90,15 @@ async function startServer() {
     ? admin.firestore(firebaseConfig.firestoreDatabaseId)
     : admin.firestore();
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-
-  // Request logging middleware
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}`);
-    next();
-  });
-
-  // --- Health Check ---
-  app.get("/api/health", (req, res) => {
-    console.log("Health check requested");
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  app.get("/api/ping", (req, res) => {
-    console.log("Ping requested");
-    res.send("pong");
-  });
-
   // --- Connection Test Logic ---
-  app.get("/api/test-connections", async (req, res) => {
-    console.log("Handling /api/test-connections request");
+  apiRouter.get("/test-connections", async (req, res) => {
+    console.log("API: Handling /test-connections");
     const results: any = {
       supabase: { status: "pending", message: "" },
       firestore: { status: "pending", message: "" }
     };
 
     try {
-      // Test Supabase
       const { data, error } = await supabase.from('movies').select('count', { count: 'exact', head: true });
       if (error) {
         results.supabase = { status: "error", message: `Supabase Error: [${error.code}] ${error.message}` };
@@ -110,7 +110,6 @@ async function startServer() {
     }
 
     try {
-      // Test Firestore
       const snap = await db.collection('movies').limit(1).get();
       results.firestore = { status: "ok", message: `Connected! Found ${snap.size} movies.` };
     } catch (e: any) {
@@ -121,48 +120,27 @@ async function startServer() {
   });
 
   // --- Migration Logic ---
-  app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
+  apiRouter.get("/migrate-supabase-to-firestore", async (req, res) => {
     try {
-      console.log("Starting migration from Supabase to Firestore...");
+      console.log("API: Starting migration...");
       
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error("Supabase URL or Key is missing from environment variables.");
-      }
-
-      // 1. Fetch all movies from Supabase
-      console.log("Fetching from Supabase URL:", supabaseUrl);
       const { data: supabaseMovies, error: supabaseError } = await supabase
         .from('movies')
         .select('*');
 
-      if (supabaseError) {
-        console.error("Supabase Fetch Error:", supabaseError);
-        throw new Error(`Supabase Fetch Error: [${supabaseError.code}] ${supabaseError.message}. Hint: Check your SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Settings.`);
-      }
+      if (supabaseError) throw new Error(`Supabase Fetch Error: ${supabaseError.message}`);
 
       if (!supabaseMovies || supabaseMovies.length === 0) {
-        console.log("No movies found in Supabase.");
-        return res.json({ message: "No movies found in Supabase to migrate. Make sure your Supabase project is correct." });
+        return res.json({ message: "No movies found in Supabase." });
       }
 
-      console.log(`Found ${supabaseMovies.length} movies in Supabase. First row keys:`, Object.keys(supabaseMovies[0]));
-
-      // 2. Fetch existing movies from Firestore to avoid duplicates
-      let firestoreMoviesSnap;
-      try {
-        firestoreMoviesSnap = await db.collection('movies').get();
-      } catch (fsError: any) {
-        console.error("Firestore Fetch Error:", fsError);
-        throw new Error(`Firestore Fetch Error: ${fsError.message}`);
-      }
-
+      const firestoreMoviesSnap = await db.collection('movies').get();
       const existingVideoUrls = new Set(firestoreMoviesSnap.docs.map(doc => doc.data().video_url));
 
       let migratedCount = 0;
       let skippedCount = 0;
       let errors = [];
 
-      // 3. Migrate each movie
       for (const movie of supabaseMovies) {
         if (existingVideoUrls.has(movie.video_url)) {
           skippedCount++;
@@ -185,7 +163,6 @@ async function startServer() {
           });
           migratedCount++;
         } catch (addError: any) {
-          console.error(`Error migrating movie ${movie.title}:`, addError);
           errors.push(`${movie.title}: ${addError.message}`);
         }
       }
@@ -198,22 +175,16 @@ async function startServer() {
         errors: errors.length > 0 ? errors : undefined
       });
     } catch (error: any) {
-      console.error("Migration Fatal Error:", error);
-      res.status(500).json({ 
-        message: "Migration failed", 
-        error: error.message,
-        stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
-      });
+      console.error("API: Migration Fatal Error:", error);
+      res.status(500).json({ message: "Migration failed", error: error.message });
     }
   });
 
   // --- Telegram Bot Logic ---
   const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-  app.post("/api/telegram-webhook", async (req, res) => {
+  apiRouter.post("/telegram-webhook", async (req, res) => {
     const update = req.body;
-    console.log("Received Telegram Update:", JSON.stringify(update, null, 2));
-
     if (!update.message) return res.sendStatus(200);
 
     const chatId = update.message.chat.id;
@@ -222,8 +193,7 @@ async function startServer() {
 
     try {
       if (video) {
-        await sendMessage(chatId, "🎬 Video received! Processing and uploading to GeminiStream...");
-        
+        await sendMessage(chatId, "🎬 Video received! Processing...");
         const fileId = video.file_id;
         const fileResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${fileId}`);
         const fileData: any = await fileResponse.json();
@@ -231,27 +201,20 @@ async function startServer() {
         if (fileData.ok) {
           const filePath = fileData.result.file_path;
           const downloadUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${filePath}`;
-          
-          // Download video
           const videoRes = await fetch(downloadUrl);
           const videoBuffer = await videoRes.arrayBuffer();
           
-          // Upload to Supabase Storage
           const fileName = `tg-${Date.now()}-${video.file_name || 'video.mp4'}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('videos')
-            .upload(fileName, videoBuffer, {
-              contentType: video.mime_type || 'video/mp4',
-              upsert: false
-            });
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(`videos/${fileName}`);
+          
+          await file.save(Buffer.from(videoBuffer), {
+            metadata: { contentType: video.mime_type || 'video/mp4' },
+            public: true
+          });
 
-          if (uploadError) throw uploadError;
+          const publicUrl = `https://storage.googleapis.com/${bucket.name}/videos/${fileName}`;
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('videos')
-            .getPublicUrl(fileName);
-
-          // Add to Firestore using Admin SDK
           await db.collection('movies').add({
             title: update.message.caption || video.file_name || "Telegram Upload",
             description: `Uploaded via Telegram by ${update.message.from.first_name}`,
@@ -266,14 +229,9 @@ async function startServer() {
             created_at: admin.firestore.FieldValue.serverTimestamp()
           });
 
-          await sendMessage(chatId, "✅ Successfully uploaded! Check the website.");
-        } else {
-          await sendMessage(chatId, "❌ Failed to get video file from Telegram.");
+          await sendMessage(chatId, "✅ Successfully uploaded!");
         }
       } else if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-        await sendMessage(chatId, "🔗 Link received! Adding to GeminiStream...");
-        
-        // Add to Firestore using Admin SDK
         await db.collection('movies').add({
           title: "Web Link",
           description: `Shared via Telegram: ${text}`,
@@ -287,16 +245,12 @@ async function startServer() {
           uploader_name: update.message.from.first_name || 'Telegram User',
           created_at: admin.firestore.FieldValue.serverTimestamp()
         });
-
         await sendMessage(chatId, "✅ Link added successfully!");
-      } else {
-        await sendMessage(chatId, "👋 Welcome to GeminiStream Bot! Send me a video or a video link to upload it directly to the website.");
       }
     } catch (error: any) {
       console.error("Telegram Bot Error:", error);
       await sendMessage(chatId, `❌ Error: ${error.message}`);
     }
-
     res.sendStatus(200);
   });
 
@@ -308,19 +262,21 @@ async function startServer() {
     });
   }
 
-  // Helper endpoint to set webhook
-  app.get("/api/setup-telegram", async (req, res) => {
+  apiRouter.get("/setup-telegram", async (req, res) => {
     const appUrl = process.env.APP_URL || `https://${req.get('host')}`;
     const webhookUrl = `${appUrl}/api/telegram-webhook`;
-    
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook?url=${webhookUrl}`);
     const data = await response.json();
-    
-    res.json({
-      message: "Telegram Webhook Setup Attempted",
-      webhookUrl,
-      telegramResponse: data
-    });
+    res.json({ message: "Telegram Webhook Setup Attempted", webhookUrl, telegramResponse: data });
+  });
+
+  // Mount API Router
+  app.use("/api", apiRouter);
+
+  // Fallback for unmatched API routes
+  app.use("/api/*", (req, res) => {
+    console.log(`API: 404 Not Found - ${req.method} ${req.url}`);
+    res.status(404).json({ error: "API endpoint not found" });
   });
 
   if (process.env.NODE_ENV !== "production") {
@@ -330,18 +286,17 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-    console.log("Vite middleware added.");
   } else {
-    console.log("Serving production build from dist...");
+    console.log("Serving production build...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*all", (req, res) => {
+    app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`>>> SERVER RUNNING ON PORT ${PORT} <<<`);
   });
 }
 
@@ -349,3 +304,4 @@ startServer().catch(err => {
   console.error("FATAL: Failed to start server:", err);
   process.exit(1);
 });
+

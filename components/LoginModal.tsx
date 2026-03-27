@@ -95,11 +95,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
                     ) : (
                       <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-3" alt="G" />
                     )}
-                    {loading ? 'Redirecting to Google...' : 'Sign in with Google'}
+                    {loading ? 'Authenticating...' : 'Sign in with Google'}
                   </button>
                   
                   <p className="text-[10px] text-gray-500 text-center leading-relaxed px-4">
-                    By choosing Google, you'll be redirected to Supabase's secure login portal to complete your authentication.
+                    By choosing Google, you'll be redirected to Google's secure login portal to complete your authentication.
                   </p>
               </div>
             </div>
@@ -107,7 +107,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
             <form onSubmit={handleEmailSubmit} className="space-y-6">
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-bold">{mode === 'email-signin' ? 'Welcome Back' : 'Join GeminiStream'}</h2>
-                <p className="text-sm text-gray-400">Powered by Supabase Secure Auth</p>
+                <p className="text-sm text-gray-400">Powered by Firebase Secure Auth</p>
               </div>
 
               {error && (
