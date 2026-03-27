@@ -12,7 +12,12 @@
           "package_name": "Com.company.Viewmp4"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "852351083274-1cga508h7d0s9l61qtearec4ioehr7lh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA6IA12Nym_zRdzUF-H4JBc2gemn-MOK3E"
