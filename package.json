@@ -17,6 +17,7 @@
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
     "firebase": "^12.7.0",
+    "firebase-admin": "^13.7.0",
     "lucide-react": "0.462.0",
     "node-fetch": "^3.3.2",
     "react": "^19.0.0",

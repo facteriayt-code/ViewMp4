@@ -5,8 +5,7 @@ import { fileURLToPath } from "url";
 import bodyParser from "body-parser";
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,9 +22,11 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://diurandrwkqhefhwclyv.su
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_-wW999bVAki7iV8KJjiNng_goaBCqlI';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Firebase Configuration
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+// Firebase Admin Configuration (Bypasses security rules for server-side operations)
+admin.initializeApp({
+  projectId: firebaseConfig.projectId
+});
+const db = admin.firestore();
 
 app.use(bodyParser.json());
 
@@ -47,7 +48,7 @@ app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
     console.log(`Found ${supabaseMovies.length} movies in Supabase.`);
 
     // 2. Fetch existing movies from Firestore to avoid duplicates
-    const firestoreMoviesSnap = await getDocs(collection(db, 'movies'));
+    const firestoreMoviesSnap = await db.collection('movies').get();
     const existingVideoUrls = new Set(firestoreMoviesSnap.docs.map(doc => doc.data().video_url));
 
     let migratedCount = 0;
@@ -60,7 +61,7 @@ app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
         continue;
       }
 
-      await addDoc(collection(db, 'movies'), {
+      await db.collection('movies').add({
         title: movie.title,
         description: movie.description || "",
         video_url: movie.video_url,
@@ -71,7 +72,7 @@ app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
         views: movie.views || 0,
         is_user_uploaded: movie.is_user_uploaded || false,
         uploader_name: movie.uploader_name || "System",
-        created_at: movie.created_at ? new Date(movie.created_at) : serverTimestamp()
+        created_at: movie.created_at ? admin.firestore.Timestamp.fromDate(new Date(movie.created_at)) : admin.firestore.FieldValue.serverTimestamp()
       });
       migratedCount++;
     }
@@ -132,8 +133,8 @@ app.post("/api/telegram-webhook", async (req, res) => {
           .from('videos')
           .getPublicUrl(fileName);
 
-        // Add to Firestore
-        await addDoc(collection(db, 'movies'), {
+        // Add to Firestore using Admin SDK
+        await db.collection('movies').add({
           title: update.message.caption || video.file_name || "Telegram Upload",
           description: `Uploaded via Telegram by ${update.message.from.first_name}`,
           video_url: publicUrl,
@@ -144,7 +145,7 @@ app.post("/api/telegram-webhook", async (req, res) => {
           views: 0,
           is_user_uploaded: true,
           uploader_name: update.message.from.first_name || 'Telegram User',
-          created_at: serverTimestamp()
+          created_at: admin.firestore.FieldValue.serverTimestamp()
         });
 
         await sendMessage(chatId, "✅ Successfully uploaded! Check the website.");
@@ -154,8 +155,8 @@ app.post("/api/telegram-webhook", async (req, res) => {
     } else if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
       await sendMessage(chatId, "🔗 Link received! Adding to GeminiStream...");
       
-      // Add to Firestore
-      await addDoc(collection(db, 'movies'), {
+      // Add to Firestore using Admin SDK
+      await db.collection('movies').add({
         title: "Web Link",
         description: `Shared via Telegram: ${text}`,
         video_url: text,
@@ -166,7 +167,7 @@ app.post("/api/telegram-webhook", async (req, res) => {
         views: 0,
         is_user_uploaded: true,
         uploader_name: update.message.from.first_name || 'Telegram User',
-        created_at: serverTimestamp()
+        created_at: admin.firestore.FieldValue.serverTimestamp()
       });
 
       await sendMessage(chatId, "✅ Link added successfully!");
