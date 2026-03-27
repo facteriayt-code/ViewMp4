@@ -32,17 +32,14 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+class ErrorBoundary extends React.Component<any, any> {
+  state = { hasError: false, error: null };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: any) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
@@ -58,7 +55,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             </p>
             <div className="bg-black/40 p-4 rounded-2xl border border-white/5 text-left">
               <p className="text-[10px] font-mono text-red-500 break-all">
-                {this.state.error?.message || "Unknown Error"}
+                {(this.state.error as any)?.message || "Unknown Error"}
               </p>
             </div>
             <button 
@@ -72,7 +69,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    return this.props.children;
+    return (this as any).props.children;
   }
 }
 
@@ -159,8 +156,11 @@ const AppContent: React.FC = () => {
           email: firebaseUser.email || '',
           avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
         });
+        setShowLoginModal(false); // Close modal on auth success
       } else {
         setUser(null);
+        // If not authenticated, show the login modal automatically to make it "compulsory"
+        setShowLoginModal(true);
       }
       setIsAuthReady(true);
     });

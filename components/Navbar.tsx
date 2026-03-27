@@ -42,55 +42,61 @@ const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLo
            <Film className="w-6 h-6 md:w-8 md:h-8 text-red-600 fill-red-600" />
            <h1 className="text-red-600 font-black text-lg md:text-2xl tracking-tighter uppercase hidden xs:block">GeminiStream</h1>
         </div>
-        <div className="hidden lg:flex space-x-6 text-sm font-medium text-gray-200">
-          <button className="hover:text-white transition" onClick={() => { clearSearch(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Home</button>
-          <button className="hover:text-white transition">Movies</button>
-          <button className="hover:text-white transition">New & Popular</button>
-        </div>
+        {user && (
+          <div className="hidden lg:flex space-x-6 text-sm font-medium text-gray-200">
+            <button className="hover:text-white transition" onClick={() => { clearSearch(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Home</button>
+            <button className="hover:text-white transition">Movies</button>
+            <button className="hover:text-white transition">New & Popular</button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center space-x-3 md:space-x-6">
-        <div className="relative flex items-center bg-black/40 border border-white/10 rounded-full px-2 md:px-3 py-1 hover:border-white/30 transition-colors group">
-          <Search className="w-4 h-4 md:w-5 md:h-5 text-gray-300 group-focus-within:text-red-600 transition-colors" />
-          <input 
-            type="text" 
-            placeholder="Search Signals"
-            className="bg-transparent border-none focus:outline-none text-xs md:text-sm ml-2 w-20 md:w-48 lg:w-64 placeholder:text-gray-500 text-white font-medium"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          {searchTerm && (
-            <button 
-              onClick={clearSearch}
-              className="p-1 hover:bg-white/10 rounded-full transition-colors ml-1"
+        {user && (
+          <>
+            <div className="relative flex items-center bg-black/40 border border-white/10 rounded-full px-2 md:px-3 py-1 hover:border-white/30 transition-colors group">
+              <Search className="w-4 h-4 md:w-5 md:h-5 text-gray-300 group-focus-within:text-red-600 transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search Signals"
+                className="bg-transparent border-none focus:outline-none text-xs md:text-sm ml-2 w-20 md:w-48 lg:w-64 placeholder:text-gray-500 text-white font-medium"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors ml-1"
+                >
+                  <X className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+                </button>
+              )}
+            </div>
+
+            <a 
+              href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-lg transition shadow-lg active:scale-95 group"
             >
-              <X className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+              <Crown className="w-4 h-4 fill-black group-hover:animate-bounce" />
+              <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
+            </a>
+            
+            <button 
+              onClick={onUploadClick}
+              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full md:rounded-lg transition flex items-center space-x-2 px-3 md:px-4 shadow-lg active:scale-95"
+              aria-label="Upload Video"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Upload</span>
             </button>
-          )}
-        </div>
 
-        <a 
-          href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-lg transition shadow-lg active:scale-95 group"
-        >
-          <Crown className="w-4 h-4 fill-black group-hover:animate-bounce" />
-          <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
-        </a>
-        
-        <button 
-          onClick={onUploadClick}
-          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full md:rounded-lg transition flex items-center space-x-2 px-3 md:px-4 shadow-lg active:scale-95"
-          aria-label="Upload Video"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Upload</span>
-        </button>
-
-        <div className="hidden md:block">
-          <Bell className="w-6 h-6 text-gray-300 cursor-pointer hover:text-white transition" />
-        </div>
+            <div className="hidden md:block">
+              <Bell className="w-6 h-6 text-gray-300 cursor-pointer hover:text-white transition" />
+            </div>
+          </>
+        )}
 
         {user ? (
           <div className="relative">

@@ -45,9 +45,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose }) => {
     setError(null);
     try {
       await signInWithGoogle();
-      // Supabase OAuth redirects away, so loading state handles the wait
+      // onAuthStateChanged in App.tsx will handle the state update and close the modal
     } catch (err: any) {
-      setError(err.message || "Google Sign-In failed.");
+      console.error("Google Login Error:", err);
+      setError(err.message || "Google Sign-In failed. Please check if popups are blocked.");
       setLoading(false);
     }
   };
