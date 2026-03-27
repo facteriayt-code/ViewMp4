@@ -2,7 +2,6 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import bodyParser from "body-parser";
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import admin from 'firebase-admin';
@@ -11,60 +10,49 @@ import { readFileSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+console.log("Starting server initialization...");
+
 // Load Firebase Config
-const firebaseConfig = JSON.parse(readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf8'));
+let firebaseConfig: any;
+try {
+  firebaseConfig = JSON.parse(readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf8'));
+  console.log("Firebase config loaded for project:", firebaseConfig.projectId);
+} catch (err) {
+  console.error("Failed to load firebase-applet-config.json:", err);
+  process.exit(1);
+}
 
 const app = express();
 const PORT = 3000;
 
-// Supabase Configuration (Still used for storage)
+// Supabase Configuration
 const supabaseUrl = process.env.SUPABASE_URL || 'https://diurandrwkqhefhwclyv.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_-wW999bVAki7iV8KJjiNng_goaBCqlI';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Firebase Admin Configuration (Bypasses security rules for server-side operations)
-admin.initializeApp({
-  projectId: firebaseConfig.projectId
-});
-// Use the specific database ID from the config if it exists
+// Firebase Admin Configuration
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: firebaseConfig.projectId
+  });
+}
+
 const db = firebaseConfig.firestoreDatabaseId 
   ? admin.firestore(firebaseConfig.firestoreDatabaseId)
   : admin.firestore();
 
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// --- Connection Test Logic ---
-app.get("/api/test-connections", async (req, res) => {
-  const results: any = {
-    supabase: { status: "pending", message: "" },
-    firestore: { status: "pending", message: "" }
-  };
-
-  try {
-    // Test Supabase
-    const { data, error } = await supabase.from('movies').select('count', { count: 'exact', head: true });
-    if (error) {
-      results.supabase = { status: "error", message: `Supabase Error: [${error.code}] ${error.message}` };
-    } else {
-      results.supabase = { status: "ok", message: `Connected! Found ${data?.length || 0} movies.` };
-    }
-  } catch (e: any) {
-    results.supabase = { status: "error", message: `Supabase Fatal: ${e.message}` };
-  }
-
-  try {
-    // Test Firestore
-    const snap = await db.collection('movies').limit(1).get();
-    results.firestore = { status: "ok", message: `Connected! Found ${snap.size} movies.` };
-  } catch (e: any) {
-    results.firestore = { status: "error", message: `Firestore Fatal: ${e.message}` };
-  }
-
-  res.json(results);
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
 });
 
 // --- Connection Test Logic ---
 app.get("/api/test-connections", async (req, res) => {
+  console.log("Handling /api/test-connections request");
   const results: any = {
     supabase: { status: "pending", message: "" },
     firestore: { status: "pending", message: "" }

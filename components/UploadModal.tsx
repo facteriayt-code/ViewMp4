@@ -44,8 +44,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
 
   const handleTestConnections = async () => {
     setMigrationStatus({ message: "Testing connections..." });
+    setTestResults(null);
     try {
       const response = await fetch('/api/test-connections');
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Server returned ${response.status}: ${text.slice(0, 100)}...`);
+      }
       const data = await response.json();
       setTestResults(data);
       setMigrationStatus(null);
