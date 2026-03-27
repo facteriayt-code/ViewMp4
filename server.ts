@@ -78,7 +78,8 @@ async function startServer() {
   if (!admin.apps.length) {
     try {
       admin.initializeApp({
-        projectId: firebaseConfig.projectId
+        projectId: firebaseConfig.projectId,
+        storageBucket: firebaseConfig.storageBucket
       });
       console.log("Firebase Admin initialized");
     } catch (e: any) {
@@ -185,6 +186,7 @@ async function startServer() {
 
   apiRouter.post("/telegram-webhook", async (req, res) => {
     const update = req.body;
+    console.log("Telegram Webhook received:", JSON.stringify(update));
     if (!update.message) return res.sendStatus(200);
 
     const chatId = update.message.chat.id;
@@ -205,7 +207,7 @@ async function startServer() {
           const videoBuffer = await videoRes.arrayBuffer();
           
           const fileName = `tg-${Date.now()}-${video.file_name || 'video.mp4'}`;
-          const bucket = admin.storage().bucket();
+          const bucket = admin.storage().bucket(firebaseConfig.storageBucket);
           const file = bucket.file(`videos/${fileName}`);
           
           await file.save(Buffer.from(videoBuffer), {
@@ -263,6 +265,9 @@ async function startServer() {
   }
 
   apiRouter.get("/setup-telegram", async (req, res) => {
+    if (!TELEGRAM_TOKEN) {
+      return res.status(400).json({ error: "TELEGRAM_BOT_TOKEN is not set in environment variables." });
+    }
     const appUrl = process.env.APP_URL || `https://${req.get('host')}`;
     const webhookUrl = `${appUrl}/api/telegram-webhook`;
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook?url=${webhookUrl}`);
