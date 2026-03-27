@@ -47,8 +47,8 @@ service cloud.firestore {
     }
 
     match /movies/{movieId} {
-      // Restricted read: only authenticated users can see movies
-      allow read: if isAuthenticated();
+      // Public read: anyone can see movies
+      allow read: if true;
       
       // Allow authenticated users to create movies
       allow create: if isAuthenticated() && isValidMovie(request.resource.data) && 
