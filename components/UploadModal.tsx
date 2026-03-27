@@ -36,7 +36,9 @@ interface BulkItem {
 
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
   const isEditMode = !!movieToEdit;
-  const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>(isEditMode ? 'single' : 'single');
+  const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'telegram'>(isEditMode ? 'single' : 'single');
+  const [telegramStatus, setTelegramStatus] = useState<{message: string, url?: string} | null>(null);
+  const [isSettingUpTelegram, setIsSettingUpTelegram] = useState(false);
   const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
   
@@ -249,6 +251,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
+  const setupTelegram = async () => {
+    setIsSettingUpTelegram(true);
+    try {
+      const res = await fetch('/api/setup-telegram');
+      const data = await res.json();
+      setTelegramStatus(data);
+    } catch (err) {
+      setTelegramStatus({ message: "Failed to connect to server." });
+    } finally {
+      setIsSettingUpTelegram(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
       <div className="relative bg-[#0a0a0a] w-full max-w-5xl min-h-screen md:min-h-0 md:rounded-[3rem] overflow-hidden shadow-[0_0_150px_rgba(229,9,20,0.1)] border border-white/5 animate-in fade-in zoom-in-95 duration-500">
@@ -283,6 +298,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                 <Layers className="w-4 h-4" />
                 <span>Bulk</span>
               </button>
+              <button 
+                onClick={() => setUploadMode('telegram')}
+                className={`flex items-center space-x-3 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'telegram' ? 'bg-white text-black shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+              >
+                <Terminal className="w-4 h-4" />
+                <span>Bot</span>
+              </button>
             </div>
           )}
 
@@ -299,7 +321,80 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
             </div>
           )}
 
-          {uploadMode === 'single' ? (
+          {uploadMode === 'telegram' ? (
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                <div className="space-y-10">
+                  <div className="bg-red-600/10 border border-red-600/20 p-10 rounded-[3rem] space-y-6">
+                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter">Telegram Bot Integration</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                      Connect your Telegram Bot to GeminiStream. Once connected, you can send videos or video links directly to the bot, and they will be automatically uploaded to your website.
+                    </p>
+                    
+                    <div className="space-y-4 pt-6">
+                      <div className="flex items-start space-x-4">
+                        <div className="bg-white/10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black">1</div>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest leading-loose">Message <a href="https://t.me/BotFather" target="_blank" className="text-red-500 hover:underline">@BotFather</a> on Telegram to create a new bot and get your API Token.</p>
+                      </div>
+                      <div className="flex items-start space-x-4">
+                        <div className="bg-white/10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black">2</div>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest leading-loose">Go to Settings in AI Studio and set <code className="text-white bg-white/5 px-2 py-1 rounded">TELEGRAM_BOT_TOKEN</code>.</p>
+                      </div>
+                      <div className="flex items-start space-x-4">
+                        <div className="bg-white/10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black">3</div>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest leading-loose">Click the button below to initialize the connection.</p>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={setupTelegram}
+                      disabled={isSettingUpTelegram}
+                      className="w-full bg-white text-black py-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-red-600 hover:text-white transition-all shadow-2xl flex items-center justify-center space-x-4"
+                    >
+                      {isSettingUpTelegram ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                      <span>{isSettingUpTelegram ? "Initializing..." : "Initialize Bot Connection"}</span>
+                    </button>
+
+                    {telegramStatus && (
+                      <div className="bg-black/40 p-6 rounded-2xl border border-white/5 space-y-4 animate-in zoom-in-95">
+                        <div className="flex items-center space-x-3">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">{telegramStatus.message}</span>
+                        </div>
+                        {telegramStatus.telegramResponse?.ok ? (
+                          <p className="text-[9px] text-green-500/70 font-bold uppercase tracking-widest">Webhook successfully registered with Telegram API.</p>
+                        ) : (
+                          <p className="text-[9px] text-red-500/70 font-bold uppercase tracking-widest">Error: {telegramStatus.telegramResponse?.description || "Check your token in settings."}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-10">
+                  <div className="aspect-video rounded-[3rem] border border-white/5 bg-white/[0.02] flex flex-col items-center justify-center p-12 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <Terminal className="w-20 h-20 text-gray-800 mb-8 group-hover:text-red-600 group-hover:scale-110 transition-all duration-700" />
+                    <h4 className="text-xl font-black text-white uppercase italic tracking-tighter">Bot Command Center</h4>
+                    <p className="text-[10px] text-gray-600 font-bold mt-4 uppercase tracking-[0.4em] leading-loose">
+                      Once active, your bot will listen for incoming signals. 
+                      <br/>Supported formats: MP4, MOV, AVI, and direct URLs.
+                    </p>
+                  </div>
+
+                  <div className="bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <Sparkles className="w-5 h-5 text-red-600" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Pro Tip</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium leading-relaxed">
+                      Add a caption to your video message in Telegram to set the title of the movie on the website automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : uploadMode === 'single' ? (
             <form onSubmit={handleSingleUpload} className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
                 <div className="lg:col-span-7 space-y-10">

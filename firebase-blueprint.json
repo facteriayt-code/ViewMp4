@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "Movie": {
+      "title": "Movie",
+      "description": "A movie or video entry in the streaming platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the movie." },
+        "title": { "type": "string", "description": "The title of the movie." },
+        "description": { "type": "string", "description": "A brief summary of the movie." },
+        "thumbnail": { "type": "string", "description": "URL to the movie's thumbnail image." },
+        "video_url": { "type": "string", "description": "URL to the movie's video file." },
+        "genre": { "type": "string", "description": "The genre of the movie." },
+        "year": { "type": "number", "description": "The release year of the movie." },
+        "rating": { "type": "string", "description": "The age rating of the movie." },
+        "views": { "type": "number", "description": "The number of views the movie has received." },
+        "is_user_uploaded": { "type": "boolean", "description": "Whether the movie was uploaded by a user." },
+        "uploader_id": { "type": "string", "description": "The ID of the user who uploaded the movie." },
+        "uploader_name": { "type": "string", "description": "The name of the user who uploaded the movie." },
+        "created_at": { "type": "string", "format": "date-time", "description": "The timestamp when the movie was added." }
+      },
+      "required": ["title", "video_url", "thumbnail", "genre", "year"]
+    }
+  },
+  "firestore": {
+    "/movies/{movieId}": {
+      "schema": "Movie",
+      "description": "Collection of movies available on the platform."
+    }
+  }
+}

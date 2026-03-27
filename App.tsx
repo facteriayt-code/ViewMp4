@@ -17,6 +17,8 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
+import { db } from './firebase.ts';
+import { collection, onSnapshot, query, orderBy, getDocFromServer, doc } from 'firebase/firestore';
 import { Database, Wifi, WifiOff, Loader2, X, Search as SearchIcon } from 'lucide-react';
 
 const STORAGE_KEYS = {
@@ -120,13 +122,22 @@ const App: React.FC = () => {
     const syncCloudData = async () => {
       setIsSyncing(true);
       try {
+        // Test Firestore connection
+        try {
+          await getDocFromServer(doc(db, 'test', 'connection'));
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('the client is offline')) {
+            console.error("Please check your Firebase configuration.");
+          }
+        }
+
         const cloudVideos = await getAllVideosFromCloud();
         const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
         const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
         setMovies(uniqueMovies);
         setIsOnline(true);
       } catch (err) {
-        console.error("Supabase Connection Failed:", err);
+        console.error("Cloud Connection Failed:", err);
         setIsOnline(false);
       } finally {
         setIsSyncing(false);
@@ -135,56 +146,41 @@ const App: React.FC = () => {
 
     syncCloudData();
 
-    const moviesChannel = supabase
-      .channel('movies-realtime-global')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          const updatedMovie: Movie = {
-            id: payload.new.id,
-            title: payload.new.title,
-            description: payload.new.description,
-            thumbnail: payload.new.thumbnail,
-            videoUrl: payload.new.video_url,
-            genre: payload.new.genre,
-            year: payload.new.year,
-            rating: payload.new.rating,
-            views: Number(payload.new.views) || 0,
-            isUserUploaded: payload.new.is_user_uploaded,
-            uploaderId: payload.new.uploader_id,
-            uploaderName: payload.new.uploader_name
-          };
-          setMovies(prev => prev.map(m => m.id === updatedMovie.id ? updatedMovie : m));
-          if (selectedMovieRef.current?.id === updatedMovie.id) {
-            setSelectedMovie(updatedMovie);
-          }
-        } else if (payload.eventType === 'INSERT') {
-          const newMovie: Movie = {
-            id: payload.new.id,
-            title: payload.new.title,
-            description: payload.new.description,
-            thumbnail: payload.new.thumbnail,
-            videoUrl: payload.new.video_url,
-            genre: payload.new.genre,
-            year: payload.new.year,
-            rating: payload.new.rating,
-            views: payload.new.views || 0,
-            isUserUploaded: payload.new.is_user_uploaded,
-            uploaderId: payload.new.uploader_id,
-            uploaderName: payload.new.uploader_name
-          };
-          setMovies(prev => [newMovie, ...prev]);
-        } else if (payload.eventType === 'DELETE') {
-          setMovies(prev => prev.filter(m => m.id !== payload.old.id));
-          if (selectedMovieRef.current?.id === payload.old.id) {
-            setSelectedMovie(null);
-          }
+    const q = query(collection(db, 'movies'), orderBy('created_at', 'desc'));
+    const unsubscribeMovies = onSnapshot(q, (snapshot) => {
+      const cloudMovies = snapshot.docs.map(doc => ({
+        id: doc.id,
+        title: doc.data().title,
+        description: doc.data().description,
+        thumbnail: doc.data().thumbnail,
+        videoUrl: doc.data().video_url,
+        genre: doc.data().genre,
+        year: doc.data().year,
+        rating: doc.data().rating,
+        views: Number(doc.data().views) || 0,
+        isUserUploaded: doc.data().is_user_uploaded,
+        uploaderId: doc.data().uploader_id,
+        uploaderName: doc.data().uploader_name
+      } as Movie));
+
+      const updatedMovies = [...cloudMovies, ...INITIAL_MOVIES];
+      const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
+      setMovies(uniqueMovies);
+
+      // Update selected movie if it was changed
+      if (selectedMovieRef.current) {
+        const updatedSelected = cloudMovies.find(m => m.id === selectedMovieRef.current?.id);
+        if (updatedSelected) {
+          setSelectedMovie(updatedSelected);
         }
-      })
-      .subscribe();
+      }
+    }, (error) => {
+      console.error("Firestore Snapshot Error:", error);
+    });
 
     return () => {
       authSub.unsubscribe();
-      supabase.removeChannel(moviesChannel);
+      unsubscribeMovies();
     };
   }, []);
 

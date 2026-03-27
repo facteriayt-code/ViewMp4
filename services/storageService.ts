@@ -1,5 +1,7 @@
 import { Movie } from '../types.ts';
 import { supabase } from './supabaseClient.ts';
+import { db } from '../firebase.ts';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp, increment } from 'firebase/firestore';
 
 // High-quality fallback if everything else fails
 const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
@@ -45,7 +47,6 @@ export const saveVideoToCloud = async (
     }
     
     // Safety check: ensure finalThumbnailUrl is NEVER null or empty string to avoid DB constraint violation
-    // This is critical to fix the "null value in column 'thumbnail'" error.
     if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
       finalThumbnailUrl = DEFAULT_THUMBNAIL;
     }
@@ -60,25 +61,23 @@ export const saveVideoToCloud = async (
 
     if (!finalVideoUrl) throw new Error("A valid video source is required for deployment.");
 
-    // 3. Update or Insert Database Record
+    // 3. Update or Insert Database Record in Firestore
     if (movieMetadata.id) {
-       const { data, error: updateError } = await supabase
-        .from('movies')
-        .update({
-          title: movieMetadata.title,
-          description: movieMetadata.description,
-          genre: movieMetadata.genre,
-          thumbnail: finalThumbnailUrl,
-          video_url: finalVideoUrl
-        })
-        .eq('id', movieMetadata.id)
-        .eq('uploader_id', movieMetadata.uploaderId)
-        .select();
-        
-      if (updateError) throw updateError;
-      if (!data || data.length === 0) throw new Error("The update signal was not received by the server.");
+      const movieRef = doc(db, 'movies', movieMetadata.id);
+      await updateDoc(movieRef, {
+        title: movieMetadata.title,
+        description: movieMetadata.description,
+        genre: movieMetadata.genre,
+        thumbnail: finalThumbnailUrl,
+        video_url: finalVideoUrl,
+        updated_at: serverTimestamp()
+      });
       
-      return mapDbToMovie(data[0]);
+      return {
+        ...movieMetadata,
+        thumbnail: finalThumbnailUrl,
+        videoUrl: finalVideoUrl
+      } as Movie;
     }
 
     const payload = {
@@ -92,22 +91,26 @@ export const saveVideoToCloud = async (
       views: 0,
       is_user_uploaded: true,
       uploader_id: movieMetadata.uploaderId,
-      uploader_name: movieMetadata.uploaderName || 'Anonymous'
+      uploader_name: movieMetadata.uploaderName || 'Anonymous',
+      created_at: serverTimestamp()
     };
 
-    const { data, error: dbError } = await supabase
-      .from('movies')
-      .insert([payload])
-      .select();
-
-    if (dbError) {
-      console.error("Database Insert Error:", dbError);
-      throw new Error(`Metadata Deployment Failed: ${dbError.message}`);
-    }
+    const docRef = await addDoc(collection(db, 'movies'), payload);
     
-    if (!data || data.length === 0) throw new Error("Metadata was rejected by the cloud server.");
-    
-    return mapDbToMovie(data[0]);
+    return {
+      id: docRef.id,
+      title: payload.title,
+      description: payload.description,
+      thumbnail: payload.thumbnail,
+      videoUrl: payload.video_url,
+      genre: payload.genre,
+      year: payload.year,
+      rating: payload.rating,
+      views: payload.views,
+      isUserUploaded: payload.is_user_uploaded,
+      uploaderId: payload.uploader_id,
+      uploaderName: payload.uploader_name
+    };
   } catch (error: any) {
     console.error("Cloud Operation Error:", error);
     throw error;
@@ -115,32 +118,26 @@ export const saveVideoToCloud = async (
 };
 
 export const deleteVideoFromCloud = async (movieId: string): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Authentication required.");
-
-  const { error } = await supabase
-    .from('movies')
-    .delete()
-    .eq('id', movieId)
-    .eq('uploader_id', user.id);
-
-  if (error) throw new Error(`DATABASE_ERROR: DELETE`);
+  const movieRef = doc(db, 'movies', movieId);
+  await deleteDoc(movieRef);
 };
 
 export const incrementMovieView = async (movieId: string) => {
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(movieId);
-  if (!isUuid) return;
   try {
-    await supabase.rpc('increment_views', { movie_id: movieId });
+    const movieRef = doc(db, 'movies', movieId);
+    await updateDoc(movieRef, {
+      views: increment(1)
+    });
   } catch (err) {}
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
-  const { data, error } = await supabase
-    .from('movies')
-    .select('*')
-    .order('created_at', { ascending: false });
-  return (data || []).map(mapDbToMovie);
+  const q = query(collection(db, 'movies'), orderBy('created_at', 'desc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as any)).map(mapDbToMovie);
 };
 
 const mapDbToMovie = (item: any): Movie => ({

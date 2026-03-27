@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: movies
+    // Document ID: auto-generated or manual
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - thumbnail: string (required, URL)
+    //   - video_url: string (required, URL)
+    //   - genre: string (required)
+    //   - year: number (required)
+    //   - rating: string (optional)
+    //   - views: number (required)
+    //   - is_user_uploaded: bool (optional)
+    //   - uploader_id: string (optional)
+    //   - uploader_name: string (optional)
+    //   - created_at: timestamp (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidMovie(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.thumbnail is string && data.thumbnail.size() > 0 &&
+             data.video_url is string && data.video_url.size() > 0 &&
+             data.genre is string &&
+             data.year is number &&
+             data.views is number;
+    }
+
+    match /movies/{movieId} {
+      // Allow anyone to read movies
+      allow read: if true;
+      
+      // Allow authenticated users to create movies
+      allow create: if isAuthenticated() && isValidMovie(request.resource.data);
+      
+      // Allow owners or admins to update movies
+      allow update: if (isAuthenticated() && (request.resource.data.uploader_id == request.auth.uid || isAdmin())) && isValidMovie(request.resource.data);
+      
+      // Allow owners or admins to delete movies
+      allow delete: if isAuthenticated() && (resource.data.uploader_id == request.auth.uid || isAdmin());
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "facteriayt@gmail.com" && request.auth.token.email_verified == true);
+    }
+  }
+}
