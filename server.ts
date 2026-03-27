@@ -12,83 +12,85 @@ const __dirname = path.dirname(__filename);
 
 console.log("Starting server initialization...");
 
-// Load Firebase Config
-let firebaseConfig: any;
-try {
-  firebaseConfig = JSON.parse(readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf8'));
-  console.log("Firebase config loaded for project:", firebaseConfig.projectId);
-} catch (err) {
-  console.error("Failed to load firebase-applet-config.json:", err);
-  process.exit(1);
-}
-
-// Supabase Configuration
-const supabaseUrl = process.env.SUPABASE_URL || 'https://diurandrwkqhefhwclyv.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_-wW999bVAki7iV8KJjiNng_goaBCqlI';
-
-// Validate and normalize Supabase URL
-let normalizedSupabaseUrl = supabaseUrl;
-if (normalizedSupabaseUrl && !normalizedSupabaseUrl.startsWith('http')) {
-  console.log("Normalizing Supabase URL:", normalizedSupabaseUrl);
-  if (normalizedSupabaseUrl.includes('.supabase.co')) {
-    normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}`;
-  } else {
-    normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
-  }
-  console.log("Normalized Supabase URL to:", normalizedSupabaseUrl);
-}
-
-let supabase: any;
-try {
-  supabase = createClient(normalizedSupabaseUrl, supabaseKey);
-  console.log("Supabase client initialized with URL:", normalizedSupabaseUrl);
-} catch (e: any) {
-  console.error("Failed to initialize Supabase client:", e.message);
-}
-
-// Firebase Admin Configuration
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      projectId: firebaseConfig.projectId
-    });
-    console.log("Firebase Admin initialized for project:", firebaseConfig.projectId);
-  } catch (e: any) {
-    console.error("Failed to initialize Firebase Admin:", e.message);
-  }
-}
-
-const db = firebaseConfig.firestoreDatabaseId 
-  ? admin.firestore(firebaseConfig.firestoreDatabaseId)
-  : admin.firestore();
-
 // --- Vite Integration ---
 async function startServer() {
+  console.log("Initializing startServer...");
   const app = express();
   const PORT = 3000;
+
+  // Load Firebase Config inside startServer to be safer
+  let firebaseConfig: any;
+  try {
+    firebaseConfig = JSON.parse(readFileSync(path.join(__dirname, 'firebase-applet-config.json'), 'utf8'));
+    console.log("Firebase config loaded for project:", firebaseConfig.projectId);
+  } catch (err) {
+    console.error("CRITICAL: Failed to load firebase-applet-config.json:", err);
+    // Don't exit, just log and try to continue or handle gracefully
+    firebaseConfig = { projectId: process.env.GOOGLE_CLOUD_PROJECT || 'unknown' };
+  }
+
+  // Supabase Configuration
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://diurandrwkqhefhwclyv.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_-wW999bVAki7iV8KJjiNng_goaBCqlI';
+
+  // Validate and normalize Supabase URL
+  let normalizedSupabaseUrl = supabaseUrl;
+  if (normalizedSupabaseUrl && !normalizedSupabaseUrl.startsWith('http')) {
+    console.log("Normalizing Supabase URL:", normalizedSupabaseUrl);
+    if (normalizedSupabaseUrl.includes('.supabase.co')) {
+      normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}`;
+    } else {
+      normalizedSupabaseUrl = `https://${normalizedSupabaseUrl}.supabase.co`;
+    }
+    console.log("Normalized Supabase URL to:", normalizedSupabaseUrl);
+  }
+
+  let supabase: any;
+  try {
+    supabase = createClient(normalizedSupabaseUrl, supabaseKey);
+    console.log("Supabase client initialized with URL:", normalizedSupabaseUrl);
+  } catch (e: any) {
+    console.error("Failed to initialize Supabase client:", e.message);
+  }
+
+  // Firebase Admin Configuration
+  if (!admin.apps.length) {
+    try {
+      admin.initializeApp({
+        projectId: firebaseConfig.projectId
+      });
+      console.log("Firebase Admin initialized for project:", firebaseConfig.projectId);
+    } catch (e: any) {
+      console.error("Failed to initialize Firebase Admin:", e.message);
+    }
+  }
+
+  const db = firebaseConfig.firestoreDatabaseId 
+    ? admin.firestore(firebaseConfig.firestoreDatabaseId)
+    : admin.firestore();
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
   // Request logging middleware
   app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}`);
     next();
   });
 
   // --- Health Check ---
-  app.get(["/api/health", "/api/health/"], (req, res) => {
+  app.get("/api/health", (req, res) => {
     console.log("Health check requested");
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.get(["/api/ping", "/api/ping/"], (req, res) => {
+  app.get("/api/ping", (req, res) => {
     console.log("Ping requested");
     res.send("pong");
   });
 
   // --- Connection Test Logic ---
-  app.get(["/api/test-connections", "/api/test-connections/"], async (req, res) => {
+  app.get("/api/test-connections", async (req, res) => {
     console.log("Handling /api/test-connections request");
     const results: any = {
       supabase: { status: "pending", message: "" },
@@ -119,7 +121,7 @@ async function startServer() {
   });
 
   // --- Migration Logic ---
-  app.get(["/api/migrate-supabase-to-firestore", "/api/migrate-supabase-to-firestore/"], async (req, res) => {
+  app.get("/api/migrate-supabase-to-firestore", async (req, res) => {
     try {
       console.log("Starting migration from Supabase to Firestore...");
       
@@ -322,15 +324,18 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== "production") {
+    console.log("Starting Vite in middleware mode...");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: "spa",
     });
     app.use(vite.middlewares);
+    console.log("Vite middleware added.");
   } else {
+    console.log("Serving production build from dist...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*all", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
