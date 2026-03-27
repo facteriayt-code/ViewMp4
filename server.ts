@@ -87,7 +87,7 @@ async function startServer() {
     }
   }
 
-  const db = firebaseConfig.firestoreDatabaseId 
+  const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
     ? admin.firestore(firebaseConfig.firestoreDatabaseId)
     : admin.firestore();
 
@@ -321,6 +321,8 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`>>> SERVER RUNNING ON PORT ${PORT} <<<`);
+    console.log(`>>> APP_URL: ${process.env.APP_URL || 'Not set'} <<<`);
+    console.log(`>>> TELEGRAM_TOKEN: ${process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'} <<<`);
   });
 }
 
