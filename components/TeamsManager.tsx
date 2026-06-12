@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Users, UserPlus, Shield, Plus, Trash2, Home, Star, ArrowRight } from 'lucide-react';
 import { Team, Player } from '../types.ts';
 import { db } from '../firebase.ts';
-import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 interface TeamsManagerProps {
   teams: Team[];
@@ -19,29 +19,34 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
   const [activeTab, setActiveTab ] = useState<'list' | 'add'>('list');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim()) return;
 
     setIsLoading(true);
-    const newTeam = {
+    setErrorMsg(null);
+    const teamId = 't-' + Date.now();
+    const newTeam: Team = {
+      id: teamId,
       name: newTeamName.trim(),
       logoUrl: `https://images.unsplash.com/photo-1540747737956-[#D4AF37]?q=80&w=150`,
       createdAt: new Date().toISOString()
     };
 
+    // Always persist to local fallback storage first for instant updates & offline resiliency
+    const storedTeams = JSON.parse(localStorage.getItem('royal_cricket_teams') || '[]');
+    storedTeams.push(newTeam);
+    localStorage.setItem('royal_cricket_teams', JSON.stringify(storedTeams));
+
     if (user) {
       try {
-        await addDoc(collection(db, 'teams'), newTeam);
-      } catch (err) {
+        await setDoc(doc(db, 'teams', teamId), newTeam);
+      } catch (err: any) {
         console.error("Cloud Err Team Creation", err);
+        setErrorMsg(`Team saved locally, but failed to sync to Cloud: ${err.message || err}`);
       }
-    } else {
-      const storedTeams = JSON.parse(localStorage.getItem('royal_cricket_teams') || '[]');
-      const localTeam = { ...newTeam, id: 't-' + Date.now() };
-      storedTeams.push(localTeam);
-      localStorage.setItem('royal_cricket_teams', JSON.stringify(storedTeams));
     }
 
     setNewTeamName('');
@@ -54,7 +59,10 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
     if (!newPlayerName.trim() || !selectedTeamIdForPlayer) return;
 
     setIsLoading(true);
-    const newPlayer = {
+    setErrorMsg(null);
+    const playerId = 'p-' + Date.now();
+    const newPlayer: Player = {
+      id: playerId,
       name: newPlayerName.trim(),
       teamId: selectedTeamIdForPlayer,
       createdAt: new Date().toISOString(),
@@ -70,17 +78,18 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
       }
     };
 
+    // Always persist to local fallback storage first for instant updates & offline resiliency
+    const storedPlayers = JSON.parse(localStorage.getItem('royal_cricket_players') || '[]');
+    storedPlayers.push(newPlayer);
+    localStorage.setItem('royal_cricket_players', JSON.stringify(storedPlayers));
+
     if (user) {
       try {
-        await addDoc(collection(db, 'players'), newPlayer);
-      } catch (err) {
+        await setDoc(doc(db, 'players', playerId), newPlayer);
+      } catch (err: any) {
         console.error("Cloud Err Player Creation", err);
+        setErrorMsg(`Player saved locally, but failed to sync to Cloud: ${err.message || err}`);
       }
-    } else {
-      const storedPlayers = JSON.parse(localStorage.getItem('royal_cricket_players') || '[]');
-      const localPlayer = { ...newPlayer, id: 'p-' + Date.now() };
-      storedPlayers.push(localPlayer);
-      localStorage.setItem('royal_cricket_players', JSON.stringify(storedPlayers));
     }
 
     setNewPlayerName('');
@@ -91,15 +100,17 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
   const handleDeleteTeam = async (teamId: string) => {
     if (!confirm("Are you sure you want to delete this team? All associated players will be orphaned.")) return;
     
+    // Always delete locally first
+    const stored = JSON.parse(localStorage.getItem('royal_cricket_teams') || '[]');
+    localStorage.setItem('royal_cricket_teams', JSON.stringify(stored.filter((t: any) => t.id !== teamId)));
+
     if (user) {
       try {
         await deleteDoc(doc(db, 'teams', teamId));
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error("Cloud Err Team Deletion", err);
+        setErrorMsg(`Failed to delete team from Cloud: ${err.message || err}`);
       }
-    } else {
-      const stored = JSON.parse(localStorage.getItem('royal_cricket_teams') || '[]');
-      localStorage.setItem('royal_cricket_teams', JSON.stringify(stored.filter((t: any) => t.id !== teamId)));
     }
     onTeamAdded();
   };
@@ -110,18 +121,24 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
       {/* Selector view sub-tabs */}
       <div className="flex justify-center space-x-2">
         <button
-          onClick={() => setActiveTab('list')}
+          onClick={() => { setActiveTab('list'); setErrorMsg(null); }}
           className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${activeTab === 'list' ? 'bg-[#D4AF37] text-[#0B132B]' : 'bg-white/5 text-gray-400 hover:text-white'}`}
         >
           View Royal Guilds
         </button>
         <button
-          onClick={() => setActiveTab('add')}
+          onClick={() => { setActiveTab('add'); setErrorMsg(null); }}
           className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${activeTab === 'add' ? 'bg-[#D4AF37] text-[#0B132B]' : 'bg-white/5 text-gray-400 hover:text-white'}`}
         >
           Add Team or Player
         </button>
       </div>
+
+      {errorMsg && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-400 text-center animate-in fade-in duration-200">
+          {errorMsg}
+        </div>
+      )}
 
       {activeTab === 'list' && (
         <div className="grid md:grid-cols-2 gap-6 animate-in fade-in duration-200">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, RefreshCw, Star, UserPlus, Zap, Trash2, Check, Sparkles, User, ShieldAlert } from 'lucide-react';
 import { Player, Team, Match, InningsState, MatchBatsmanLive, MatchBowlerLive } from '../types.ts';
-import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 
 interface ActiveMatchScorerProps {
@@ -500,19 +500,28 @@ const ActiveMatchScorer: React.FC<ActiveMatchScorerProps> = ({
     match.winnerId = winnerId;
     match.margin = margin;
 
+    // Always persist to local fallback storage first for instant updates & offline resiliency
+    const history = JSON.parse(localStorage.getItem('royal_cricket_history') || '[]');
+    const matchId = match.id || 'm-' + Date.now();
+    const matchWithId = { ...match, id: matchId };
+
+    // Push or replace match record locally
+    const existingIndex = history.findIndex((m: any) => m.id === matchId);
+    if (existingIndex >= 0) {
+      history[existingIndex] = matchWithId;
+    } else {
+      history.push(matchWithId);
+    }
+    localStorage.setItem('royal_cricket_history', JSON.stringify(history));
+
     // Save of stats & match in Firestore if user is signed in
     if (user) {
       try {
-        await addDoc(collection(db, 'matches'), match);
+        await setDoc(doc(db, 'matches', matchId), matchWithId);
         // We could also dynamically update Player profile stats in DB, but let's keep it simple and robust
       } catch (err) {
         console.error("Failed to sync match to cloud", err);
       }
-    } else {
-      // Local recovery
-      const history = JSON.parse(localStorage.getItem('royal_cricket_history') || '[]');
-      history.push(match);
-      localStorage.setItem('royal_cricket_history', JSON.stringify(history));
     }
 
     alert(`🏆 Match Finished! ${margin}`);
