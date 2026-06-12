@@ -16,6 +16,8 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
   const [newTeamName, setNewTeamName] = useState('');
   const [selectedTeamIdForPlayer, setSelectedTeamIdForPlayer] = useState('');
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [playerInputMode, setPlayerInputMode] = useState<'single' | 'bulk'>('single');
+  const [bulkPlayerNames, setBulkPlayerNames] = useState('');
   const [activeTab, setActiveTab ] = useState<'list' | 'add'>('list');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -56,43 +58,68 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPlayerName.trim() || !selectedTeamIdForPlayer) return;
+    if (!selectedTeamIdForPlayer) return;
+
+    const namesToProcess: string[] = [];
+    if (playerInputMode === 'single') {
+      if (!newPlayerName.trim()) return;
+      namesToProcess.push(newPlayerName.trim());
+    } else {
+      if (!bulkPlayerNames.trim()) return;
+      // Split by newline or comma
+      const splitNames = bulkPlayerNames.split(/[\n,]+/);
+      splitNames.forEach(name => {
+        const trimmed = name.trim();
+        if (trimmed.length > 0) {
+          namesToProcess.push(trimmed);
+        }
+      });
+    }
+
+    if (namesToProcess.length === 0) return;
 
     setIsLoading(true);
     setErrorMsg(null);
-    const playerId = 'p-' + Date.now();
-    const newPlayer: Player = {
-      id: playerId,
-      name: newPlayerName.trim(),
-      teamId: selectedTeamIdForPlayer,
-      createdAt: new Date().toISOString(),
-      stats: {
-        matchesPlayed: 0,
-        runs: 0,
-        wickets: 0,
-        ballsBowled: 0,
-        runsConceded: 0,
-        highestScore: 0,
-        bestBowlingWickets: 0,
-        bestBowlingRuns: 0
-      }
-    };
+
+    const createdPlayers: Player[] = namesToProcess.map((name, index) => {
+      const playerId = `p-${Date.now()}-${index}`;
+      return {
+        id: playerId,
+        name,
+        teamId: selectedTeamIdForPlayer,
+        createdAt: new Date().toISOString(),
+        stats: {
+          matchesPlayed: 0,
+          runs: 0,
+          wickets: 0,
+          ballsBowled: 0,
+          runsConceded: 0,
+          highestScore: 0,
+          bestBowlingWickets: 0,
+          bestBowlingRuns: 0
+        }
+      };
+    });
 
     // Always persist to local fallback storage first for instant updates & offline resiliency
     const storedPlayers = JSON.parse(localStorage.getItem('royal_cricket_players') || '[]');
-    storedPlayers.push(newPlayer);
+    storedPlayers.push(...createdPlayers);
     localStorage.setItem('royal_cricket_players', JSON.stringify(storedPlayers));
 
     if (user) {
       try {
-        await setDoc(doc(db, 'players', playerId), newPlayer);
+        // Safe parallel creation using setDoc
+        await Promise.all(
+          createdPlayers.map(p => setDoc(doc(db, 'players', p.id), p))
+        );
       } catch (err: any) {
         console.error("Cloud Err Player Creation", err);
-        setErrorMsg(`Player saved locally, but failed to sync to Cloud: ${err.message || err}`);
+        setErrorMsg(`Players saved locally, but failed to sync to Cloud: ${err.message || err}`);
       }
     }
 
     setNewPlayerName('');
+    setBulkPlayerNames('');
     setIsLoading(false);
     onPlayerAdded();
   };
@@ -255,23 +282,58 @@ const TeamsManager: React.FC<TeamsManagerProps> = ({ teams, players, onTeamAdded
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Player Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Arthur Pendragon"
-                  value={newPlayerName}
-                  onChange={(e) => setNewPlayerName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-gray-600 focus:border-[#D4AF37] outline-none"
-                  required
-                />
+                <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Registration Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlayerInputMode('single')}
+                    className={`py-2 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition ${playerInputMode === 'single' ? 'bg-[#D4AF37] text-[#0B132B]' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                  >
+                    Single Warrior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayerInputMode('bulk')}
+                    className={`py-2 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition ${playerInputMode === 'bulk' ? 'bg-[#D4AF37] text-[#0B132B]' : 'bg-white/5 text-gray-400 hover:text-white'}`}
+                  >
+                    Bulk Inscription
+                  </button>
+                </div>
               </div>
+
+              {playerInputMode === 'single' ? (
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Player Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Arthur Pendragon"
+                    value={newPlayerName}
+                    onChange={(e) => setNewPlayerName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-gray-600 focus:border-[#D4AF37] outline-none"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Warriors Roster (One per line or comma-separated)</label>
+                  <textarea 
+                    placeholder="e.g.&#10;Arthur Pendragon&#10;Lancelot du Lac&#10;Gawain of Orkney"
+                    rows={4}
+                    value={bulkPlayerNames}
+                    onChange={(e) => setBulkPlayerNames(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-gray-600 focus:border-[#D4AF37] outline-none min-h-[100px]"
+                    required
+                  />
+                  <p className="text-[10px] text-gray-500 italic">Separate warrior names with commas or line breaks.</p>
+                </div>
+              )}
 
               <button 
                 type="submit"
-                disabled={isLoading || !selectedTeamIdForPlayer}
+                disabled={isLoading || !selectedTeamIdForPlayer || (playerInputMode === 'single' ? !newPlayerName.trim() : !bulkPlayerNames.trim())}
                 className="w-full py-4 bg-gradient-to-br from-[#D4AF37] to-[#AA7C11] text-[#0B132B] font-bold text-xs uppercase tracking-widest rounded-2xl shadow-lg transition active:scale-95 disabled:opacity-50"
               >
-                Inscribe Player Profile
+                {playerInputMode === 'single' ? 'Inscribe Player Profile' : 'Inscribe Warriors Bulk'}
               </button>
             </form>
           </div>
