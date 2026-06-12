@@ -1,65 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: movies
-    // Document ID: auto-generated or manual
-    // Fields:
-    //   - title: string (required)
-    //   - description: string (optional)
-    //   - thumbnail: string (required, URL)
-    //   - video_url: string (required, URL)
-    //   - genre: string (required)
-    //   - year: number (required)
-    //   - rating: string (optional)
-    //   - views: number (required)
-    //   - is_user_uploaded: bool (optional)
-    //   - uploader_id: string (optional)
-    //   - uploader_name: string (optional)
-    //   - created_at: timestamp (optional)
-    //
-    // ===============================================================
+    
+    // Catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
-    // Helper Functions
-    function isAuthenticated() {
+    // Helper functions
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-             (request.auth.token.email == "facteriayt@gmail.com" && request.auth.token.email_verified == true);
+    function isIncomingValidTeam(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100;
     }
 
-    function isValidMovie(data) {
-      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.thumbnail is string && data.thumbnail.size() > 0 &&
-             data.video_url is string && data.video_url.size() > 0 &&
-             data.genre is string &&
-             data.year is number &&
-             data.views is number;
+    function isIncomingValidPlayer(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.teamId is string && data.teamId.size() > 0;
     }
 
-    match /movies/{movieId} {
-      // Public read: anyone can see movies
+    // Teams
+    match /teams/{teamId} {
       allow read: if true;
-      
-      // Allow authenticated users to create movies
-      allow create: if isAuthenticated() && isValidMovie(request.resource.data) && 
-                    (request.resource.data.uploader_id == request.auth.uid || isAdmin());
-      
-      // Allow owners or admins to update movies
-      allow update: if isAuthenticated() && (resource.data.uploader_id == request.auth.uid || isAdmin()) && 
-                    isValidMovie(request.resource.data);
-      
-      // Allow owners or admins to delete movies
-      allow delete: if isAuthenticated() && (resource.data.uploader_id == request.auth.uid || isAdmin());
+      allow create, update: if isSignedIn() && isIncomingValidTeam(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    // Players
+    match /players/{playerId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isIncomingValidPlayer(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    // Matches
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
   }
 }

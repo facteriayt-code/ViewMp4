@@ -1,6 +1,6 @@
 {
-  "name": "GeminiStream",
-  "description": "A high-end movie streaming platform with AI-powered insights and user content creation capabilities.",
+  "name": "Royal Cricket Ledger",
+  "description": "An imperial, premium local cricket match score recorder with coin toss, real-time metrics, head-to-head ratios, and rosters.",
   "requestFramePermissions": [
     "camera",
     "microphone"

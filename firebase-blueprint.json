@@ -1,31 +1,66 @@
 {
   "entities": {
-    "Movie": {
-      "title": "Movie",
-      "description": "A movie or video entry in the streaming platform.",
+    "Team": {
+      "title": "Team",
+      "description": "A local cricket team participating in matches.",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the movie." },
-        "title": { "type": "string", "description": "The title of the movie." },
-        "description": { "type": "string", "description": "A brief summary of the movie." },
-        "thumbnail": { "type": "string", "description": "URL to the movie's thumbnail image." },
-        "video_url": { "type": "string", "description": "URL to the movie's video file." },
-        "genre": { "type": "string", "description": "The genre of the movie." },
-        "year": { "type": "number", "description": "The release year of the movie." },
-        "rating": { "type": "string", "description": "The age rating of the movie." },
-        "views": { "type": "number", "description": "The number of views the movie has received." },
-        "is_user_uploaded": { "type": "boolean", "description": "Whether the movie was uploaded by a user." },
-        "uploader_id": { "type": "string", "description": "The ID of the user who uploaded the movie." },
-        "uploader_name": { "type": "string", "description": "The name of the user who uploaded the movie." },
-        "created_at": { "type": "string", "format": "date-time", "description": "The timestamp when the movie was added." }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["title", "video_url", "thumbnail", "genre", "year"]
+      "required": ["name", "createdAt"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "A cricket player belonging to a team.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "teamId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "stats": { "type": "object" }
+      },
+      "required": ["name", "teamId", "createdAt"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A cricket match between two teams.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teamAId": { "type": "string" },
+        "teamBId": { "type": "string" },
+        "teamAName": { "type": "string" },
+        "teamBName": { "type": "string" },
+        "tossWinnerId": { "type": "string" },
+        "tossDecision": { "type": "string", "enum": ["bat", "bowl"] },
+        "oversLimit": { "type": "number" },
+        "status": { "type": "string", "enum": ["live", "completed", "abandoned"] },
+        "winnerId": { "type": "string" },
+        "margin": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "currentInnings": { "type": "number" },
+        "firstInnings": { "type": "object" },
+        "secondInnings": { "type": "object" }
+      },
+      "required": ["teamAId", "teamBId", "tossWinnerId", "tossDecision", "oversLimit", "status", "createdAt", "currentInnings", "firstInnings"]
     }
   },
   "firestore": {
-    "/movies/{movieId}": {
-      "schema": "Movie",
-      "description": "Collection of movies available on the platform."
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Collection of local teams."
+    },
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Collection of local players mapped to teams."
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Collection of live or finished matches."
     }
   }
 }
