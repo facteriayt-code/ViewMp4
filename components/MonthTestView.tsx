@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MonthExam, MonthExamQuestion } from '../types';
 import { useLearning } from '../src/context/LearningContext';
 import { Award, CheckCircle2, XCircle, Trophy, Sparkles, ArrowRight, RotateCcw, Shield, HelpCircle, Download, BookOpen, Clock, Star } from 'lucide-react';
+import { playClickSound, playCorrectSound, playIncorrectSound, playCompletionChime } from '../src/utils/audio';
 
 interface MonthTestViewProps {
   exam: MonthExam;
@@ -24,9 +25,16 @@ export const MonthTestView: React.FC<MonthTestViewProps> = ({ exam, onClose }) =
     if (selectedAnswers[currentIdx] !== undefined) return; // already answered
     setSelectedAnswers(prev => ({ ...prev, [currentIdx]: optIdx }));
     setShowInstantWhy(true);
+
+    if (optIdx === currentQ.correctAnswerIndex) {
+      playCorrectSound();
+    } else {
+      playIncorrectSound();
+    }
   };
 
   const handleNext = () => {
+    playClickSound();
     setShowInstantWhy(false);
     if (currentIdx < exam.questions.length - 1) {
       setCurrentIdx(prev => prev + 1);
@@ -45,6 +53,12 @@ export const MonthTestView: React.FC<MonthTestViewProps> = ({ exam, onClose }) =
       setFinalScorePercent(score);
       setPassed(isPassed);
       setGameState('result');
+
+      if (isPassed) {
+        playCompletionChime();
+      } else {
+        playIncorrectSound();
+      }
 
       // Update global context state
       completeMonthExam(exam.monthNumber, score, exam.xpReward, exam.gemReward, exam.badgeId);

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { DayLesson } from '../types';
 import { useLearning } from '../src/context/LearningContext';
-import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart } from 'lucide-react';
+import { DAYS_CURRICULUM } from '../data/courseData';
+import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight } from 'lucide-react';
+import { playClickSound, playCorrectSound, playIncorrectSound, playCompletionChime } from '../src/utils/audio';
 
 interface LessonViewProps {
   day: DayLesson;
@@ -11,7 +13,16 @@ interface LessonViewProps {
 export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   const { completeLesson, deductHeart, progress } = useLearning();
 
-  const [step, setStep] = useState<'theory' | 'quiz' | 'minigame' | 'completed'>('theory');
+  const previousLesson = DAYS_CURRICULUM.find(l => l.dayNumber === day.dayNumber - 1);
+
+  const [step, setStep] = useState<'revision' | 'theory' | 'quiz' | 'minigame' | 'completed'>(
+    day.dayNumber > 1 && previousLesson ? 'revision' : 'theory'
+  );
+  
+  // Revision warmup state
+  const [revisionSelectedOpt, setRevisionSelectedOpt] = useState<number | null>(null);
+  const [revisionSubmitted, setRevisionSubmitted] = useState<boolean>(false);
+
   const [currentQuizIndex, setCurrentQuizIndex] = useState<number>(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState<boolean>(false);
@@ -37,6 +48,7 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
 
   const handleQuizOptionSelect = (optionIdx: number) => {
     if (isAnswerSubmitted) return;
+    playClickSound();
     setSelectedOption(optionIdx);
   };
 
@@ -47,14 +59,17 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
     const currentQ = day.quiz[currentQuizIndex];
     if (selectedOption === currentQ.correctAnswerIndex) {
       setScoreCount(prev => prev + 1);
+      playCorrectSound();
       speakText("Correct! " + currentQ.options[selectedOption]);
     } else {
       deductHeart();
+      playIncorrectSound();
       speakText("Not quite.");
     }
   };
 
   const handleNextQuizQuestion = () => {
+    playClickSound();
     if (currentQuizIndex < day.quiz.length - 1) {
       setCurrentQuizIndex(prev => prev + 1);
       setSelectedOption(null);
@@ -70,11 +85,13 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   };
 
   const handleWordBlockClick = (word: string, indexInPool: number) => {
+    playClickSound();
     setUserSentenceWords(prev => [...prev, word]);
     setAvailableWords(prev => prev.filter((_, i) => i !== indexInPool));
   };
 
   const handleRemoveWordFromUserSentence = (word: string, indexInUser: number) => {
+    playClickSound();
     setUserSentenceWords(prev => prev.filter((_, i) => i !== indexInUser));
     setAvailableWords(prev => [...prev, word]);
   };
@@ -85,13 +102,16 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
 
     if (target?.toLowerCase() === userBuilt.toLowerCase()) {
       setGameSuccess(true);
+      playCorrectSound();
       speakText(userBuilt);
     } else {
+      playIncorrectSound();
       alert("Try re-ordering the words according to the grammar rules!");
     }
   };
 
   const finishLesson = () => {
+    playCompletionChime();
     const scorePercent = Math.round((scoreCount / (day.quiz.length || 1)) * 100);
     completeLesson(day.id, scorePercent, day.xpReward);
     setStep('completed');
@@ -121,6 +141,146 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* STEP 0: QUICK PREVIOUS LESSON REVISION & WARMUP */}
+      {step === 'revision' && previousLesson && (
+        <div className="space-y-6 animate-fadeIn">
+          
+          <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-7 border border-amber-500/40 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
+                <span>Quick Daily Revision • Day {previousLesson.dayNumber}</span>
+              </div>
+
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setStep('theory');
+                }}
+                className="text-xs text-slate-400 hover:text-white underline font-medium"
+              >
+                Skip Warmup
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black font-heading text-white flex items-center space-x-2">
+                <span>Warmup: {previousLesson.title}</span>
+              </h2>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                {previousLesson.theory.summary}
+              </p>
+            </div>
+          </div>
+
+          {/* Key Takeaways Cards */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span>Key Grammar Rules to Remember:</span>
+            </h3>
+
+            <div className="grid grid-cols-1 gap-3">
+              {previousLesson.theory.rules.slice(0, 2).map((r, i) => (
+                <div key={i} className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
+                  <div className="flex items-start space-x-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-white">{r.rule}</p>
+                      <p className="text-xs text-slate-300 leading-snug">{r.why}</p>
+                      <p className="text-[11px] text-emerald-400 font-medium italic">
+                        Example: "{r.example}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Refresher Question */}
+          {previousLesson.quiz[0] && (
+            <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex items-center space-x-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>60-Second Memory Check:</span>
+              </div>
+
+              <p className="text-sm font-bold text-white">
+                {previousLesson.quiz[0].question}
+              </p>
+
+              <div className="space-y-2">
+                {previousLesson.quiz[0].options.map((opt, optIdx) => {
+                  const isSelected = revisionSelectedOpt === optIdx;
+                  const isCorrect = optIdx === previousLesson.quiz[0].correctAnswerIndex;
+
+                  let btnStyle = "bg-slate-950 border-slate-800 text-slate-200 hover:border-slate-700";
+                  if (revisionSubmitted) {
+                    if (isCorrect) {
+                      btnStyle = "bg-emerald-950/90 border-emerald-500 text-emerald-300 font-bold";
+                    } else if (isSelected) {
+                      btnStyle = "bg-rose-950/90 border-rose-500 text-rose-300";
+                    }
+                  } else if (isSelected) {
+                    btnStyle = "bg-indigo-900 border-indigo-500 text-white font-bold";
+                  }
+
+                  return (
+                    <button
+                      key={optIdx}
+                      onClick={() => {
+                        if (revisionSubmitted) return;
+                        playClickSound();
+                        setRevisionSelectedOpt(optIdx);
+                        setRevisionSubmitted(true);
+                        if (isCorrect) playCorrectSound();
+                        else playIncorrectSound();
+                      }}
+                      className={`w-full text-left p-3.5 rounded-xl border text-xs transition flex items-center justify-between ${btnStyle}`}
+                    >
+                      <span>{opt}</span>
+                      {revisionSubmitted && isCorrect && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      )}
+                      {revisionSubmitted && isSelected && !isCorrect && (
+                        <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {revisionSubmitted && (
+                <div className="bg-indigo-950/80 p-3.5 rounded-xl border border-indigo-500/30 text-xs text-indigo-200 space-y-1 animate-fadeIn">
+                  <span className="font-bold text-amber-300 block text-[10px] uppercase tracking-wider">
+                    Rule Refresher:
+                  </span>
+                  <p>{previousLesson.quiz[0].explanationWhy}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transition Button */}
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                playClickSound();
+                setStep('theory');
+              }}
+              className="w-full bg-gradient-to-r from-amber-500 via-indigo-600 to-purple-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-amber-500/20 transition flex items-center justify-center space-x-2 text-sm"
+            >
+              <span>I'm Warmed Up! Start Day {day.dayNumber} Lesson</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+        </div>
+      )}
 
       {/* STEP 1: THEORY & LINGUISTIC "WHY" EXPLANATION */}
       {step === 'theory' && (
