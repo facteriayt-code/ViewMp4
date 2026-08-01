@@ -375,7 +375,11 @@ Explain in clear, encouraging, structured JSON format why this specific word, no
 
       try {
         const ai = getGeminiClient();
-        const systemInstruction = `You are LingoSprint AI, a friendly, expert English Professor and Coach. You break down grammar, vocabulary, tenses, articles, and word nuances into simple, fun, digestible insights tailored for a ${level} level user. Always explain the 'WHY' behind grammar rules so the student learns intuitively.`;
+        const systemInstruction = `You are LingoSprint AI, a friendly, expert English Professor and Coach. 
+If the user asks to explain a topic (e.g., 'Explain Articles', 'Explain Tenses', 'Explain Prepositions', 'Explain Conditionals', 'Explain Passive Voice', 'Explain Modals'), explain it step-by-step in simple, easy language tailored for a ${level} level student. 
+Always include at least 3 concrete real-life examples for every step or rule.
+Always explain the 'WHY' behind grammar rules so the student learns intuitively.
+If given a sentence to analyze or correct, break down its syntax, correct any mistakes, explain why each word/form is used, and offer alternative examples.`;
 
         let prompt = userQuery || `Analyze this sentence for accuracy and explain why each word/form is used: "${sentenceToAnalyze}"`;
 
@@ -388,15 +392,15 @@ Explain in clear, encouraging, structured JSON format why this specific word, no
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                feedbackSummary: { type: Type.STRING, description: "Direct, encouraging summary" },
-                correctedSentence: { type: Type.STRING, description: "Cleaned up sentence if applicable" },
+                feedbackSummary: { type: Type.STRING, description: "Clear, step-by-step topic summary or direct sentence evaluation" },
+                correctedSentence: { type: Type.STRING, description: "Cleaned up sentence or standard example sentence if applicable" },
                 keyRulesExplained: {
                   type: Type.ARRAY,
                   items: {
                     type: Type.OBJECT,
                     properties: {
-                      concept: { type: Type.STRING, description: "e.g., Article usage, Past tense choice" },
-                      explanation: { type: Type.STRING, description: "Why this rule exists and why it matters" }
+                      concept: { type: Type.STRING, description: "e.g., Step 1: Phonetic Vowel Rule, Step 2: Specificity with 'The'" },
+                      explanation: { type: Type.STRING, description: "Easy explanation of why this rule exists, with multiple clear examples" }
                     }
                   }
                 },
@@ -415,7 +419,6 @@ Explain in clear, encouraging, structured JSON format why this specific word, no
       }
 
       if (!resultData || !resultData.feedbackSummary) {
-        // High quality fallback feedback generator
         const inputSentence = sentenceToAnalyze || userQuery || "";
         resultData = generateFallbackTutorAnalysis(inputSentence, level);
       }
@@ -431,36 +434,131 @@ Explain in clear, encouraging, structured JSON format why this specific word, no
   });
 
   function generateFallbackTutorAnalysis(inputSentence: string, level: string) {
+    const queryLower = inputSentence.toLowerCase();
+
+    // 1. TOPIC: ARTICLES (a, an, the)
+    if (queryLower.includes("article") || queryLower.includes("a, an, the") || queryLower.includes("a vs an")) {
+      return {
+        feedbackSummary: "Step-by-Step Guide to English Articles ('A', 'An', 'The'): Articles signal whether a noun is general or specific. Let's master all 3 simple rules with examples!",
+        correctedSentence: "Example: She ate an apple, bought a book, and loved the movie we watched.",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: 'A' vs 'An' depends on spoken SOUNDS, not letters",
+            explanation: "Use 'a' before consonant sounds (e.g. 'a book', 'a cat', 'a university' [/jʊər/ sound]). Use 'an' before vowel sounds (e.g. 'an apple', 'an orange', 'an hour' [silent 'h' /aʊər/]). Example: 'It took an hour to find a university.'"
+          },
+          {
+            concept: "Step 2: Use 'The' for Specific, Known Nouns",
+            explanation: "Use 'the' when both speaker and listener know exactly WHICH thing is being referred to. Example: 'I saw a dog in the park. The dog was very friendly.' ('a dog' introduces it; 'the dog' specifies it)."
+          },
+          {
+            concept: "Step 3: Zero Article for General Plurals & Uncountables",
+            explanation: "Do NOT use articles when speaking about things in general. Example: 'Water is essential' (General water) vs 'The water in this glass is cold' (Specific glass)."
+          }
+        ],
+        encouragingNote: "Remember: Listen to the spoken sound! 'An honest man' uses 'an' because the H is completely silent."
+      };
+    }
+
+    // 2. TOPIC: TENSES & TIMEFRAMES
+    if (queryLower.includes("tense") || queryLower.includes("present perfect") || queryLower.includes("past simple")) {
+      return {
+        feedbackSummary: "Step-by-Step Guide to Main English Tenses: Master Present Simple, Past Simple, and Present Perfect with clear timeframe rules!",
+        correctedSentence: "Example: I live in London now (Present Simple). I lived in Paris in 2020 (Past Simple). I have lived here for 3 years (Present Perfect).",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: Present Simple (Habits & Facts)",
+            explanation: "Use for daily routines and universal truths. Add '-s' for third-person (he/she/it). Examples: 'She drinks tea every morning.' 'Water boils at 100°C.'"
+          },
+          {
+            concept: "Step 2: Past Simple (Finished Past + Specific Time)",
+            explanation: "Use when an action happened and finished at a known time in the past. Examples: 'I graduated in 2021.' 'They visited Rome last month.'"
+          },
+          {
+            concept: "Step 3: Present Perfect (Past Action connected to NOW)",
+            explanation: "Use 'have/has + past participle' when time is unstated, recent, or experience matters today. Examples: 'I have lost my key (so I can't open the door now).' 'She has visited 10 countries.'"
+          }
+        ],
+        encouragingNote: "Pro Tip: If you specify 'yesterday' or 'in 2018', ALWAYS use Past Simple!"
+      };
+    }
+
+    // 3. TOPIC: PREPOSITIONS (in, on, at)
+    if (queryLower.includes("preposition") || queryLower.includes("in on at") || queryLower.includes("at on in")) {
+      return {
+        feedbackSummary: "Step-by-Step Guide to Prepositions of Time & Place ('At', 'On', 'In'): Think of a pyramid from precise to general!",
+        correctedSentence: "Example: The meeting is at 9:00 AM on Monday in July.",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: 'AT' for Precise Clock Times & Small Points",
+            explanation: "Use 'at' for exact clock times, noon, night, and specific addresses. Examples: 'at 5:30 PM', 'at midnight', 'at 123 Main Street'."
+          },
+          {
+            concept: "Step 2: 'ON' for Calendar Days & Streets",
+            explanation: "Use 'on' for specific calendar dates, days of the week, and street names. Examples: 'on Monday', 'on May 15th', 'on Oxford Street'."
+          },
+          {
+            concept: "Step 3: 'IN' for Months, Years, Seasons & Enclosed Places",
+            explanation: "Use 'in' for broader time periods and enclosed areas. Examples: 'in July', 'in 2025', 'in summer', 'in London', 'in the room'."
+          }
+        ],
+        encouragingNote: "Remember: 'AT' = pinpoint, 'ON' = surface/day, 'IN' = container/period!"
+      };
+    }
+
+    // 4. TOPIC: CONDITIONALS (if clauses)
+    if (queryLower.includes("conditional") || queryLower.includes("if clause") || queryLower.includes("if i were")) {
+      return {
+        feedbackSummary: "Step-by-Step Guide to English Conditionals ('If' Clauses): Master 1st, 2nd, and 3rd Conditionals effortlessly!",
+        correctedSentence: "Example: If it rains, I will take an umbrella (1st). If I were rich, I would buy a island (2nd).",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: 1st Conditional (Real Future Possibility)",
+            explanation: "Structure: [If + Present Simple, Will + Verb]. Examples: 'If you study, you will pass the exam.' 'If she calls, I will answer.'"
+          },
+          {
+            concept: "Step 2: 2nd Conditional (Imaginary / Unreal Today)",
+            explanation: "Structure: [If + Past Simple, Would + Verb]. Use 'were' for all subjects! Examples: 'If I were you, I would accept the job.' 'If he had wings, he would fly.'"
+          },
+          {
+            concept: "Step 3: 3rd Conditional (Past Regret / Unchangeable Past)",
+            explanation: "Structure: [If + Past Perfect, Would have + Past Participle]. Example: 'If I had woken up earlier, I would not have missed the train.'"
+          }
+        ],
+        encouragingNote: "Native Tip: 'If I were you' is standard formal English for giving advice!"
+      };
+    }
+
+    // Default sentence evaluation
     let corrected = inputSentence;
-    let feedback = "Excellent query! Let's analyze the grammar structure step by step.";
+    let feedback = "Excellent query! Let me break down this structure step-by-step with clear explanations and examples.";
     let rules = [
       {
-        concept: "Subject-Verb & Tense Agreement",
-        explanation: "Ensure singular subjects take singular verbs (e.g., 'he goes', 'she doesn't like'). In negative sentences, auxiliary 'does' takes the third-person '-s', allowing the main verb to stay in base form."
+        concept: "Rule 1: Subject-Verb & Tense Agreement",
+        explanation: "Ensure singular subjects take singular verbs (e.g. 'She doesn't like' instead of 'She don't likes'). In negative present simple, auxiliary 'does' takes the third-person '-s', leaving the main verb in its base infinitive form."
       },
       {
-        concept: "Article Phonetics",
-        explanation: "Use 'an' before spoken vowel sounds ('an hour', 'an apple') and 'a' before consonant sounds ('a European', 'a cat')."
+        concept: "Rule 2: Article Phonetics & Noun Modifiers",
+        explanation: "Pair 'a' before consonant spoken sounds ('a book', 'a user') and 'an' before vowel spoken sounds ('an hour', 'an orange')."
       },
       {
-        concept: "Prepositions of Time",
-        explanation: "Use 'at' for precise clock times, 'on' for specific calendar days, and 'in' for months, years, or general time periods."
+        concept: "Rule 3: Time Prepositions & Temporal Anchors",
+        explanation: "Use 'at' for specific times, 'on' for specific days, and 'in' for months/years. Words like 'yesterday' and 'tomorrow' do not require prepositions."
       }
     ];
 
-    if (inputSentence.toLowerCase().includes("don't likes") || inputSentence.toLowerCase().includes("doesn't likes")) {
+    if (queryLower.includes("don't likes") || queryLower.includes("doesn't likes")) {
       corrected = inputSentence.replace(/don't likes|doesn't likes/gi, "doesn't like").replace(/goes/gi, "go").replace(/on yesterday/gi, "yesterday");
-      feedback = "Good effort! There were a couple of auxiliary verb and tense double-marking corrections needed.";
-    } else if (inputSentence.toLowerCase().includes("me and him")) {
+      feedback = "Good effort! Note that negative sentences with 'does' keep the main verb in its base infinitive form ('like', 'go').";
+    } else if (queryLower.includes("me and him")) {
       corrected = inputSentence.replace(/me and him/gi, "He and I");
-      feedback = "When using subjects before a verb, use subject pronouns ('He and I') instead of object pronouns ('me and him').";
+      feedback = "When functioning as the subject of a sentence, use subject pronouns ('He and I') rather than object pronouns ('Me and him').";
     }
 
     return {
       feedbackSummary: feedback,
       correctedSentence: corrected,
       keyRulesExplained: rules,
-      encouragingNote: `Keep practicing! Focusing on the 'why' behind grammar rules will make your spoken and written English flow naturally at the ${level} level.`
+      encouragingNote: `Focusing on the 'why' behind English grammar will help you speak and write with natural confidence at the ${level} level!`
     };
   }
 

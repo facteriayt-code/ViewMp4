@@ -3,6 +3,7 @@ import { Gamepad2, Sparkles, CheckCircle2, RotateCcw, Lock, Award, Flame, Volume
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
 import { DayLesson } from '../types';
+import { get10GamesForDay } from '../src/utils/gameGenerator';
 
 export const MiniGamesView: React.FC = () => {
   const { progress, addXpAndGems, triggerConfetti } = useLearning();
@@ -42,40 +43,34 @@ export const MiniGamesView: React.FC = () => {
   // Gather challenges from selected lesson or all unlocked lessons
   const targetLessons = selectedDayId === 'all_unlocked' ? unlockedLessons : (activeLesson ? [activeLesson] : unlockedLessons);
 
-  // Gather sentence builder items
-  const sentenceBuilderPool = targetLessons.flatMap(l => {
-    if (l.miniGame && l.miniGame.sentenceBuilder) {
-      return l.miniGame.sentenceBuilder.map(sb => ({
-        ...sb,
-        lessonTitle: l.title,
-        dayNumber: l.dayNumber
-      }));
-    }
-    return [];
+  // Extract 10 games per day using get10GamesForDay
+  const dayPackages = targetLessons.map(l => get10GamesForDay(l));
+
+  // Gather sentence builder items (4+ per day)
+  const sentenceBuilderPool = dayPackages.flatMap(pkg => {
+    return pkg.sentenceBuilders.map(sb => ({
+      ...sb,
+      lessonTitle: pkg.lessonTitle,
+      dayNumber: pkg.dayNumber
+    }));
   });
 
-  // Gather word match items
-  const wordPairsPool = targetLessons.flatMap(l => {
-    if (l.miniGame && l.miniGame.wordPairs) {
-      return l.miniGame.wordPairs.map(wp => ({
-        ...wp,
-        lessonTitle: l.title,
-        dayNumber: l.dayNumber
-      }));
-    }
-    return [];
+  // Gather word match items (3+ per day)
+  const wordPairsPool = dayPackages.flatMap(pkg => {
+    return pkg.wordPairs.map(wp => ({
+      ...wp,
+      lessonTitle: pkg.lessonTitle,
+      dayNumber: pkg.dayNumber
+    }));
   });
 
-  // Gather mistake detective items
-  const mistakesPool = targetLessons.flatMap(l => {
-    if (l.miniGame && l.miniGame.mistakes) {
-      return l.miniGame.mistakes.map(m => ({
-        ...m,
-        lessonTitle: l.title,
-        dayNumber: l.dayNumber
-      }));
-    }
-    return [];
+  // Gather mistake detective items (3+ per day)
+  const mistakesPool = dayPackages.flatMap(pkg => {
+    return pkg.mistakeCases.map(m => ({
+      ...m,
+      lessonTitle: pkg.lessonTitle,
+      dayNumber: pkg.dayNumber
+    }));
   });
 
   // Initialize Sentence Builder
