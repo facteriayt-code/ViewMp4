@@ -8,6 +8,26 @@ import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
+import { GoogleGenAI, Type } from "@google/genai";
+
+let aiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is not configured");
+    }
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+  }
+  return aiClient;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,19 +97,28 @@ async function startServer() {
   // Firebase Admin Configuration
   if (!admin.apps.length) {
     try {
-      admin.initializeApp({
-        projectId: firebaseConfig.projectId,
-        storageBucket: firebaseConfig.storageBucket
-      });
-      console.log("Firebase Admin initialized");
+      if (firebaseConfig && firebaseConfig.projectId) {
+        admin.initializeApp({
+          projectId: firebaseConfig.projectId,
+          storageBucket: firebaseConfig.storageBucket
+        });
+        console.log("Firebase Admin initialized");
+      }
     } catch (e: any) {
       console.error("Failed to initialize Firebase Admin:", e.message);
     }
   }
 
-  const db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
-    ? admin.firestore(firebaseConfig.firestoreDatabaseId)
-    : admin.firestore();
+  let db: any = null;
+  try {
+    if (admin.apps.length) {
+      db = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)")
+        ? admin.firestore(firebaseConfig.firestoreDatabaseId)
+        : admin.firestore();
+    }
+  } catch (e: any) {
+    console.error("Failed to initialize Firestore handle:", e.message);
+  }
 
   // --- Connection Test Logic ---
   apiRouter.get("/test-connections", async (req, res) => {
@@ -268,6 +297,161 @@ async function startServer() {
     res.json({ message: "API is working" });
   });
 
+  // --- Linguistic Grammar & Reason Explainer Endpoint ---
+  apiRouter.post("/explain-grammar", async (req, res) => {
+    try {
+      const { sentence, target, level = "beginner" } = req.body;
+      if (!sentence) {
+        return res.status(400).json({ error: "Sentence is required" });
+      }
+
+      const ai = getGeminiClient();
+      const prompt = `Analyze this sentence: "${sentence}"
+Target word/phrase to explain: "${target || "key grammatical structures"}"
+User English Level: ${level}
+
+Explain in clear, encouraging, structured JSON format why this specific word, noun, tense, article, or verb form was used here. Include:
+1. "partOfSpeech": exact part of speech or tense (e.g., "Present Perfect Continuous", "Uncountable Noun", "Indefinite Article 'an'").
+2. "whyUsed": 2-3 clear sentences explaining the underlying English grammar rule and WHY this exact form fits this context.
+3. "alternativeComparison": What would happen if we used a common mistaken alternative (e.g. using 'a' instead of 'an', or Past Simple instead of Present Perfect).
+4. "proTip": A helpful memory trick or nuance note for a ${level} learner.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              partOfSpeech: { type: Type.STRING },
+              whyUsed: { type: Type.STRING },
+              alternativeComparison: { type: Type.STRING },
+              proTip: { type: Type.STRING }
+            },
+            required: ["partOfSpeech", "whyUsed", "alternativeComparison", "proTip"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || "{}");
+      res.json({ success: true, analysis: data });
+    } catch (error: any) {
+      console.error("Explain Grammar API Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to analyze grammar",
+        fallback: {
+          partOfSpeech: "Grammar Analysis",
+          whyUsed: "This form is used according to standard English syntax rules.",
+          alternativeComparison: "Using an incorrect form breaks agreement or changes the timeframe.",
+          proTip: "Keep practicing daily to build intuitive mastery!"
+        }
+      });
+    }
+  });
+
+  // --- AI English Tutor & Correction Engine ---
+  apiRouter.post("/ai-tutor", async (req, res) => {
+    try {
+      const { userQuery, sentenceToAnalyze, level = "intermediate" } = req.body;
+      const ai = getGeminiClient();
+
+      const systemInstruction = `You are LingoSprint AI, a friendly, expert English Professor and Coach. You break down grammar, vocabulary, tenses, articles, and word nuances into simple, fun, digestible insights tailored for a ${level} level user. Always explain the 'WHY' behind grammar rules so the student learns intuitively.`;
+
+      let prompt = userQuery || `Analyze this sentence for accuracy and explain why each word/form is used: "${sentenceToAnalyze}"`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              feedbackSummary: { type: Type.STRING, description: "Direct, encouraging summary" },
+              correctedSentence: { type: Type.STRING, description: "Cleaned up sentence if applicable" },
+              keyRulesExplained: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    concept: { type: Type.STRING, description: "e.g., Article usage, Past tense choice" },
+                    explanation: { type: Type.STRING, description: "Why this rule exists and why it matters" }
+                  }
+                }
+              },
+              encouragingNote: { type: Type.STRING }
+            },
+            required: ["feedbackSummary", "keyRulesExplained", "encouragingNote"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || "{}");
+      res.json({ success: true, result: data });
+    } catch (error: any) {
+      console.error("AI Tutor API Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to query AI tutor"
+      });
+    }
+  });
+
+  // --- Word Power Deep Dive ---
+  apiRouter.post("/word-deepdive", async (req, res) => {
+    try {
+      const { word } = req.body;
+      if (!word) return res.status(400).json({ error: "Word is required" });
+
+      const ai = getGeminiClient();
+      const prompt = `Provide a comprehensive, fun vocabulary deep-dive for the English word: "${word}".
+Return JSON with:
+1. word
+2. phonetic (IPA pronunciation)
+3. partOfSpeech
+4. definition (clear and beginner-friendly)
+5. etymologyReason (why this word came to mean what it means or its origin)
+6. synonyms (array of strings)
+7. antonyms (array of strings)
+8. commonCollocations (natural word combinations, e.g. "heavy rain", "make a decision")
+9. exampleSentence
+10. whyUsedInExample (explain why this exact word choice works best in that sentence)`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              phonetic: { type: Type.STRING },
+              partOfSpeech: { type: Type.STRING },
+              definition: { type: Type.STRING },
+              etymologyReason: { type: Type.STRING },
+              synonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
+              antonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
+              commonCollocations: { type: Type.ARRAY, items: { type: Type.STRING } },
+              exampleSentence: { type: Type.STRING },
+              whyUsedInExample: { type: Type.STRING }
+            },
+            required: ["word", "phonetic", "partOfSpeech", "definition", "etymologyReason", "synonyms", "commonCollocations", "exampleSentence", "whyUsedInExample"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || "{}");
+      res.json({ success: true, wordData: data });
+    } catch (error: any) {
+      console.error("Word Deepdive API Error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   apiRouter.get("/setup-telegram", async (req, res) => {
     console.log("API: setup-telegram requested");
     if (!TELEGRAM_TOKEN) {
@@ -298,7 +482,7 @@ async function startServer() {
   app.use("/api", apiRouter);
 
   // Fallback for unmatched API routes
-  app.use("/api/*", (req, res) => {
+  app.use("/api", (req, res) => {
     console.log(`API: 404 Not Found - ${req.method} ${req.url}`);
     res.status(404).json({ error: "API endpoint not found" });
   });
@@ -314,7 +498,7 @@ async function startServer() {
     console.log("Serving production build...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.use((req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

@@ -1,8 +1,10 @@
 {
-  "name": "Royal Cricket Ledger",
-  "description": "An imperial, premium local cricket match score recorder with coin toss, real-time metrics, head-to-head ratios, and rosters.",
+  "name": "LingoSprint - Gamified English Master",
+  "description": "An interactive, gamified English learning platform with structured daily courses from beginner to pro, grammar deep dives, vocabulary games, streak tracking, and instant AI linguistic reasoning.",
   "requestFramePermissions": [
-    "camera",
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

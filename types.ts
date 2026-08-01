@@ -1,91 +1,154 @@
-export interface User {
+export type UserLevel = 'beginner' | 'intermediate' | 'pro';
+
+export interface GrammarRuleExplanation {
+  rule: string;
+  why: string;
+  example: string;
+  wrongExample?: string;
+}
+
+export interface WordLinguisticBreakdown {
+  word: string;
+  role: string;
+  whyUsed: string;
+  category?: string;
+}
+
+export interface LessonTheory {
+  summary: string;
+  rules: GrammarRuleExplanation[];
+  wordExplanations?: WordLinguisticBreakdown[];
+  proTip?: string;
+}
+
+export interface QuizQuestion {
   id: string;
-  name: string;
-  email: string;
-  avatar: string;
+  question: string;
+  sentenceContext?: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanationWhy: string; // Explains WHY this particular word/form/noun/tense is used
+  grammaticalRole: string;
 }
 
-export interface PlayerStats {
-  matchesPlayed: number;
-  runs: number;
-  wickets: number;
-  ballsBowled: number;
-  runsConceded: number;
-  highestScore: number;
-  bestBowlingWickets: number;
-  bestBowlingRuns: number;
+export interface SentenceBuilderGameData {
+  targetSentence: string;
+  wordPool: string[];
+  grammarBreakdown: string;
 }
 
-export interface Player {
+export interface WordMatchPair {
   id: string;
-  name: string;
-  teamId: string;
-  createdAt: string;
-  stats: PlayerStats;
+  word: string;
+  definitionOrSynonym: string;
+  whyItMatters: string;
 }
 
-export interface Team {
-  id: string;
-  name: string;
-  logoUrl?: string;
-  createdAt: string;
+export interface MistakeDetectiveData {
+  incorrectSentence: string;
+  correctSentence: string;
+  mistakeWordIndex?: number;
+  explanationWhy: string;
 }
 
-export interface MatchBatsmanLive {
-  id: string;
-  name: string;
-  runs: number;
-  balls: number;
-  fours: number;
-  sixes: number;
-  isOut: boolean;
-  howOut?: string;
+export interface RoleplayMessage {
+  speaker: 'ai' | 'user';
+  text: string;
+  options?: Array<{ text: string; quality: 'best' | 'ok' | 'poor'; whyReason: string }>;
 }
 
-export interface MatchBowlerLive {
-  id: string;
-  name: string;
-  overs: number; // calculated as balls / 6
-  balls: number;
-  maidens: number;
-  runsConceded: number;
-  wickets: number;
-}
-
-export interface InningsState {
-  battingTeamId: string;
-  bowlingTeamId: string;
-  runs: number;
-  wickets: number;
-  balls: number; // total balls bowled in this innings
-  extras: {
-    wides: number;
-    noBalls: number;
-    byes: number;
-    legByes: number;
+export interface MiniGameConfig {
+  type: 'sentence_builder' | 'word_match' | 'mistake_detective' | 'roleplay';
+  title: string;
+  instructions: string;
+  sentenceBuilder?: SentenceBuilderGameData[];
+  wordPairs?: WordMatchPair[];
+  mistakes?: MistakeDetectiveData[];
+  roleplayScenario?: {
+    setting: string;
+    aiRole: string;
+    initialPrompt: string;
   };
-  batsmen: { [playerId: string]: MatchBatsmanLive };
-  bowlers: { [playerId: string]: MatchBowlerLive };
-  currentStrikerId?: string;
-  currentNonStrikerId?: string;
-  currentBowlerId?: string;
-  oversTimeline: string[]; // e.g. ["1", ".", "4", "W", "wd"] for current over
 }
 
-export interface Match {
+export interface DayLesson {
   id: string;
-  teamAId: string;
-  teamAName: string;
-  teamBId: string;
-  teamBName: string;
-  tossWinnerId: string;
-  tossDecision: 'bat' | 'bowl';
-  oversLimit: number;
-  status: 'live' | 'completed' | 'abandoned';
-  winnerId?: string;
-  margin?: string;
-  createdAt: string;
-  currentInnings: 1 | 2;
-  firstInnings: InningsState;
-  secondInnings?: InningsState;
+  dayNumber: number; // 1 to 90
+  monthNumber: number; // 1, 2, or 3
+  title: string;
+  category: 'grammar' | 'vocabulary' | 'tenses' | 'conversation' | 'idioms' | 'pro_syntax';
+  level: UserLevel | 'all';
+  description: string;
+  xpReward: number;
+  estimatedMinutes: number;
+  theory: LessonTheory;
+  quiz: QuizQuestion[];
+  miniGame?: MiniGameConfig;
+}
+
+export interface UserProgress {
+  userId: string;
+  name: string;
+  userLevel: UserLevel;
+  xp: number;
+  streakDays: number;
+  lastActiveDate: string; // YYYY-MM-DD
+  completedDayIds: string[];
+  dayScores: Record<string, number>; // dayId -> score percentage (0-100)
+  completedMonthExamScores?: Record<number, number>; // monthNumber (1,2,3) -> score percentage
+  passedMonthNumbers?: number[]; // [1, 2, 3]
+  unlockedBadges: string[];
+  gems: number;
+  hearts: number; // 1 to 5
+}
+
+export interface MonthExamQuestion {
+  id: string;
+  question: string;
+  sentenceContext?: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanationWhy: string;
+  topicTag: string; // e.g. "Articles & Phonetics", "Subjunctive Mood", "Conditionals"
+}
+
+export interface MonthExam {
+  monthNumber: number; // 1, 2, or 3
+  title: string;
+  subtitle: string;
+  description: string;
+  passingScorePercent: number; // 70 or 80
+  xpReward: number;
+  gemReward: number;
+  questions: MonthExamQuestion[];
+  badgeId: string;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+  requirement: string;
+}
+
+export interface GrammarAnalysisResult {
+  partOfSpeech: string;
+  whyUsed: string;
+  alternativeComparison: string;
+  proTip: string;
+}
+
+export interface WordDeepDiveData {
+  word: string;
+  phonetic: string;
+  partOfSpeech: string;
+  definition: string;
+  etymologyReason: string;
+  synonyms: string[];
+  antonyms: string[];
+  commonCollocations: string[];
+  exampleSentence: string;
+  whyUsedInExample: string;
 }
