@@ -12,6 +12,7 @@ interface LearningContextType {
   deductHeart: () => boolean; // returns false if no hearts left
   refillHearts: () => void;
   buyGems: (amount: number) => void;
+  addXpAndGems: (xp: number, gems: number) => void;
   activeDayId: string;
   setActiveDayId: (id: string) => void;
   isLoading: boolean;
@@ -198,6 +199,15 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProgress(prev => ({ ...prev, gems: prev.gems + amount }));
   };
 
+  const addXpAndGems = (xpAmount: number, gemAmount: number) => {
+    setProgress(prev => ({
+      ...prev,
+      xp: prev.xp + xpAmount,
+      gems: prev.gems + gemAmount
+    }));
+    triggerConfetti();
+  };
+
   return (
     <LearningContext.Provider
       value={{
@@ -208,6 +218,7 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deductHeart,
         refillHearts,
         buyGems,
+        addXpAndGems,
         activeDayId,
         setActiveDayId,
         isLoading,

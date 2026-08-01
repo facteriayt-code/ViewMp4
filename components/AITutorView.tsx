@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Send, Sparkles, RefreshCw, CheckCircle2, MessageSquare, BookOpen, Volume2 } from 'lucide-react';
+import { Bot, Send, Sparkles, RefreshCw, CheckCircle2, MessageSquare, BookOpen, Volume2, AlertCircle } from 'lucide-react';
 import { useLearning } from '../src/context/LearningContext';
 
 export const AITutorView: React.FC = () => {
@@ -8,6 +8,7 @@ export const AITutorView: React.FC = () => {
   const [userQuery, setUserQuery] = useState<string>('');
   const [sentenceToAnalyze, setSentenceToAnalyze] = useState<string>('She don\'t likes to goes to school on yesterday.');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [tutorResult, setTutorResult] = useState<any>({
     feedbackSummary: "Great effort! There are a few subject-verb agreement and double-tense corrections needed.",
     correctedSentence: "She doesn't like to go to school.",
@@ -28,17 +29,29 @@ export const AITutorView: React.FC = () => {
     encouragingNote: "Keep going! Small adjustments to auxiliary verbs will make your spoken English sound effortless."
   });
 
-  const handleAskTutor = async () => {
-    if (!userQuery.trim() && !sentenceToAnalyze.trim()) return;
+  const quickPrompts = [
+    { label: "Check: 'Me and him was going'", sentence: "Me and him was going to the store.", query: "Why is 'Me and him was' grammatically incorrect?" },
+    { label: "'If I were' vs 'If I was'", sentence: "If I was president, I will change the law.", query: "Why do native speakers say 'If I were you' instead of 'was'?" },
+    { label: "'Few' vs 'A few'", sentence: "I have few friends vs I have a few friends.", query: "What is the nuance difference between 'few' and 'a few'?" },
+    { label: "Present Perfect vs Past", sentence: "I have lived in London vs I lived in London.", query: "How does the timeframe change between 'have lived' and 'lived'?" }
+  ];
+
+  const handleAskTutor = async (customSentence?: string, customQuery?: string) => {
+    const finalSentence = customSentence !== undefined ? customSentence : sentenceToAnalyze;
+    const finalQuery = customQuery !== undefined ? customQuery : userQuery;
+
+    if (!finalQuery.trim() && !finalSentence.trim()) return;
 
     setIsLoading(true);
+    setErrorMessage(null);
+
     try {
       const response = await fetch('/api/ai-tutor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userQuery: userQuery.trim() || undefined,
-          sentenceToAnalyze: sentenceToAnalyze.trim() || undefined,
+          userQuery: finalQuery.trim() || undefined,
+          sentenceToAnalyze: finalSentence.trim() || undefined,
           level: progress.userLevel
         })
       });
@@ -46,9 +59,12 @@ export const AITutorView: React.FC = () => {
       const data = await response.json();
       if (data.success && data.result) {
         setTutorResult(data.result);
+      } else {
+        setErrorMessage(data.error || "Could not retrieve response from AI tutor.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('AI Tutor error:', err);
+      setErrorMessage("Network or connection issue. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -80,6 +96,29 @@ export const AITutorView: React.FC = () => {
         </p>
       </div>
 
+      {/* Quick Try Prompts */}
+      <div className="space-y-2">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          Quick Professor Consultation Topics:
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {quickPrompts.map((p, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setSentenceToAnalyze(p.sentence);
+                setUserQuery(p.query);
+                handleAskTutor(p.sentence, p.query);
+              }}
+              className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Input Section */}
       <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-4 shadow-xl">
         <div className="space-y-2">
@@ -108,8 +147,15 @@ export const AITutorView: React.FC = () => {
           />
         </div>
 
+        {errorMessage && (
+          <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         <button
-          onClick={handleAskTutor}
+          onClick={() => handleAskTutor()}
           disabled={isLoading}
           className="w-full bg-gradient-to-r from-amber-600 via-purple-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-amber-600/20 transition flex items-center justify-center space-x-2 text-sm"
         >
