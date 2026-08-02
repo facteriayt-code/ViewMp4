@@ -17,6 +17,8 @@ interface LearningContextType {
   setActiveDayId: (id: string) => void;
   isLoading: boolean;
   triggerConfetti: () => void;
+  language: 'en' | 'hi';
+  toggleLanguage: () => void;
 }
 
 const DEFAULT_PROGRESS: UserProgress = {
@@ -46,6 +48,17 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [activeDayId, setActiveDayId] = useState<string>('day-1');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [language, setLanguage] = useState<'en' | 'hi'>(() => {
+    return (localStorage.getItem('lingosprint_lang') as 'en' | 'hi') || 'en';
+  });
+
+  const toggleLanguage = () => {
+    setLanguage(prev => {
+      const next = prev === 'en' ? 'hi' : 'en';
+      localStorage.setItem('lingosprint_lang', next);
+      return next;
+    });
+  };
 
   // Auto-save to LocalStorage
   useEffect(() => {
@@ -222,7 +235,9 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeDayId,
         setActiveDayId,
         isLoading,
-        triggerConfetti
+        triggerConfetti,
+        language,
+        toggleLanguage
       }}
     >
       {children}

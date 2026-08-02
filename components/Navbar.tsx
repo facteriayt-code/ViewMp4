@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Gem, Heart, Trophy, Compass, BookOpen, Sparkles, Gamepad2, Bot, UserCheck } from 'lucide-react';
+import { Flame, Gem, Heart, Trophy, Compass, BookOpen, Sparkles, Gamepad2, Bot, Languages } from 'lucide-react';
 import { useLearning } from '../src/context/LearningContext';
 import { UserLevel } from '../types';
 
@@ -9,7 +9,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const { progress, setUserLevel, refillHearts } = useLearning();
+  const { progress, setUserLevel, refillHearts, language, toggleLanguage } = useLearning();
 
   const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setUserLevel(e.target.value as UserLevel);
@@ -105,8 +105,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </nav>
 
           {/* Gamified Stats Pill Bar */}
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2">
             
+            {/* Hindi / English Language Switcher Button */}
+            <button
+              onClick={toggleLanguage}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                language === 'hi'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                  : 'bg-indigo-950/60 text-indigo-300 border-indigo-500/30 hover:bg-indigo-900/60'
+              }`}
+              title="Toggle Hindi Explanation / हिंदी अनुवाद"
+            >
+              <Languages className="w-4 h-4 text-amber-400" />
+              <span>{language === 'hi' ? '🇮🇳 हिंदी (Hindi)' : '🇬🇧 English'}</span>
+            </button>
+
             {/* Level Selector */}
             <div className="relative hidden sm:block">
               <select

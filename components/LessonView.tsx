@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DayLesson } from '../types';
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
-import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight } from 'lucide-react';
+import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight, Languages } from 'lucide-react';
 import { playClickSound, playCorrectSound, playIncorrectSound, playCompletionChime } from '../src/utils/audio';
 
 interface LessonViewProps {
@@ -11,7 +11,7 @@ interface LessonViewProps {
 }
 
 export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
-  const { completeLesson, deductHeart, progress } = useLearning();
+  const { completeLesson, deductHeart, progress, language, toggleLanguage } = useLearning();
 
   const previousLesson = DAYS_CURRICULUM.find(l => l.dayNumber === day.dayNumber - 1);
 
@@ -130,7 +130,21 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
           <span>Exit Lesson</span>
         </button>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Hindi / English Toggle Button */}
+          <button
+            onClick={toggleLanguage}
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+              language === 'hi'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                : 'bg-indigo-950/60 text-indigo-300 border-indigo-500/30 hover:bg-indigo-900/60'
+            }`}
+            title="Toggle Hindi Explanation / हिंदी अनुवाद"
+          >
+            <Languages className="w-3.5 h-3.5 text-amber-400" />
+            <span>{language === 'hi' ? '🇮🇳 हिंदी (Hindi)' : '🇬🇧 English'}</span>
+          </button>
+
           <div className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/30">
             Day {day.dayNumber} • {day.title}
           </div>

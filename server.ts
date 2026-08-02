@@ -436,6 +436,29 @@ If given a sentence to analyze or correct, break down its syntax, correct any mi
   function generateFallbackTutorAnalysis(inputSentence: string, level: string) {
     const queryLower = inputSentence.toLowerCase();
 
+    // 0. TOPIC: HAS vs HAVE (Subject-Verb & Auxiliary Rules)
+    if (queryLower.includes("has") || queryLower.includes("have") || queryLower.includes("has vs have") || queryLower.includes("has and have")) {
+      return {
+        feedbackSummary: "Why We Use HAS vs HAVE (Step-by-Step Reason): 'Has' and 'Have' are present tense verbs indicating possession or completed actions. The choice between 'Has' and 'Have' depends strictly on Subject Person & Number!",
+        correctedSentence: "Examples: He HAS a car. She HAS completed her work. / I HAVE a car. They HAVE completed their work.",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: Use HAS for 3rd Person Singular Subjects (He, She, It, Singular Nouns)",
+            explanation: "Reason: In English, third-person singular subjects require the verb to end with '-s' (Has). Examples: 'He HAS a key.' 'She HAS finished.' 'The company HAS grown.' 'Everyone HAS a ticket.'"
+          },
+          {
+            concept: "Step 2: Use HAVE for I, You, We, They & Plural Nouns",
+            explanation: "Reason: First-person (I, We), second-person (You), and plural subjects (They, My friends) take the base auxiliary form 'Have'. Examples: 'I HAVE a dream.' 'You HAVE done well.' 'They HAVE left.'"
+          },
+          {
+            concept: "Step 3: Hindi Rule Explanation (हिंदी में नियम)",
+            explanation: "हिंदी अनुवाद नियम: HAS का प्रयोग He, She, It और Singular (एकवचन) सब्जेक्ट के साथ किया जाता है। HAVE का प्रयोग I, You, We, They और Plural (बहुवचन) सब्जेक्ट के साथ किया जाता है।"
+          }
+        ],
+        encouragingNote: "Easy Formula: Singular (He/She/It/Name) ➔ HAS. Plural + I/You (I/You/We/They) ➔ HAVE!"
+      };
+    }
+
     // 1. TOPIC: ARTICLES (a, an, the)
     if (queryLower.includes("article") || queryLower.includes("a, an, the") || queryLower.includes("a vs an")) {
       return {

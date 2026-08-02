@@ -3,7 +3,7 @@ import { Bot, Send, Sparkles, RefreshCw, CheckCircle2, MessageSquare, BookOpen, 
 import { useLearning } from '../src/context/LearningContext';
 
 export const AITutorView: React.FC = () => {
-  const { progress } = useLearning();
+  const { progress, language, toggleLanguage } = useLearning();
 
   const [userQuery, setUserQuery] = useState<string>('');
   const [sentenceToAnalyze, setSentenceToAnalyze] = useState<string>('She don\'t likes to goes to school on yesterday.');
@@ -30,6 +30,7 @@ export const AITutorView: React.FC = () => {
   });
 
   const topicPrompts = [
+    { label: "🔑 Has vs Have (Reason & Rules in Hindi)", query: "Explain why we use Has and Have step by step in Hindi and English with reasons and examples." },
     { label: "📚 Explain Articles (A, An, The)", query: "Explain articles A, An, and The step by step in simple language with multiple examples." },
     { label: "⏱️ Explain Tenses & Timeframes", query: "Explain English tenses step by step in simple language with clear real-life examples." },
     { label: "📍 Explain Prepositions (In, On, At)", query: "Explain prepositions In, On, At step by step with multiple location and time examples." },
@@ -39,6 +40,7 @@ export const AITutorView: React.FC = () => {
   ];
 
   const sentencePrompts = [
+    { label: "Has vs Have: 'He have' or 'He has'?", sentence: "He have a new laptop and they has a car.", query: "Why is 'He have' incorrect? Explain Has vs Have rules." },
     { label: "Check: 'Me and him was going'", sentence: "Me and him was going to the store.", query: "Why is 'Me and him was' grammatically incorrect?" },
     { label: "'If I were' vs 'If I was'", sentence: "If I was president, I will change the law.", query: "Why do native speakers say 'If I were you' instead of 'was'?" },
     { label: "'Few' vs 'A few'", sentence: "I have few friends vs I have a few friends.", query: "What is the nuance difference between 'few' and 'a few'?" },
@@ -47,6 +49,28 @@ export const AITutorView: React.FC = () => {
 
   const generateClientFallbackTutor = (inputSentence: string, query: string) => {
     const textLower = (inputSentence + " " + query).toLowerCase();
+
+    if (textLower.includes("has") || textLower.includes("have") || textLower.includes("has vs have") || textLower.includes("has and have")) {
+      return {
+        feedbackSummary: "Why We Use HAS vs HAVE (Step-by-Step Reason): 'Has' and 'Have' are present tense verbs indicating possession or completed actions. The choice between 'Has' and 'Have' depends strictly on the Subject Person & Number!",
+        correctedSentence: "Examples: He HAS a car. She HAS completed her work. / I HAVE a car. They HAVE completed their work.",
+        keyRulesExplained: [
+          {
+            concept: "Step 1: Use HAS for 3rd Person Singular Subjects (He, She, It, Singular Nouns)",
+            explanation: "Reason: In English, third-person singular subjects require the verb to end with '-s' (Has). Examples: 'He HAS a key.' 'She HAS finished.' 'The company HAS grown.' 'Everyone HAS a ticket.'"
+          },
+          {
+            concept: "Step 2: Use HAVE for I, You, We, They & Plural Nouns",
+            explanation: "Reason: First-person (I, We), second-person (You), and plural subjects (They, My friends) take the base auxiliary form 'Have'. Examples: 'I HAVE a dream.' 'You HAVE done well.' 'They HAVE left.'"
+          },
+          {
+            concept: "Step 3: Hindi Rule Explanation (हिंदी में नियम)",
+            explanation: "हिंदी में समझें: HAS का प्रयोग He, She, It और Singular (एकवचन) सब्जेक्ट के साथ होता है (जैसे: He has, She has, It has, Rahul has)। HAVE का प्रयोग I, You, We, They और Plural (बहुवचन) सब्जेक्ट के साथ होता है (जैसे: I have, You have, We have, They have)।"
+          }
+        ],
+        encouragingNote: "Easy Formula: Singular (He/She/It) ➔ HAS. Plural + I/You (I/We/They/You) ➔ HAVE!"
+      };
+    }
 
     if (textLower.includes("article") || textLower.includes("a, an, the") || textLower.includes("a vs an")) {
       return {
@@ -185,7 +209,7 @@ export const AITutorView: React.FC = () => {
     let rules = [
       {
         concept: "Rule 1: Subject-Verb & Auxiliary Agreement",
-        explanation: "Ensure the auxiliary verb matches the subject number and tense. Third-person singular (he/she/it) takes 'does' in present simple negatives ('She doesn't like')."
+        explanation: "Ensure the auxiliary verb matches the subject number and tense. Third-person singular (he/she/it) takes 'does' or 'has' in present simple ('She doesn't like', 'He has a book')."
       },
       {
         concept: "Rule 2: Article & Phonetic Alignment",
