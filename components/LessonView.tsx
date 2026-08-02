@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DayLesson } from '../types';
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
-import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight, Languages, Mic, MicOff, Square, AlertCircle, ThumbsUp, Radio } from 'lucide-react';
+import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight, Languages, Mic, MicOff, Square, AlertCircle, ThumbsUp, Radio, Flag } from 'lucide-react';
 import { playClickSound, playCorrectSound, playIncorrectSound, playCompletionChime } from '../src/utils/audio';
 
 interface LessonViewProps {
@@ -517,6 +517,14 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
     }
   };
 
+  const handleQuizGiveUp = () => {
+    const currentQ = day.quiz[currentQuizIndex];
+    setSelectedOption(currentQ.correctAnswerIndex);
+    setIsAnswerSubmitted(true);
+    playClickSound();
+    speakText("The correct answer is: " + currentQ.options[currentQ.correctAnswerIndex]);
+  };
+
   const handleNextQuizQuestion = () => {
     playClickSound();
     if (currentQuizIndex < day.quiz.length - 1) {
@@ -555,7 +563,18 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
       speakText(userBuilt);
     } else {
       playIncorrectSound();
-      alert("Try re-ordering the words according to the grammar rules!");
+      alert("Try re-ordering the words according to the grammar rules, or click 'Give Up & Show Answer'!");
+    }
+  };
+
+  const handleMinigameGiveUp = () => {
+    const target = day.miniGame?.sentenceBuilder?.[0]?.targetSentence;
+    if (target) {
+      setUserSentenceWords(target.split(/\s+/));
+      setAvailableWords([]);
+      setGameSuccess(true);
+      playClickSound();
+      speakText(target);
     }
   };
 
@@ -921,20 +940,30 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
               </div>
             )}
 
-            {/* Submit / Next Button */}
-            <div className="pt-4 flex justify-end">
+            {/* Submit / Next / Give Up Buttons */}
+            <div className="pt-4 flex items-center justify-between gap-3">
               {!isAnswerSubmitted ? (
-                <button
-                  onClick={handleQuizSubmit}
-                  disabled={selectedOption === null}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition"
-                >
-                  Check Answer
-                </button>
+                <>
+                  <button
+                    onClick={handleQuizGiveUp}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/30 transition flex items-center space-x-1.5"
+                  >
+                    <Flag className="w-4 h-4 text-amber-400" />
+                    <span>🏳️ Give Up & Reveal Answer</span>
+                  </button>
+
+                  <button
+                    onClick={handleQuizSubmit}
+                    disabled={selectedOption === null}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition"
+                  >
+                    Check Answer
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={handleNextQuizQuestion}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition flex items-center space-x-2"
+                  className="ml-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition flex items-center space-x-2"
                 >
                   <span>{currentQuizIndex < day.quiz.length - 1 ? "Next Question" : "Continue to Game"}</span>
                   <Play className="w-4 h-4 fill-current" />
@@ -995,12 +1024,22 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
 
                 {/* Check Button or Success Box */}
                 {!gameSuccess ? (
-                  <button
-                    onClick={checkSentenceBuilder}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-sm transition"
-                  >
-                    Check Sentence Order
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                      onClick={checkSentenceBuilder}
+                      className="flex-1 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-sm transition"
+                    >
+                      Check Sentence Order
+                    </button>
+
+                    <button
+                      onClick={handleMinigameGiveUp}
+                      className="w-full sm:w-auto px-5 py-3 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-2xl border border-amber-500/30 transition flex items-center justify-center space-x-1.5 shrink-0"
+                    >
+                      <Flag className="w-4 h-4 text-amber-400" />
+                      <span>🏳️ Give Up & Reveal Sentence</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 space-y-2 animate-fadeIn">
                     <div className="flex items-center space-x-2 font-bold text-emerald-300">
