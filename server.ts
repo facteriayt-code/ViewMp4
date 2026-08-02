@@ -649,11 +649,13 @@ Return JSON with:
       try {
         const ai = getGeminiClient();
 
-        const contents: any[] = [];
-        if (audioBase64) {
-          contents.push({
+        const cleanMimeType = (mimeType || "audio/webm").split(";")[0].trim();
+        const parts: any[] = [];
+
+        if (audioBase64 && typeof audioBase64 === "string" && audioBase64.length > 50) {
+          parts.push({
             inlineData: {
-              mimeType,
+              mimeType: cleanMimeType,
               data: audioBase64
             }
           });
@@ -676,11 +678,11 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
 6. "intonationAndFluencyAdvice": tip on speech rhythm, linking words, or stress.
 7. "hindiExplanation": ${language === 'hi' ? 'A warm, encouraging 2-sentence summary in Hindi explaining the result and how to improve.' : 'Optional Hindi explanation if needed, otherwise brief note.'}`;
 
-        contents.push(promptText);
+        parts.push({ text: promptText });
 
         const response = await ai.models.generateContent({
           model: "gemini-3.6-flash",
-          contents,
+          contents: { parts },
           config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -711,10 +713,12 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
         });
 
         let text = (response.text || "").trim();
-        text = text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
-        data = JSON.parse(text || "{}");
+        text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+        if (text) {
+          data = JSON.parse(text);
+        }
       } catch (geminiErr: any) {
-        console.warn("Gemini audio analysis fallback:", geminiErr?.message);
+        console.warn("Gemini audio analysis fallback:", geminiErr?.message || geminiErr);
       }
 
       if (!data || typeof data.score !== 'number') {
@@ -722,8 +726,8 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
         const targetClean = targetSentence.toLowerCase().replace(/[^a-z0-9 ]/g, '');
         const transClean = (transcript || targetSentence).toLowerCase().replace(/[^a-z0-9 ]/g, '');
         
-        const targetWords = targetClean.split(/\s+/);
-        const transWords = transClean.split(/\s+/);
+        const targetWords = targetClean.split(/\s+/).filter(Boolean);
+        const transWords = transClean.split(/\s+/).filter(Boolean);
         
         let matchCount = 0;
         targetWords.forEach((w: string) => {
@@ -752,10 +756,10 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
         };
       }
 
-      res.json({ success: true, feedback: data });
+      return res.json({ success: true, feedback: data });
     } catch (error: any) {
       console.error("Pronunciation API Error:", error);
-      res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: error.message || "Failed to analyze pronunciation" });
     }
   });
 

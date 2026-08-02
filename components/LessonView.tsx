@@ -131,17 +131,27 @@ export const AIPronunciationPractice: React.FC<{ day: DayLesson; language: 'en' 
     setIsAnalyzing(true);
     setErrorMsg(null);
 
+    if (isRecording) {
+      stopRecording();
+    }
+
     try {
       let base64Audio = '';
-      if (audioBlob) {
+      let effectiveBlob = audioBlob;
+
+      if (!effectiveBlob && audioChunksRef.current.length > 0) {
+        effectiveBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      }
+
+      if (effectiveBlob) {
         const reader = new FileReader();
         base64Audio = await new Promise((resolve) => {
           reader.onloadend = () => {
-            const res = reader.result as string;
+            const res = (reader.result as string) || '';
             const base64 = res.includes(',') ? res.split(',')[1] : res;
             resolve(base64);
           };
-          reader.readAsDataURL(audioBlob);
+          reader.readAsDataURL(effectiveBlob!);
         });
       }
 
@@ -151,7 +161,7 @@ export const AIPronunciationPractice: React.FC<{ day: DayLesson; language: 'en' 
         body: JSON.stringify({
           targetSentence: activeTargetSentence,
           audioBase64: base64Audio,
-          mimeType: 'audio/webm',
+          mimeType: effectiveBlob?.type || 'audio/webm',
           transcript,
           language
         })
