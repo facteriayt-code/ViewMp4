@@ -4,6 +4,7 @@ import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
 import { DayLesson } from '../types';
 import { get10GamesForDay } from '../src/utils/gameGenerator';
+import { WordleGame } from './WordleGame';
 
 interface PronunciationChallenge {
   word: string;
@@ -241,7 +242,7 @@ export const MiniGamesView: React.FC = () => {
 
   // Selected Day ID: 'all_unlocked' or 'day-1', 'day-2', etc.
   const [selectedDayId, setSelectedDayId] = useState<string>('all_unlocked');
-  const [activeGameMode, setActiveGameMode] = useState<'arena' | 'builder' | 'match' | 'detective'>('arena');
+  const [activeGameMode, setActiveGameMode] = useState<'wordle' | 'arena' | 'builder' | 'match' | 'detective'>('wordle');
 
   // Determine unlocked status
   const maxUnlockedDayNumber = Math.max(1, progress.completedDayIds.length + 1);
@@ -279,8 +280,52 @@ export const MiniGamesView: React.FC = () => {
   const speechRecognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
 
-  // Filter pronunciation challenges for current arena level
-  const currentLevelChallenges = PRONUNCIATION_DATABASE.filter(c => c.difficultyLevel <= arenaLevel);
+  // --- PERSISTENT TRACKING FOR ANSWERED QUESTIONS / WORDS ACROSS ALL GAMES ---
+  const [completedArenaWords, setCompletedArenaWords] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lingo_completed_arena_words') || '[]'); } catch { return []; }
+  });
+  const [completedSentenceBuilders, setCompletedSentenceBuilders] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lingo_completed_sentence_builders') || '[]'); } catch { return []; }
+  });
+  const [completedWordPairs, setCompletedWordPairs] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lingo_completed_word_pairs') || '[]'); } catch { return []; }
+  });
+  const [completedMistakes, setCompletedMistakes] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lingo_completed_mistakes') || '[]'); } catch { return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lingo_completed_arena_words', JSON.stringify(completedArenaWords));
+  }, [completedArenaWords]);
+  useEffect(() => {
+    localStorage.setItem('lingo_completed_sentence_builders', JSON.stringify(completedSentenceBuilders));
+  }, [completedSentenceBuilders]);
+  useEffect(() => {
+    localStorage.setItem('lingo_completed_word_pairs', JSON.stringify(completedWordPairs));
+  }, [completedWordPairs]);
+  useEffect(() => {
+    localStorage.setItem('lingo_completed_mistakes', JSON.stringify(completedMistakes));
+  }, [completedMistakes]);
+
+  // Helper completion markers
+  const markArenaWordCompleted = (word: string) => {
+    const upper = word.toUpperCase();
+    setCompletedArenaWords(prev => prev.includes(upper) ? prev : [...prev, upper]);
+  };
+  const markSentenceBuilderCompleted = (targetSentence: string) => {
+    setCompletedSentenceBuilders(prev => prev.includes(targetSentence) ? prev : [...prev, targetSentence]);
+  };
+  const markWordPairCompleted = (word: string) => {
+    setCompletedWordPairs(prev => prev.includes(word) ? prev : [...prev, word]);
+  };
+  const markMistakeCompleted = (correctSentence: string) => {
+    setCompletedMistakes(prev => prev.includes(correctSentence) ? prev : [...prev, correctSentence]);
+  };
+
+  // Filter pronunciation challenges for current arena level (excluding already completed words)
+  const levelChallenges = PRONUNCIATION_DATABASE.filter(c => c.difficultyLevel <= arenaLevel);
+  const uncompletedLevelChallenges = levelChallenges.filter(c => !completedArenaWords.includes(c.word.toUpperCase()));
+  const currentLevelChallenges = uncompletedLevelChallenges.length > 0 ? uncompletedLevelChallenges : levelChallenges;
   const activeChallenge = currentLevelChallenges[currentChallengeIndex % currentLevelChallenges.length] || PRONUNCIATION_DATABASE[0];
 
   // --- Game State 1: Sentence Builder ---
@@ -307,30 +352,36 @@ export const MiniGamesView: React.FC = () => {
   // Extract 10 games per day using get10GamesForDay
   const dayPackages = targetLessons.map(l => get10GamesForDay(l));
 
-  // Gather pools
-  const sentenceBuilderPool = dayPackages.flatMap(pkg => {
+  // Gather pools (Filtering out already answered/completed items)
+  const rawSentenceBuilderPool = dayPackages.flatMap(pkg => {
     return pkg.sentenceBuilders.map(sb => ({
       ...sb,
       lessonTitle: pkg.lessonTitle,
       dayNumber: pkg.dayNumber
     }));
   });
+  const uncompletedSentenceBuilders = rawSentenceBuilderPool.filter(sb => !completedSentenceBuilders.includes(sb.targetSentence));
+  const sentenceBuilderPool = uncompletedSentenceBuilders.length > 0 ? uncompletedSentenceBuilders : rawSentenceBuilderPool;
 
-  const wordPairsPool = dayPackages.flatMap(pkg => {
+  const rawWordPairsPool = dayPackages.flatMap(pkg => {
     return pkg.wordPairs.map(wp => ({
       ...wp,
       lessonTitle: pkg.lessonTitle,
       dayNumber: pkg.dayNumber
     }));
   });
+  const uncompletedWordPairs = rawWordPairsPool.filter(wp => !completedWordPairs.includes(wp.word));
+  const wordPairsPool = uncompletedWordPairs.length > 0 ? uncompletedWordPairs : rawWordPairsPool;
 
-  const mistakesPool = dayPackages.flatMap(pkg => {
+  const rawMistakesPool = dayPackages.flatMap(pkg => {
     return pkg.mistakeCases.map(m => ({
       ...m,
       lessonTitle: pkg.lessonTitle,
       dayNumber: pkg.dayNumber
     }));
   });
+  const uncompletedMistakes = rawMistakesPool.filter(m => !completedMistakes.includes(m.correctSentence));
+  const mistakesPool = uncompletedMistakes.length > 0 ? uncompletedMistakes : rawMistakesPool;
 
   // Initialize Sentence Builder
   useEffect(() => {
@@ -596,6 +647,7 @@ export const MiniGamesView: React.FC = () => {
         addXpAndGems(20, 5);
         setArenaStreak(s => s + 1);
         setArenaScore(sc => sc + feedbackData.score);
+        markArenaWordCompleted(activeChallenge.word);
 
         if ((arenaStreak + 1) % 3 === 0 && arenaLevel < 5) {
           setArenaLevel(lvl => lvl + 1);
@@ -613,10 +665,12 @@ export const MiniGamesView: React.FC = () => {
 
   const giveUpArena = () => {
     setArenaGaveUp(true);
+    markArenaWordCompleted(activeChallenge.word);
     speakText(activeChallenge.word);
   };
 
   const nextArenaWord = () => {
+    markArenaWordCompleted(activeChallenge.word);
     setArenaFeedback(null);
     setArenaGaveUp(false);
     setArenaAudioBlob(null);
@@ -645,6 +699,7 @@ export const MiniGamesView: React.FC = () => {
 
     if (cleanTarget === cleanUser || userWords.join(' ') === current.targetSentence) {
       setBuilderSuccess(true);
+      markSentenceBuilderCompleted(current.targetSentence);
       triggerConfetti();
       addXpAndGems(15, 5);
     } else {
@@ -662,6 +717,7 @@ export const MiniGamesView: React.FC = () => {
     setPoolWords([]);
     setBuilderGaveUp(true);
     setBuilderSuccess(true);
+    markSentenceBuilderCompleted(current.targetSentence);
     speakText(current.targetSentence);
   };
 
@@ -671,6 +727,7 @@ export const MiniGamesView: React.FC = () => {
     setDetectiveChoice(0); // correct answer choice
     setDetectiveGaveUp(true);
     setDetectiveSubmitted(true);
+    markMistakeCompleted(current.correctSentence);
     speakText(current.correctSentence);
   };
 
@@ -761,6 +818,18 @@ export const MiniGamesView: React.FC = () => {
         {/* Game Mode Tabs */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
           <button
+            onClick={() => setActiveGameMode('wordle')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              activeGameMode === 'wordle'
+                ? 'bg-gradient-to-r from-emerald-500 to-indigo-600 text-white shadow-lg shadow-emerald-500/30'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-emerald-300 animate-pulse" />
+            <span>🔤 Vocabulary Wordle</span>
+          </button>
+
+          <button
             onClick={() => setActiveGameMode('arena')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
               activeGameMode === 'arena'
@@ -768,8 +837,8 @@ export const MiniGamesView: React.FC = () => {
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
-            <Mic className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>🎙️ Unlimited Pronunciation Arena (Level {arenaLevel})</span>
+            <Mic className="w-4 h-4 text-amber-300" />
+            <span>🎙️ Pronunciation Arena (Level {arenaLevel})</span>
           </button>
 
           <button
@@ -826,6 +895,9 @@ export const MiniGamesView: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* MODE: VOCABULARY WORDLE */}
+          {activeGameMode === 'wordle' && <WordleGame />}
+
           {/* MODE 0: UNLIMITED PRONUNCIATION ARENA */}
           {activeGameMode === 'arena' && (
             <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 border border-amber-500/40 space-y-6 shadow-2xl animate-fadeIn">
@@ -1307,6 +1379,7 @@ export const MiniGamesView: React.FC = () => {
                           onClick={() => {
                             setDetectiveChoice(0);
                             setDetectiveSubmitted(true);
+                            markMistakeCompleted(currentDetective.correctSentence);
                             addXpAndGems(15, 5);
                           }}
                           className={`w-full text-left p-4 rounded-2xl border text-xs font-medium transition ${
