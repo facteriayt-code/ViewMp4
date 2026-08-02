@@ -661,28 +661,33 @@ Return JSON with:
           });
         }
 
-        const promptText = `Analyze the user's spoken pronunciation against this target English sentence:
+        const promptText = `You are an expert English pronunciation teacher and speech evaluator.
+Analyze the user's spoken audio directly and compare their pronunciation against the target English sentence:
 Target Sentence: "${targetSentence}"
-${transcript ? `Browser Speech Recognition Transcript: "${transcript}"` : ''}
+${transcript ? `Live Speech Recognition Transcript: "${transcript}"` : 'Live Speech Recognition Transcript: None'}
 User Language Preference for Explanation: ${language === 'hi' ? 'Hindi (हिंदी)' : 'English'}
 
-Provide an accurate, constructive evaluation of the user's spoken English pronunciation:
-1. "score": integer 0 to 100 representing overall pronunciation accuracy.
-2. "accuracyLevel": string - "Master Level" (90-100), "Great Job" (75-89), "Getting There" (50-74), or "Needs Practice" (0-49).
-3. "transcribedSpeech": what the user actually said based on the audio or transcript.
-4. "strengths": array of 1-2 specific things done well (e.g., "Clear vowel sounds", "Good intonation").
-5. "mispronouncedWords": array of objects with:
-   - "word": specific mispronounced or skipped word
-   - "issue": description of the phonetic mistake
-   - "correctionTip": clear mouth/tongue/phonetic guidance
-6. "intonationAndFluencyAdvice": tip on speech rhythm, linking words, or stress.
-7. "hindiExplanation": ${language === 'hi' ? 'A warm, encouraging 2-sentence summary in Hindi explaining the result and how to improve.' : 'Optional Hindi explanation if needed, otherwise brief note.'}`;
+CRITICAL INSTRUCTIONS:
+1. Listen carefully to the audio provided to hear the exact words and sounds spoken by the user.
+2. In "transcribedSpeech", write the EXACT words you hear spoken in the audio. If no speech or only silence/background noise is heard, set "transcribedSpeech" to "(No speech detected)".
+3. Evaluate the user's spoken words strictly against the Target Sentence "${targetSentence}".
+4. Score accurately (0-100):
+   - 90-100: Master Level - All words pronounced clearly with correct vowels, consonants, and stress.
+   - 75-89: Great Job - Most words correct, minor accent or slight mispronunciation.
+   - 50-74: Getting There - Missing or mispronounced key words.
+   - 0-49: Needs Practice - Silence, incorrect words spoken, or severe mispronunciation.
+5. If the user said nothing or speech is unintelligible, set "score" to 0 and "transcribedSpeech" to "(No speech detected)".
+6. In "mispronouncedWords", list ONLY the specific words that were mispronounced or skipped, along with exact phonetic advice. If the sentence was pronounced well, return an empty array [].
+7. "accuracyLevel": "Master Level" (90-100), "Great Job" (75-89), "Getting There" (50-74), or "Needs Practice" (0-49).
+8. "strengths": 1-2 honest observations (e.g., "Clear vowel sounds", "Good word pacing").
+9. "intonationAndFluencyAdvice": practical tip on word stress or speed.
+10. "hindiExplanation": ${language === 'hi' ? 'Warm 2-sentence explanation in Hindi explaining the evaluation.' : 'Brief note.'}`;
 
         parts.push({ text: promptText });
 
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: parts,
+          contents: [{ role: "user", parts }],
           config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -722,38 +727,61 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
       }
 
       if (!data || typeof data.score !== 'number') {
-        // Fallback evaluation based on transcript similarity if Gemini call is missing
         const targetClean = targetSentence.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-        const transClean = (transcript || targetSentence).toLowerCase().replace(/[^a-z0-9 ]/g, '');
+        const transClean = (transcript || "").toLowerCase().replace(/[^a-z0-9 ]/g, '');
         
         const targetWords = targetClean.split(/\s+/).filter(Boolean);
         const transWords = transClean.split(/\s+/).filter(Boolean);
-        
-        let matchCount = 0;
-        targetWords.forEach((w: string) => {
-          if (transWords.includes(w)) matchCount++;
-        });
 
-        const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0.8;
-        const score = Math.min(100, Math.max(65, Math.round(ratio * 95)));
+        if (!transClean || transWords.length === 0) {
+          data = {
+            score: 0,
+            accuracyLevel: "Needs Practice",
+            transcribedSpeech: "(No speech detected)",
+            strengths: ["Audio recording session captured"],
+            mispronouncedWords: [
+              {
+                word: targetWords[0] || targetSentence,
+                issue: "No speech recognized",
+                correctionTip: "Please speak clearly into your device microphone."
+              }
+            ],
+            intonationAndFluencyAdvice: "Speak clearly into your microphone when recording.",
+            hindiExplanation: language === 'hi'
+              ? "कोई स्पष्ट आवाज़ नहीं मिली। कृपया अपने माइक्रोफ़ोन के पास साफ़ बोलें।"
+              : "No speech detected. Please speak clearly into your microphone."
+          };
+        } else {
+          let matchCount = 0;
+          const missingWords: string[] = [];
 
-        data = {
-          score,
-          accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : "Getting There",
-          transcribedSpeech: transcript || targetSentence,
-          strengths: ["Good pace and clear volume", "Identified key sentence keywords accurately"],
-          mispronouncedWords: score < 90 ? [
-            {
-              word: targetWords[Math.floor(targetWords.length / 2)] || "word",
-              issue: "Focus on crisp ending consonant sounds",
-              correctionTip: "Keep your tongue relaxed and emphasize clear vowel transitions."
+          targetWords.forEach((w: string) => {
+            if (transWords.includes(w)) {
+              matchCount++;
+            } else {
+              missingWords.push(w);
             }
-          ] : [],
-          intonationAndFluencyAdvice: "Maintain steady breathing and connect ending consonants smoothly to opening vowels of the next word.",
-          hindiExplanation: language === 'hi' 
-            ? `आपका उच्चारण शानदार था! (${score}% शुद्धता)। वाक्यों को प्रवाह के साथ बोलने का अभ्यास करते रहें।`
-            : "Great job practicing! Keep speaking aloud regularly to build muscle memory."
-        };
+          });
+
+          const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0;
+          const score = Math.round(ratio * 100);
+
+          data = {
+            score,
+            accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : score >= 50 ? "Getting There" : "Needs Practice",
+            transcribedSpeech: transcript,
+            strengths: matchCount > 0 ? ["Captured key target words"] : ["Recorded audio attempted"],
+            mispronouncedWords: missingWords.map(word => ({
+              word,
+              issue: "Word missed or mispronounced",
+              correctionTip: `Focus on pronouncing '${word}' clearly.`
+            })),
+            intonationAndFluencyAdvice: "Practice pronouncing each word in the sentence smoothly.",
+            hindiExplanation: language === 'hi'
+              ? `आपने उच्चारण का प्रयास किया (${score}% शुद्धता)। छूट गए शब्दों का अभ्यास करें।`
+              : "Keep practicing speaking each word clearly."
+          };
+        }
       }
 
       return res.json({ success: true, feedback: data });

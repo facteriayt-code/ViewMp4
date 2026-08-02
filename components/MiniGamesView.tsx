@@ -498,35 +498,58 @@ export const MiniGamesView: React.FC = () => {
 
       if (!feedbackData) {
         const targetClean = activeChallenge.word.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-        const transClean = (arenaTranscript || activeChallenge.word).toLowerCase().replace(/[^a-z0-9 ]/g, '');
+        const transClean = (arenaTranscript || "").toLowerCase().replace(/[^a-z0-9 ]/g, '');
         const targetWords = targetClean.split(/\s+/).filter(Boolean);
         const transWords = transClean.split(/\s+/).filter(Boolean);
-        
-        let matchCount = 0;
-        targetWords.forEach(w => {
-          if (transWords.includes(w)) matchCount++;
-        });
 
-        const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0.85;
-        const score = Math.min(100, Math.max(72, Math.round(ratio * 95)));
-
-        feedbackData = {
-          score,
-          accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : "Getting There",
-          transcribedSpeech: arenaTranscript || activeChallenge.word,
-          strengths: ["Clear vocal projection", "Accurate pitch and word articulation"],
-          mispronouncedWords: score < 90 ? [
-            {
-              word: targetWords[0] || activeChallenge.word,
-              issue: "Focus on crisp vowel clarity",
-              correctionTip: "Sustain the main vowel sound with a relaxed jaw."
+        if (!transClean || transWords.length === 0) {
+          feedbackData = {
+            score: 0,
+            accuracyLevel: "Needs Practice",
+            transcribedSpeech: "(No speech detected)",
+            strengths: ["Audio session recorded"],
+            mispronouncedWords: [
+              {
+                word: targetWords[0] || activeChallenge.word,
+                issue: "No speech recognized",
+                correctionTip: "Please speak clearly into your device microphone when recording."
+              }
+            ],
+            intonationAndFluencyAdvice: "Ensure microphone permissions are enabled and speak clearly into your device.",
+            hindiExplanation: language === 'hi'
+              ? "कोई साफ़ आवाज़ रिकॉर्ड नहीं हुई। कृपया अपने माइक्रोफ़ोन के पास साफ़ बोलें।"
+              : "No speech detected. Please speak clearly into your microphone."
+          };
+        } else {
+          let matchCount = 0;
+          const missingWords: string[] = [];
+          targetWords.forEach(w => {
+            if (transWords.includes(w)) {
+              matchCount++;
+            } else {
+              missingWords.push(w);
             }
-          ] : [],
-          intonationAndFluencyAdvice: "Maintain smooth cadence when speaking aloud.",
-          hindiExplanation: language === 'hi'
-            ? `शानदार प्रयास! (${score}% शुद्धता)। बोलते रहें!`
-            : "Awesome effort! Keep up the daily speaking drills."
-        };
+          });
+
+          const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0;
+          const score = Math.round(ratio * 100);
+
+          feedbackData = {
+            score,
+            accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : score >= 50 ? "Getting There" : "Needs Practice",
+            transcribedSpeech: arenaTranscript,
+            strengths: matchCount > 0 ? ["Identified target word/phrase"] : ["Attempted speech recording"],
+            mispronouncedWords: missingWords.map(w => ({
+              word: w,
+              issue: "Word omitted or mispronounced",
+              correctionTip: `Practice pronouncing '${w}' clearly.`
+            })),
+            intonationAndFluencyAdvice: "Maintain steady vocal rhythm and connect word sounds smoothly.",
+            hindiExplanation: language === 'hi'
+              ? `आपने उच्चारण का प्रयास किया (${score}% शुद्धता)। छूट गए शब्दों का अभ्यास करें।`
+              : "Keep practicing speaking clearly."
+          };
+        }
       }
 
       setArenaFeedback(feedbackData);

@@ -183,35 +183,58 @@ export const AIPronunciationPractice: React.FC<{ day: DayLesson; language: 'en' 
 
       if (!feedbackData) {
         const targetClean = activeTargetSentence.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-        const transClean = (transcript || activeTargetSentence).toLowerCase().replace(/[^a-z0-9 ]/g, '');
+        const transClean = (transcript || "").toLowerCase().replace(/[^a-z0-9 ]/g, '');
         const targetWords = targetClean.split(/\s+/).filter(Boolean);
         const transWords = transClean.split(/\s+/).filter(Boolean);
-        
-        let matchCount = 0;
-        targetWords.forEach(w => {
-          if (transWords.includes(w)) matchCount++;
-        });
 
-        const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0.85;
-        const score = Math.min(100, Math.max(72, Math.round(ratio * 95)));
-
-        feedbackData = {
-          score,
-          accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : "Getting There",
-          transcribedSpeech: transcript || activeTargetSentence,
-          strengths: ["Clear pronunciation pace", "Accurate vocal resonance and rhythm"],
-          mispronouncedWords: score < 90 ? [
-            {
-              word: targetWords[Math.floor(targetWords.length / 2)] || "practice",
-              issue: "Emphasize clear consonant endings",
-              correctionTip: "Relax your jaw and let the final vowel sound flow naturally."
+        if (!transClean || transWords.length === 0) {
+          feedbackData = {
+            score: 0,
+            accuracyLevel: "Needs Practice",
+            transcribedSpeech: "(No speech detected)",
+            strengths: ["Microphone session recorded"],
+            mispronouncedWords: [
+              {
+                word: targetWords[0] || activeTargetSentence,
+                issue: "No speech recognized",
+                correctionTip: "Please speak clearly into your device microphone when recording."
+              }
+            ],
+            intonationAndFluencyAdvice: "Ensure microphone permissions are enabled and speak clearly into your device.",
+            hindiExplanation: language === 'hi'
+              ? "कोई साफ़ आवाज़ रिकॉर्ड नहीं हुई। कृपया अपने माइक्रोफ़ोन के पास साफ़ बोलें।"
+              : "No speech detected. Please speak clearly into your microphone."
+          };
+        } else {
+          let matchCount = 0;
+          const missingWords: string[] = [];
+          targetWords.forEach(w => {
+            if (transWords.includes(w)) {
+              matchCount++;
+            } else {
+              missingWords.push(w);
             }
-          ] : [],
-          intonationAndFluencyAdvice: "Maintain steady vocal rhythm and connect word sounds smoothly.",
-          hindiExplanation: language === 'hi' 
-            ? `आपका उच्चारण बहुत अच्छा था! (${score}% शुद्धता)। बोलते समय गति बनाए रखें।`
-            : "Great effort! Continuous speech practice will help lock in natural fluency."
-        };
+          });
+
+          const ratio = targetWords.length > 0 ? matchCount / targetWords.length : 0;
+          const score = Math.round(ratio * 100);
+
+          feedbackData = {
+            score,
+            accuracyLevel: score >= 90 ? "Master Level" : score >= 75 ? "Great Job" : score >= 50 ? "Getting There" : "Needs Practice",
+            transcribedSpeech: transcript,
+            strengths: matchCount > 0 ? ["Identified key sentence words"] : ["Attempted speech recording"],
+            mispronouncedWords: missingWords.map(w => ({
+              word: w,
+              issue: "Word omitted or mispronounced",
+              correctionTip: `Practice pronouncing '${w}' clearly.`
+            })),
+            intonationAndFluencyAdvice: "Maintain steady vocal rhythm and connect word sounds smoothly.",
+            hindiExplanation: language === 'hi' 
+              ? `आपने उच्चारण का प्रयास किया (${score}% शुद्धता)। छूट गए शब्दों का अभ्यास करें।`
+              : "Keep practicing speaking each word aloud with confidence."
+          };
+        }
       }
 
       setFeedback(feedbackData);
