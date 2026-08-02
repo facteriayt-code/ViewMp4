@@ -1,14 +1,463 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DayLesson } from '../types';
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
-import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight, Languages } from 'lucide-react';
+import { Volume2, ArrowLeft, CheckCircle2, XCircle, Sparkles, HelpCircle, Award, Play, RotateCcw, Heart, RefreshCw, BookOpen, Zap, ArrowRight, Languages, Mic, MicOff, Square, AlertCircle, ThumbsUp, Radio } from 'lucide-react';
 import { playClickSound, playCorrectSound, playIncorrectSound, playCompletionChime } from '../src/utils/audio';
 
 interface LessonViewProps {
   day: DayLesson;
   onBack: () => void;
 }
+
+/* --- AI Pronunciation Practice Sub-component --- */
+export const AIPronunciationPractice: React.FC<{ day: DayLesson; language: 'en' | 'hi' }> = ({ day, language }) => {
+  const practiceSentences = [
+    ...(day.theory.rules.map(r => r.example)),
+    ...(day.miniGame?.sentenceBuilder?.[0]?.targetSentence ? [day.miniGame.sentenceBuilder[0].targetSentence] : [])
+  ].filter(Boolean);
+
+  const [selectedSentence, setSelectedSentence] = useState<string>(practiceSentences[0] || day.theory.summary);
+  const [customSentence, setCustomSentence] = useState<string>('');
+  
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<string>('');
+  
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<any | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<any>(null);
+
+  const activeTargetSentence = customSentence.trim() || selectedSentence;
+
+  const speakNativeText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const startRecording = async () => {
+    setErrorMsg(null);
+    setFeedback(null);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setTranscript('');
+    setRecordingSeconds(0);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      recorder.start(100);
+      setIsRecording(true);
+
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.onresult = (event: any) => {
+          let currentText = '';
+          for (let i = 0; i < event.results.length; i++) {
+            currentText += event.results[i][0].transcript + ' ';
+          }
+          setTranscript(currentText.trim());
+        };
+        recognition.onerror = (e: any) => {
+          console.warn("Speech recognition notice:", e.error);
+        };
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      }
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      setErrorMsg(
+        language === 'hi'
+          ? "माइक्रोफ़ोन अनुमति स्वीकृत करें या ऑडियो सक्षम करें।"
+          : "Microphone permission denied or not supported in this browser."
+      );
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {}
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setIsRecording(false);
+  };
+
+  const analyzePronunciation = async () => {
+    if (!activeTargetSentence) return;
+    setIsAnalyzing(true);
+    setErrorMsg(null);
+
+    try {
+      let base64Audio = '';
+      if (audioBlob) {
+        const reader = new FileReader();
+        base64Audio = await new Promise((resolve) => {
+          reader.onloadend = () => {
+            const res = reader.result as string;
+            const base64 = res.includes(',') ? res.split(',')[1] : res;
+            resolve(base64);
+          };
+          reader.readAsDataURL(audioBlob);
+        });
+      }
+
+      const res = await fetch('/api/pronunciation-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetSentence: activeTargetSentence,
+          audioBase64: base64Audio,
+          mimeType: 'audio/webm',
+          transcript,
+          language
+        })
+      });
+
+      const json = await res.json();
+      if (json.success && json.feedback) {
+        setFeedback(json.feedback);
+        playCorrectSound();
+      } else {
+        throw new Error(json.error || "Failed to analyze audio");
+      }
+    } catch (err: any) {
+      console.error("Pronunciation analysis failed:", err);
+      setErrorMsg(err.message || "Failed to analyze pronunciation");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 border border-amber-500/30 shadow-2xl space-y-6">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-3 bg-amber-500/20 rounded-2xl border border-amber-500/40 text-amber-400">
+            <Mic className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                Gemini Voice AI
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                Instant Accuracy Analysis
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-white font-heading mt-0.5">
+              {language === 'hi' ? '🎙️ बोलें और अपना उच्चारण सुधारें' : '🎙️ Speak & Test Pronunciation'}
+            </h3>
+          </div>
+        </div>
+
+        <button
+          onClick={() => speakNativeText(activeTargetSentence)}
+          className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition shrink-0"
+        >
+          <Volume2 className="w-4 h-4 text-indigo-400" />
+          <span>{language === 'hi' ? '🔊 नेटिव आवाज सुनें' : '🔊 Listen Native'}</span>
+        </button>
+      </div>
+
+      {/* Target Sentence Picker */}
+      <div className="space-y-3">
+        <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+          {language === 'hi' ? 'अभ्यास के लिए वाक्य चुनें या अपना वाक्य लिखें:' : 'Select or type a sentence to practice:'}
+        </label>
+
+        {/* Practice sentence chips */}
+        <div className="flex flex-wrap gap-2">
+          {practiceSentences.slice(0, 4).map((s, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setSelectedSentence(s);
+                setCustomSentence('');
+                setFeedback(null);
+                setAudioBlob(null);
+                setAudioUrl(null);
+                setTranscript('');
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-medium transition text-left border ${
+                selectedSentence === s && !customSentence
+                  ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-md'
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+              }`}
+            >
+              "{s}"
+            </button>
+          ))}
+        </div>
+
+        {/* Custom sentence input */}
+        <input
+          type="text"
+          value={customSentence}
+          onChange={(e) => {
+            setCustomSentence(e.target.value);
+            setFeedback(null);
+            setAudioBlob(null);
+            setAudioUrl(null);
+            setTranscript('');
+          }}
+          placeholder={language === 'hi' ? 'यहाँ कोई भी अंग्रेज़ी वाक्य लिखें...' : 'Or type any sentence to test your accent...'}
+          className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
+        />
+
+        {/* Display Active Sentence */}
+        <div className="bg-slate-950 p-4 rounded-2xl border border-indigo-500/30 text-center space-y-1">
+          <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
+            Target Practice Sentence
+          </span>
+          <p className="text-base sm:text-lg font-black text-amber-300 font-heading">
+            "{activeTargetSentence}"
+          </p>
+        </div>
+      </div>
+
+      {/* Recording Controls */}
+      <div className="flex flex-col items-center justify-center space-y-4 py-2">
+        {!isRecording ? (
+          <button
+            onClick={startRecording}
+            className="group relative flex items-center space-x-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
+          >
+            <Mic className="w-5 h-5 text-slate-950 group-hover:animate-bounce" />
+            <span>{language === 'hi' ? '🎙️ रिकॉर्डिंग शुरू करें' : '🎙️ Start Recording & Speak'}</span>
+          </button>
+        ) : (
+          <div className="flex flex-col items-center space-y-3">
+            <div className="flex items-center space-x-2 text-rose-400 animate-pulse font-mono text-xs bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/30">
+              <Radio className="w-4 h-4 text-rose-500" />
+              <span>Recording Live ({recordingSeconds}s)... Speak clearly into mic</span>
+            </div>
+
+            <button
+              onClick={stopRecording}
+              className="flex items-center space-x-2 px-8 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xl shadow-rose-600/30 transition-all hover:scale-105"
+            >
+              <Square className="w-4 h-4 fill-current" />
+              <span>{language === 'hi' ? '⏹️ रिकॉर्डिंग रोकें' : '⏹️ Stop Recording'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Live speech transcript preview */}
+        {transcript && (
+          <div className="w-full bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+              Speech Recognized:
+            </span>
+            <p className="italic text-slate-200">"{transcript}"</p>
+          </div>
+        )}
+
+        {/* Audio Player Preview */}
+        {audioUrl && !isRecording && (
+          <div className="w-full bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-300">
+              <span className="font-bold text-amber-300">🎧 Your Recorded Voice Preview:</span>
+              <button
+                onClick={startRecording}
+                className="text-[11px] text-slate-400 hover:text-white flex items-center space-x-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Re-record</span>
+              </button>
+            </div>
+
+            <audio src={audioUrl} controls className="w-full h-10 accent-amber-500" />
+
+            <button
+              onClick={analyzePronunciation}
+              disabled={isAnalyzing}
+              className="w-full bg-gradient-to-r from-amber-500 via-indigo-600 to-purple-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-xl shadow-amber-500/20 transition flex items-center justify-center space-x-2 text-xs"
+            >
+              {isAnalyzing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>Gemini AI is analyzing phonetics & accuracy...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{language === 'hi' ? '⚡ Gemini AI से उच्चारण रिपोर्ट पाएं' : '⚡ Get Instant Gemini AI Pronunciation Feedback'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="w-full bg-rose-950/80 border border-rose-500/40 p-3.5 rounded-xl text-xs text-rose-300 flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+      </div>
+
+      {/* GEMINI PRONUNCIATION ANALYSIS FEEDBACK REPORT */}
+      {feedback && (
+        <div className="space-y-4 pt-2 border-t border-slate-800 animate-fadeIn">
+          
+          {/* Top Score Banner */}
+          <div className={`p-5 rounded-2xl border flex items-center justify-between ${
+            feedback.score >= 88
+              ? 'bg-gradient-to-r from-emerald-950/80 to-slate-900 border-emerald-500/40 text-emerald-200'
+              : feedback.score >= 70
+              ? 'bg-gradient-to-r from-amber-950/80 to-slate-900 border-amber-500/40 text-amber-200'
+              : 'bg-gradient-to-r from-rose-950/80 to-slate-900 border-rose-500/40 text-rose-200'
+          }`}>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+                Pronunciation Evaluation
+              </span>
+              <h4 className="text-xl font-black font-heading flex items-center space-x-2">
+                <span>{feedback.accuracyLevel || 'Accuracy Report'}</span>
+                {feedback.score >= 85 && <Sparkles className="w-5 h-5 text-amber-400" />}
+              </h4>
+            </div>
+
+            <div className="text-right">
+              <div className="text-3xl font-black font-heading">
+                {feedback.score}<span className="text-sm font-normal">%</span>
+              </div>
+              <span className="text-[10px] font-bold opacity-75">Pronunciation Score</span>
+            </div>
+          </div>
+
+          {/* Transcribed Comparison */}
+          {feedback.transcribedSpeech && (
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                What Gemini Heard:
+              </span>
+              <p className="text-slate-200 italic font-mono bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                "{feedback.transcribedSpeech}"
+              </p>
+            </div>
+          )}
+
+          {/* Strengths */}
+          {feedback.strengths && feedback.strengths.length > 0 && (
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex items-center space-x-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <ThumbsUp className="w-4 h-4" />
+                <span>Key Pronunciation Strengths:</span>
+              </div>
+              <ul className="space-y-1 pl-1">
+                {feedback.strengths.map((st: string, idx: number) => (
+                  <li key={idx} className="text-xs text-slate-200 flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{st}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Mispronounced Words Breakdown */}
+          {feedback.mispronouncedWords && feedback.mispronouncedWords.length > 0 ? (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                Phonetic & Word Corrections:
+              </span>
+              <div className="grid grid-cols-1 gap-2.5">
+                {feedback.mispronouncedWords.map((mw: any, idx: number) => (
+                  <div key={idx} className="bg-slate-950 p-3.5 rounded-xl border border-amber-500/30 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-300 text-xs bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                        "{mw.word}"
+                      </span>
+                      <span className="text-[10px] text-slate-400">{mw.issue}</span>
+                    </div>
+                    <p className="text-xs text-slate-200 leading-snug">
+                      <span className="font-bold text-emerald-400">Fix Tip: </span>
+                      {mw.correctionTip}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-500/30 text-xs text-emerald-300 flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>No major mispronunciations detected! Every word was clear and accurate.</span>
+            </div>
+          )}
+
+          {/* Intonation & Rhythm */}
+          {feedback.intonationAndFluencyAdvice && (
+            <div className="bg-indigo-950/60 p-4 rounded-xl border border-indigo-500/30 text-xs text-indigo-200 space-y-1">
+              <span className="font-bold text-amber-300 block text-[10px] uppercase tracking-wider">
+                Native Cadence & Linking Tip:
+              </span>
+              <p className="leading-relaxed">{feedback.intonationAndFluencyAdvice}</p>
+            </div>
+          )}
+
+          {/* Hindi Explanation */}
+          {feedback.hindiExplanation && (
+            <div className="bg-amber-950/40 p-4 rounded-xl border border-amber-500/30 text-xs text-amber-200 space-y-1">
+              <span className="font-bold text-amber-400 block text-[10px] uppercase tracking-wider">
+                🇮🇳 हिंदी मार्गदर्शन (Hindi Feedback):
+              </span>
+              <p className="leading-relaxed">{feedback.hindiExplanation}</p>
+            </div>
+          )}
+
+        </div>
+      )}
+
+    </div>
+  );
+};
 
 export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   const { completeLesson, deductHeart, progress, language, toggleLanguage } = useLearning();
@@ -377,6 +826,9 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
               </div>
             </div>
           )}
+
+          {/* AI Pronunciation Microphone Recorder & Gemini Feedback */}
+          <AIPronunciationPractice day={day} language={language} />
 
           {/* Action Button */}
           <div className="pt-4 flex justify-end">

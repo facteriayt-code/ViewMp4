@@ -849,10 +849,10 @@ export const DAYS_CURRICULUM: DayLesson[] = [
     }
   },
 
-  // --- DAY 3: QUESTION FORMATION & INDIRECT QUESTIONS ---
+  // --- DAY 4: QUESTION FORMATION & INDIRECT QUESTIONS ---
   {
-    id: 'day-3',
-    dayNumber: 3,
+    id: 'day-4',
+    dayNumber: 4,
     monthNumber: 1,
     title: 'Question Formation & Polite Indirect Questions',
     category: 'conversation',
@@ -890,7 +890,7 @@ export const DAYS_CURRICULUM: DayLesson[] = [
     },
     quiz: [
       {
-        id: 'd3-q1',
+        id: 'd4-q1',
         question: 'Select the polite, grammatically accurate indirect question:',
         options: [
           'Could you tell me where the train station is?',
@@ -903,7 +903,7 @@ export const DAYS_CURRICULUM: DayLesson[] = [
         grammaticalRole: 'Embedded Indirect Question Word Order'
       },
       {
-        id: 'd3-q2',
+        id: 'd4-q2',
         question: 'How do you turn "Does he speak Spanish?" into a polite indirect question?',
         options: [
           'Do you know if he speaks Spanish?',
