@@ -682,7 +682,7 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
 
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: { parts },
+          contents: parts,
           config: {
             responseMimeType: "application/json",
             responseSchema: {
