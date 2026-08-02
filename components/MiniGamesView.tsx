@@ -482,8 +482,15 @@ export const MiniGamesView: React.FC = () => {
         })
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const rawText = await res.text();
+        console.error("Non-JSON API response:", rawText);
+        throw new Error("Received invalid server response. Please try again.");
+      }
+
       const json = await res.json();
-      if (json.success && json.feedback) {
+      if (res.ok && json.success && json.feedback) {
         setArenaFeedback(json.feedback);
 
         if (json.feedback.score >= 75) {

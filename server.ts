@@ -40,8 +40,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Request logging middleware - VERY EARLY
   app.use((req, res, next) => {
@@ -319,7 +319,7 @@ Explain in clear, encouraging, structured JSON format why this specific word, no
 4. "proTip": A helpful memory trick or nuance note for a ${level} learner.`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json",
@@ -384,7 +384,7 @@ If given a sentence to analyze or correct, break down its syntax, correct any mi
         let prompt = userQuery || `Analyze this sentence for accuracy and explain why each word/form is used: "${sentenceToAnalyze}"`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             systemInstruction,
@@ -606,7 +606,7 @@ Return JSON with:
 10. whyUsedInExample (explain why this exact word choice works best in that sentence)`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -681,7 +681,7 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
         parts.push({ text: promptText });
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-2.5-flash",
           contents: { parts },
           config: {
             responseMimeType: "application/json",
@@ -792,10 +792,19 @@ Provide an accurate, constructive evaluation of the user's spoken English pronun
   // Mount API Router
   app.use("/api", apiRouter);
 
+  // Express JSON Error Handler for /api routes
+  app.use("/api", (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("API Router Global Error:", err);
+    res.status(err.status || 500).json({
+      success: false,
+      error: err.message || "An internal server error occurred"
+    });
+  });
+
   // Fallback for unmatched API routes
   app.use("/api", (req, res) => {
     console.log(`API: 404 Not Found - ${req.method} ${req.url}`);
-    res.status(404).json({ error: "API endpoint not found" });
+    res.status(404).json({ success: false, error: "API endpoint not found" });
   });
 
   if (process.env.NODE_ENV !== "production") {
