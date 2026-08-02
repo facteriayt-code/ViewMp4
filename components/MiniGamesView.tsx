@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Gamepad2, Sparkles, CheckCircle2, RotateCcw, Lock, Award, Flame, Volume2, ArrowRight, RefreshCw, Trophy, ShieldAlert, Zap, Mic, Square, HelpCircle, AlertCircle, ThumbsUp, Radio, Flag, Eye } from 'lucide-react';
+import { Gamepad2, Sparkles, CheckCircle2, RotateCcw, Lock, Award, Flame, Volume2, ArrowRight, ArrowLeft, RefreshCw, Trophy, ShieldAlert, Zap, Mic, Square, HelpCircle, AlertCircle, ThumbsUp, Radio, Flag, Eye } from 'lucide-react';
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM } from '../data/courseData';
 import { DayLesson } from '../types';
@@ -242,7 +242,7 @@ export const MiniGamesView: React.FC = () => {
 
   // Selected Day ID: 'all_unlocked' or 'day-1', 'day-2', etc.
   const [selectedDayId, setSelectedDayId] = useState<string>('all_unlocked');
-  const [activeGameMode, setActiveGameMode] = useState<'wordle' | 'arena' | 'builder' | 'match' | 'detective'>('wordle');
+  const [activeGameMode, setActiveGameMode] = useState<'hub' | 'wordle' | 'arena' | 'builder' | 'match' | 'detective'>('hub');
 
   // Determine unlocked status
   const maxUnlockedDayNumber = Math.max(1, progress.completedDayIds.length + 1);
@@ -814,69 +814,9 @@ export const MiniGamesView: React.FC = () => {
             })}
           </div>
         </div>
-
-        {/* Game Mode Tabs */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
-          <button
-            onClick={() => setActiveGameMode('wordle')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
-              activeGameMode === 'wordle'
-                ? 'bg-gradient-to-r from-emerald-500 to-indigo-600 text-white shadow-lg shadow-emerald-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-emerald-300 animate-pulse" />
-            <span>🔤 Vocabulary Wordle</span>
-          </button>
-
-          <button
-            onClick={() => setActiveGameMode('arena')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
-              activeGameMode === 'arena'
-                ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-lg shadow-amber-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <Mic className="w-4 h-4 text-amber-300" />
-            <span>🎙️ Pronunciation Arena (Level {arenaLevel})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveGameMode('builder')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeGameMode === 'builder'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🧩 Sentence Builder ({sentenceBuilderPool.length})
-          </button>
-
-          <button
-            onClick={() => setActiveGameMode('match')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeGameMode === 'match'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🃏 Vocab Match Blitz ({wordPairsPool.length})
-          </button>
-
-          <button
-            onClick={() => setActiveGameMode('detective')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeGameMode === 'detective'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🔍 Mistake Detective ({mistakesPool.length})
-          </button>
-        </div>
       </div>
 
-      {/* LOCKED DAY ALERT SCREEN */}
+        {/* LOCKED DAY ALERT SCREEN */}
       {isSelectedLocked ? (
         <div className="bg-slate-900 rounded-3xl p-8 border border-amber-500/30 text-center space-y-4 shadow-2xl">
           <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30">
@@ -893,8 +833,269 @@ export const MiniGamesView: React.FC = () => {
             Play All Unlocked Content
           </button>
         </div>
+      ) : activeGameMode === 'hub' ? (
+        /* GAME SELECTION HUB - CARDS GRID */
+        <div className="space-y-6 animate-fadeIn">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 className="text-xl font-extrabold text-white font-heading">
+                Choose an English Mini-Game
+              </h2>
+              <p className="text-xs text-slate-400">
+                Select any interactive challenge below to open it in a dedicated game view:
+              </p>
+            </div>
+            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              5 Dedicated Games
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* CARD 1: VOCABULARY WORDLE */}
+            <div
+              onClick={() => setActiveGameMode('wordle')}
+              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/60 p-6 rounded-3xl border border-emerald-500/30 hover:border-emerald-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1 space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
+                </div>
+                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  Dictionary & Puzzles
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition flex items-center space-x-2">
+                  <span>🔤 Vocabulary Wordle</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Guess the hidden 5-letter English word. Every guess reveals definitions, phonetics, and Hindi translations!
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                <span className="text-[11px] font-bold text-slate-400">
+                  Unique Words Guarantee
+                </span>
+                <span className="text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                  <span>Open Wordle Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* CARD 2: PRONUNCIATION ARENA */}
+            <div
+              onClick={() => setActiveGameMode('arena')}
+              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/60 p-6 rounded-3xl border border-amber-500/30 hover:border-amber-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1 space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+                  <Mic className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30">
+                  Gemini Voice AI
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition flex items-center space-x-2">
+                  <span>🎙️ Pronunciation Arena</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Speak difficult English words into your mic and receive instant AI voice accuracy score, IPA phonetics, and mouth tips.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                <span className="text-[11px] font-bold text-slate-400">
+                  Level {arenaLevel} / 5 Difficulty
+                </span>
+                <span className="text-xs font-bold text-amber-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                  <span>Open Arena Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* CARD 3: SENTENCE BUILDER */}
+            <div
+              onClick={() => setActiveGameMode('builder')}
+              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-6 rounded-3xl border border-indigo-500/30 hover:border-indigo-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300">
+                  <Gamepad2 className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/30">
+                  Grammar & Structure
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white group-hover:text-indigo-300 transition flex items-center space-x-2">
+                  <span>🧩 Sentence Builder</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Reorder scrambled English word tiles into natural, grammatically sound sentences based on your daily course curriculum.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                <span className="text-[11px] font-bold text-slate-400">
+                  {sentenceBuilderPool.length} Puzzles Ready
+                </span>
+                <span className="text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                  <span>Open Builder Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* CARD 4: VOCAB MATCH BLITZ */}
+            <div
+              onClick={() => setActiveGameMode('match')}
+              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/60 p-6 rounded-3xl border border-purple-500/30 hover:border-purple-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1 space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/30">
+                  Speed Memory
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition flex items-center space-x-2">
+                  <span>🃏 Vocab Match Blitz</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Match English vocabulary words with their correct Hindi meanings as fast as possible to build instant recall.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                <span className="text-[11px] font-bold text-slate-400">
+                  {wordPairsPool.length} Vocabulary Pairs
+                </span>
+                <span className="text-xs font-bold text-purple-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                  <span>Open Match Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* CARD 5: COMMON MISTAKES DETECTIVE */}
+            <div
+              onClick={() => setActiveGameMode('detective')}
+              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/60 p-6 rounded-3xl border border-rose-500/30 hover:border-rose-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1 space-y-4 md:col-span-2"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300">
+                  <HelpCircle className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2.5 py-1 rounded-full border border-rose-500/30">
+                  Error Spotting
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white group-hover:text-rose-300 transition flex items-center space-x-2">
+                  <span>🔍 Common Mistakes Detective</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Spot frequent Indian English grammar errors (e.g., "Myself Rahul", "Revert back") and choose the correct natural phrasing.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                <span className="text-[11px] font-bold text-slate-400">
+                  {mistakesPool.length} Real Scenarios
+                </span>
+                <span className="text-xs font-bold text-rose-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                  <span>Open Detective Page</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
-        <>
+        /* DEDICATED GAME PAGE VIEW */
+        <div className="space-y-6 animate-fadeIn">
+          {/* Top Bar with Back Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 backdrop-blur-md shadow-xl sticky top-2 z-20">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setActiveGameMode('hub')}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-emerald-600/20 active:scale-95"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>← Back to All Games</span>
+              </button>
+
+              <div className="h-5 w-px bg-slate-800 hidden sm:block" />
+
+              <div>
+                <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                  {activeGameMode === 'wordle' && '🔤 Vocabulary Wordle'}
+                  {activeGameMode === 'arena' && '🎙️ Pronunciation Arena'}
+                  {activeGameMode === 'builder' && '🧩 Sentence Builder'}
+                  {activeGameMode === 'match' && '🃏 Vocab Match Blitz'}
+                  {activeGameMode === 'detective' && '🔍 Mistake Detective'}
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Practicing: <span className="text-emerald-400 font-bold">{selectedDayId === 'all_unlocked' ? 'All Unlocked Days' : `Day ${activeLesson?.dayNumber}`}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Game Switcher Bar */}
+            <div className="flex items-center space-x-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              <button
+                onClick={() => setActiveGameMode('wordle')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeGameMode === 'wordle' ? 'bg-gradient-to-r from-emerald-500 to-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Wordle
+              </button>
+              <button
+                onClick={() => setActiveGameMode('arena')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeGameMode === 'arena' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Arena
+              </button>
+              <button
+                onClick={() => setActiveGameMode('builder')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeGameMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Builder
+              </button>
+              <button
+                onClick={() => setActiveGameMode('match')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeGameMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Match
+              </button>
+              <button
+                onClick={() => setActiveGameMode('detective')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeGameMode === 'detective' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                Detective
+              </button>
+            </div>
+          </div>
           {/* MODE: VOCABULARY WORDLE */}
           {activeGameMode === 'wordle' && <WordleGame />}
 
@@ -1423,7 +1624,7 @@ export const MiniGamesView: React.FC = () => {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
 
     </div>
