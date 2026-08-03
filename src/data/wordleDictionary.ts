@@ -451,24 +451,6 @@ export const WORDLE_DICTIONARY: WordleWord[] = [
   }
 ];
 
-export function getWordMeaning(searchWord: string): WordleWord {
-  const clean = searchWord.toUpperCase().trim();
-  const len = clean.length;
-  const pool = getWordsForLength(len);
-  const found = pool.find(w => w.word.toUpperCase() === clean);
-  if (found) return found;
-
-  // Fallback generation for words outside static dictionary
-  return {
-    word: clean,
-    phonetic: `/${clean.toLowerCase()}/`,
-    partOfSpeech: "noun / verb / adj",
-    definition: `A valid ${len}-letter English word commonly used in vocabulary and daily conversation.`,
-    hindiMeaning: `${clean} - मान्य अंग्रेज़ी शब्द`,
-    exampleSentence: `The word "${clean}" is a recognized ${len}-letter English vocabulary word.`
-  };
-}
-
 export const WORDLE_4LETTER_DICTIONARY: WordleWord[] = [
   { word: "BOOK", phonetic: "/bʊk/", partOfSpeech: "noun", definition: "A written or printed work consisting of pages bound together.", hindiMeaning: "पुस्तक / किताब", exampleSentence: "Reading a book every day expands your English knowledge." },
   { word: "MIND", phonetic: "/maɪnd/", partOfSpeech: "noun", definition: "The element of a person that enables them to be aware of the world and their experiences.", hindiMeaning: "मन / दिमाग", exampleSentence: "Keep an open mind when learning new language skills." },
@@ -551,13 +533,27 @@ export const WORDLE_6LETTER_DICTIONARY: WordleWord[] = [
   { word: "WONDER", phonetic: "/ˈwʌn.dər/", partOfSpeech: "noun / verb", definition: "A feeling of surprise mingled with admiration, caused by something beautiful.", hindiMeaning: "आश्चर्य / चमत्कार", exampleSentence: "The child looked at the starry sky with pure wonder." }
 ];
 
+export const WORDLE_7LETTER_DICTIONARY: WordleWord[] = [
+  { word: "ANIMALS", phonetic: "/ˈæn.ɪ.məlzi/", partOfSpeech: "noun (plural)", definition: "Living organisms that feed on organic matter, typically having specialized sense organs.", hindiMeaning: "जानवर / पशु", exampleSentence: "Wild animals live freely in the national park." },
+  { word: "PANTIES", phonetic: "/ˈpæn.tiz/", partOfSpeech: "noun (plural)", definition: "An undergarment worn by women and girls.", hindiMeaning: "अंतर्वस्त्र / अंडरगारमेंट", exampleSentence: "Soft cotton garments provide comfortable daily wear." },
+  { word: "TEACHER", phonetic: "/ˈtiː.tʃər/", partOfSpeech: "noun", definition: "A person who helps students acquire knowledge, competence, or virtue.", hindiMeaning: "शिक्षक / अध्यापक", exampleSentence: "An inspiring teacher encourages students to ask thoughtful questions." },
+  { word: "STUDENT", phonetic: "/ˈstjuː.dənt/", partOfSpeech: "noun", definition: "A person who is studying at a school, college, or university.", hindiMeaning: "छात्र / विद्यार्थी", exampleSentence: "The dedicated student practices English vocabulary every day." },
+  { word: "FARMERS", phonetic: "/ˈfɑːr.mərz/", partOfSpeech: "noun (plural)", definition: "People who own or manage a farm to grow crops and raise animals.", hindiMeaning: "किसान / कृषक", exampleSentence: "Hardworking farmers supply fresh produce to the local markets." },
+  { word: "DOCTORS", phonetic: "/ˈdɒk.tərz/", partOfSpeech: "noun (plural)", definition: "Qualified medical practitioners who diagnose and treat health conditions.", hindiMeaning: "चिकित्सक / डॉक्टर", exampleSentence: "Experienced doctors work tirelessly to care for patients." },
+  { word: "JOURNEY", phonetic: "/ˈdʒɜːr.ni/", partOfSpeech: "noun", definition: "An act of traveling from one place to another.", hindiMeaning: "यात्रा / सफर", exampleSentence: "Learning a new language is a rewarding lifelong journey." },
+  { word: "WEATHER", phonetic: "/ˈwɛð.ər/", partOfSpeech: "noun", definition: "The state of the atmosphere at a place and time regarding heat, cloudiness, dryness, sunshine, wind, and rain.", hindiMeaning: "मौसम / जलवायु", exampleSentence: "The pleasant spring weather makes walking outdoors enjoyable." },
+  { word: "COUNTRY", phonetic: "/ˈkʌn.tri/", partOfSpeech: "noun", definition: "A nation with its own government, occupying a particular territory.", hindiMeaning: "देश / राष्ट्र", exampleSentence: "India is a vibrant country rich in culture and diversity." },
+  { word: "COMPANY", phonetic: "/ˈkʌm.pə.ni/", partOfSpeech: "noun", definition: "A commercial business or the presence of others.", hindiMeaning: "कंपनी / संगठन", exampleSentence: "She works for an innovative technology company." }
+];
+
 export function getWordsForLength(length: number): WordleWord[] {
   if (length === 4) return WORDLE_4LETTER_DICTIONARY;
   if (length === 6) return WORDLE_6LETTER_DICTIONARY;
+  if (length === 7) return WORDLE_7LETTER_DICTIONARY;
   return WORDLE_DICTIONARY; // Default 5 letters
 }
 
-// Extra words valid set for 4, 5, 6 letter words
+// Extra words valid set for 4, 5, 6, 7 letter words
 export const EXTENDED_VALID_4LETTER_WORDS: string[] = [
   "ABLE", "ACID", "AGED", "ALSO", "AREA", "ARMY", "AWAY", "BABY", "BACK", "BALL",
   "BAND", "BANK", "BASE", "BATH", "BEAR", "BEAT", "BEEN", "BELL", "BELT", "BEST",
@@ -651,7 +647,30 @@ export const EXTENDED_VALID_6LETTER_WORDS: string[] = [
   "WITHIN", "WONDER", "WORKER", "WRITER", "YELLOW"
 ];
 
+// Additional common plural & s-suffix words list
+export const PLURAL_EXTENDED_WORDS: string[] = [
+  "ANIMALS", "TIGERS", "PANTIES", "PANTY", "TIGER", "ANIMAL", "BOOKS", "TREES", "BIRDS", "PARKS",
+  "LIONS", "GIRLS", "BOYS", "COWS", "BEDS", "CARS", "BAGS", "MAPS", "BALLS", "HAIRS", "LEGS",
+  "HANDS", "FEET", "EYES", "EARS", "SONGS", "GAMES", "FOODS", "HOUSES", "RINGS", "STARS",
+  "ROADS", "SHIPS", "BOATS", "FARMERS", "TEACHERS", "DOCTORS", "STUDENTS", "MATCHES", "WATCHES",
+  "DRESSES", "GLASSES", "CLASSES", "BOXES", "FOXES", "BUSES", "BABIES", "CANDIES", "CITIES",
+  "LADIES", "STORIES", "PARTIES", "PANTS", "PLANTS", "SHIRTS", "SHOES", "RIVERS", "OCEANS",
+  "MOUNTAINS", "DESERTS", "FORESTS", "PLANETS", "HEARTS", "BRAINS", "LIGHTS", "SOUNDS", "WORDS",
+  "VOICES", "CHOICES", "CHANGES", "DREAMS", "DRIVERS", "PLAYERS", "READERS", "WRITERS", "FRIENDS",
+  "PARENTS", "MEMORIES", "ENERGIES", "STRATEGIES", "QUALITIES", "ACTIVITIES", "COMMUNITIES",
+  "SISTERS", "BROTHERS", "MOTHERS", "FATHERS", "NEIGHBORS", "COUSINS", "HEROES", "POTATOES",
+  "TOMATOES", "MANGOES", "ECHOES", "CARGOES", "LAKES", "TOYS", "DAYS", "KEYS", "PENS", "CUPS"
+];
+
 // Sets for O(1) word lookup by length
+const SET_3 = new Set<string>([
+  "BOX", "FOX", "BUS", "DOG", "CAT", "BOY", "TOY", "CAR", "BAG", "MAP", "KEY", "BED", "FAN",
+  "SUN", "PEN", "CUP", "COW", "PIG", "RAT", "MAN", "FLY", "EYE", "ARM", "LEG", "JAR", "HAT",
+  "CAP", "PAN", "PIN", "TAX", "HUB", "BAR", "LIP", "PET", "PIT", "POT", "RUG", "SEA", "SKY",
+  "TIN", "TOP", "VAN", "WEB", "WIN", "ZIP", "ANT", "BEE", "OWL", "BAT", "EGG", "NUT", "JAM",
+  "ICE", "OIL", "GAS", "AIR", "DAY", "END", "FUN", "GUY", "JOY", "LAW", "ONE", "RUN", "TWO", "USE"
+]);
+
 const SET_4 = new Set<string>([
   ...WORDLE_4LETTER_DICTIONARY.map(w => w.word.toUpperCase()),
   ...EXTENDED_VALID_4LETTER_WORDS.map(w => w.toUpperCase())
@@ -666,13 +685,135 @@ const SET_6 = new Set<string>([
   ...EXTENDED_VALID_6LETTER_WORDS.map(w => w.toUpperCase())
 ]);
 
-export function isValidWordleWord(word: string, length: number = 5): boolean {
-  if (!word || word.length !== length) return false;
-  const clean = word.toUpperCase().trim();
-  
-  if (length === 4) return SET_4.has(clean);
-  if (length === 6) return SET_6.has(clean);
-  return SET_5.has(clean);
+const SET_7 = new Set<string>([
+  ...WORDLE_7LETTER_DICTIONARY.map(w => w.word.toUpperCase())
+]);
+
+// Master lookup set containing all known words and stems across lengths
+const ALL_VALID_WORDS_SET = new Set<string>([
+  ...SET_3,
+  ...SET_4,
+  ...SET_5,
+  ...SET_6,
+  ...SET_7,
+  ...PLURAL_EXTENDED_WORDS.map(w => w.toUpperCase())
+]);
+
+// Helper to check if a word/stem is in any dictionary
+function isKnownWord(w: string): boolean {
+  return ALL_VALID_WORDS_SET.has(w.toUpperCase().trim());
 }
+
+// Helper to find a matching WordleWord object across dictionaries
+function findInAnyDictionary(searchWord: string): WordleWord | null {
+  const clean = searchWord.toUpperCase().trim();
+  const allDicts = [
+    ...WORDLE_DICTIONARY,
+    ...WORDLE_4LETTER_DICTIONARY,
+    ...WORDLE_6LETTER_DICTIONARY,
+    ...WORDLE_7LETTER_DICTIONARY
+  ];
+  return allDicts.find(w => w.word.toUpperCase() === clean) || null;
+}
+
+export function isValidWordleWord(word: string, length?: number): boolean {
+  if (!word) return false;
+  const clean = word.toUpperCase().trim();
+  if (length && clean.length !== length) return false;
+
+  // 1. Direct check in master word set
+  if (ALL_VALID_WORDS_SET.has(clean)) return true;
+
+  // 2. Check by length-specific sets
+  if (clean.length === 4 && SET_4.has(clean)) return true;
+  if (clean.length === 5 && SET_5.has(clean)) return true;
+  if (clean.length === 6 && SET_6.has(clean)) return true;
+  if (clean.length === 7 && SET_7.has(clean)) return true;
+
+  // 3. Dynamic Plural / S-suffix resolution:
+  // a) Ending in "IES" -> base stem ending in "Y" (e.g. PANTIES -> PANTY, BABIES -> BABY, CITIES -> CITY)
+  if (clean.endsWith("IES") && clean.length >= 4) {
+    const yStem = clean.slice(0, -3) + "Y";
+    if (isKnownWord(yStem)) return true;
+  }
+
+  // b) Ending in "ES" -> base stem without "ES" or "S" (e.g. BOXES -> BOX, FOXES -> FOX, HEROES -> HERO, LAKES -> LAKE)
+  if (clean.endsWith("ES") && clean.length >= 4) {
+    const stem2 = clean.slice(0, -2);
+    if (isKnownWord(stem2)) return true;
+
+    const stem1 = clean.slice(0, -1);
+    if (isKnownWord(stem1)) return true;
+  }
+
+  // c) Ending in "S" -> base singular stem (e.g. TIGERS -> TIGER, ANIMALS -> ANIMAL, BOOKS -> BOOK)
+  if (clean.endsWith("S") && clean.length >= 3) {
+    const stem1 = clean.slice(0, -1);
+    if (isKnownWord(stem1)) return true;
+  }
+
+  return false;
+}
+
+export function getWordMeaning(searchWord: string): WordleWord {
+  const clean = searchWord.toUpperCase().trim();
+  const len = clean.length;
+  
+  // 1. Check exact dictionary match
+  const pool = getWordsForLength(len);
+  const foundInPool = pool.find(w => w.word.toUpperCase() === clean);
+  if (foundInPool) return foundInPool;
+
+  const foundAny = findInAnyDictionary(clean);
+  if (foundAny) return foundAny;
+
+  // 2. Dynamic Plural Stem Lookup
+  let stemWordObj: WordleWord | null = null;
+  let baseStemStr: string = "";
+
+  if (clean.endsWith("IES") && clean.length >= 4) {
+    baseStemStr = clean.slice(0, -3) + "Y";
+    stemWordObj = findInAnyDictionary(baseStemStr);
+  } else if (clean.endsWith("ES") && clean.length >= 4) {
+    baseStemStr = clean.slice(0, -2);
+    stemWordObj = findInAnyDictionary(baseStemStr) || findInAnyDictionary(clean.slice(0, -1));
+  } else if (clean.endsWith("S") && clean.length >= 3) {
+    baseStemStr = clean.slice(0, -1);
+    stemWordObj = findInAnyDictionary(baseStemStr);
+  }
+
+  if (stemWordObj) {
+    return {
+      word: clean,
+      phonetic: `/${clean.toLowerCase()}/`,
+      partOfSpeech: `noun (plural of ${stemWordObj.word})`,
+      definition: `Plural form of ${stemWordObj.word}: ${stemWordObj.definition}`,
+      hindiMeaning: `${stemWordObj.hindiMeaning} (बहुवचन / Plural)`,
+      exampleSentence: `Plural form used in daily conversation, e.g., "${clean} play an important role."`
+    };
+  }
+
+  if (baseStemStr) {
+    return {
+      word: clean,
+      phonetic: `/${clean.toLowerCase()}/`,
+      partOfSpeech: "noun (plural)",
+      definition: `Plural form of ${baseStemStr}: A valid ${len}-letter English vocabulary word.`,
+      hindiMeaning: `${baseStemStr} - बहुवचन शब्द`,
+      exampleSentence: `The plural word "${clean}" is widely used in written and spoken English.`
+    };
+  }
+
+  // 3. Fallback generation for valid words outside static dictionary
+  return {
+    word: clean,
+    phonetic: `/${clean.toLowerCase()}/`,
+    partOfSpeech: "noun / verb / adj",
+    definition: `A valid ${len}-letter English word commonly used in vocabulary and daily conversation.`,
+    hindiMeaning: `${clean} - मान्य अंग्रेज़ी शब्द`,
+    exampleSentence: `The word "${clean}" is a recognized ${len}-letter English vocabulary word.`
+  };
+}
+
 
 

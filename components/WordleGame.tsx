@@ -248,7 +248,7 @@ export const WordleGame: React.FC = () => {
   // Difficulty & Customization Settings State
   const [wordLength, setWordLength] = useState<number>(() => {
     const saved = localStorage.getItem('lingo_wordle_word_length');
-    return saved ? Math.min(Math.max(parseInt(saved, 10), 4), 6) : 5;
+    return saved ? Math.min(Math.max(parseInt(saved, 10), 4), 7) : 5;
   });
 
   const [maxGuesses, setMaxGuesses] = useState<number>(() => {
@@ -721,7 +721,7 @@ export const WordleGame: React.FC = () => {
                     Word Length (Letters):
                   </label>
                   <div className="flex gap-2">
-                    {[4, 5, 6].map((len) => (
+                    {[4, 5, 6, 7].map((len) => (
                       <button
                         key={len}
                         onClick={() => handleSelectDifficulty('custom', len, maxGuesses)}
@@ -739,6 +739,7 @@ export const WordleGame: React.FC = () => {
                     {wordLength === 4 && 'Short 4-letter vocabulary words (Easy & Fast)'}
                     {wordLength === 5 && 'Classic 5-letter vocabulary words (Standard Wordle)'}
                     {wordLength === 6 && 'Longer 6-letter vocabulary words (Advanced Challenge)'}
+                    {wordLength === 7 && 'Extended 7-letter words (Animals, Panties, Farmers, etc.)'}
                   </p>
                 </div>
 
