@@ -31,7 +31,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       
       {/* Navbar */}
       <Navbar
@@ -44,7 +44,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Container */}
-      <main className="flex-grow pb-16">
+      <main className="flex-grow pb-16 w-full max-w-full overflow-x-hidden">
         {selectedMonthExam ? (
           <MonthTestView exam={selectedMonthExam} onClose={() => setSelectedMonthExam(null)} />
         ) : selectedDay ? (
