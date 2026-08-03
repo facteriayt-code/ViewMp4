@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles, CheckCircle2, RotateCcw, Volume2, VolumeX, ArrowRight,
   HelpCircle, BookOpen, Search, Trophy, Zap, AlertCircle, Eye, Info, History,
-  Sliders, Settings, Flame, Shield, Check, Layers, Target
+  Sliders, Settings, Flame, Shield, Check, Layers, Target, Lightbulb, Gem, X
 } from 'lucide-react';
 import {
   WORDLE_DICTIONARY,
@@ -243,7 +243,14 @@ class WordleSoundEngine {
 const soundEngine = new WordleSoundEngine();
 
 export const WordleGame: React.FC = () => {
-  const { addXpAndGems, triggerConfetti } = useLearning();
+  const { progress, spendGems, addXpAndGems, triggerConfetti } = useLearning();
+
+  // Hint System State
+  const [revealedLetters, setRevealedLetters] = useState<{ [pos: number]: string }>({});
+  const [meaningHintUnlocked, setMeaningHintUnlocked] = useState<boolean>(false);
+  const [synonymHintUnlocked, setSynonymHintUnlocked] = useState<boolean>(false);
+  const [showHintModal, setShowHintModal] = useState<boolean>(false);
+  const [hintSuccessMessage, setHintSuccessMessage] = useState<string | null>(null);
 
   // Difficulty & Customization Settings State
   const [wordLength, setWordLength] = useState<number>(() => {
@@ -353,7 +360,100 @@ export const WordleGame: React.FC = () => {
     setErrorMessage(null);
     setSelectedWordMeaning(null);
     setDeepDiveData(null);
+
+    // Reset Hints
+    setRevealedLetters({});
+    setMeaningHintUnlocked(false);
+    setSynonymHintUnlocked(false);
+    setShowHintModal(false);
+    setHintSuccessMessage(null);
   }, [getRandomTargetWord, targetWordObj, wordLength]);
+
+  // Hint Logic Handlers
+  const handleRevealLetterHint = () => {
+    if (gameStatus !== 'playing') return;
+
+    // Find unrevealed positions in secret word
+    const unrevealedPositions: number[] = [];
+    for (let i = 0; i < wordLength; i++) {
+      if (revealedLetters[i] !== undefined) continue;
+      const alreadyCorrectInGuesses = guesses.some(g => g.statuses[i] === 'correct');
+      if (!alreadyCorrectInGuesses) {
+        unrevealedPositions.push(i);
+      }
+    }
+
+    if (unrevealedPositions.length === 0) {
+      setErrorMessage("All letters in this word have already been revealed or guessed!");
+      setTimeout(() => setErrorMessage(null), 2500);
+      return;
+    }
+
+    const COST = 15;
+    if (progress.gems < COST) {
+      setErrorMessage(`Not enough diamonds! You have 💎${progress.gems}, but need 💎${COST} to reveal a letter.`);
+      setTimeout(() => setErrorMessage(null), 3500);
+      return;
+    }
+
+    const success = spendGems(COST);
+    if (success) {
+      const randomPos = unrevealedPositions[Math.floor(Math.random() * unrevealedPositions.length)];
+      const letter = targetWord[randomPos];
+      setRevealedLetters(prev => ({ ...prev, [randomPos]: letter }));
+      soundEngine.playEnterClick();
+      setHintSuccessMessage(`💎 Spent 15 Diamonds: Letter '${letter}' revealed at Position ${randomPos + 1}!`);
+      setTimeout(() => setHintSuccessMessage(null), 3500);
+    }
+  };
+
+  const handleRevealMeaningHint = () => {
+    if (gameStatus !== 'playing') return;
+    if (meaningHintUnlocked) {
+      setErrorMessage("Meaning hint is already unlocked!");
+      setTimeout(() => setErrorMessage(null), 2000);
+      return;
+    }
+
+    const COST = 10;
+    if (progress.gems < COST) {
+      setErrorMessage(`Not enough diamonds! You have 💎${progress.gems}, but need 💎${COST} for meaning hint.`);
+      setTimeout(() => setErrorMessage(null), 3500);
+      return;
+    }
+
+    const success = spendGems(COST);
+    if (success) {
+      setMeaningHintUnlocked(true);
+      soundEngine.playEnterClick();
+      setHintSuccessMessage(`💎 Spent 10 Diamonds: Definition & Meaning hint unlocked!`);
+      setTimeout(() => setHintSuccessMessage(null), 3500);
+    }
+  };
+
+  const handleRevealSynonymHint = () => {
+    if (gameStatus !== 'playing') return;
+    if (synonymHintUnlocked) {
+      setErrorMessage("Clue & synonym hint is already unlocked!");
+      setTimeout(() => setErrorMessage(null), 2000);
+      return;
+    }
+
+    const COST = 10;
+    if (progress.gems < COST) {
+      setErrorMessage(`Not enough diamonds! You have 💎${progress.gems}, but need 💎${COST} for clue hint.`);
+      setTimeout(() => setErrorMessage(null), 3500);
+      return;
+    }
+
+    const success = spendGems(COST);
+    if (success) {
+      setSynonymHintUnlocked(true);
+      soundEngine.playEnterClick();
+      setHintSuccessMessage(`💎 Spent 10 Diamonds: Synonyms & sentence clue unlocked!`);
+      setTimeout(() => setHintSuccessMessage(null), 3500);
+    }
+  };
 
   // Difficulty Switcher Handler
   const handleSelectDifficulty = (preset: DifficultyPreset, customLen?: number, customGuesses?: number) => {
@@ -581,6 +681,20 @@ export const WordleGame: React.FC = () => {
           {/* Core Control Buttons Bar */}
           <div className="flex flex-wrap items-center gap-2">
             
+            {/* 💡 HINT BUTTON (Spend Diamonds for Letter / Definition / Clues) */}
+            <button
+              onClick={() => setShowHintModal(true)}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow-sm shadow-amber-500/20"
+              title="Take a hint using diamonds"
+            >
+              <Lightbulb className="w-4 h-4 text-amber-100 fill-amber-100 animate-pulse" />
+              <span>Take Hint</span>
+              <span className="bg-black/20 text-white px-2 py-0.5 rounded-md text-[10px] font-black flex items-center space-x-1">
+                <Gem className="w-3 h-3 text-cyan-300 fill-cyan-300" />
+                <span>{progress.gems}</span>
+              </span>
+            </button>
+
             {/* Difficulty Settings Toggle Button */}
             <button
               onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
@@ -843,6 +957,80 @@ export const WordleGame: React.FC = () => {
               </div>
             )}
 
+            {/* Hint Success Toast Banner */}
+            {hintSuccessMessage && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-center text-xs font-extrabold text-emerald-950 animate-fadeIn flex items-center justify-center space-x-1.5 shadow-sm">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>{hintSuccessMessage}</span>
+              </div>
+            )}
+
+            {/* Active Unlocked Hints Banner */}
+            {(Object.keys(revealedLetters).length > 0 || meaningHintUnlocked || synonymHintUnlocked) && (
+              <div className="bg-gradient-to-r from-amber-50/90 via-amber-100/50 to-indigo-50/90 border border-amber-300/80 rounded-2xl p-4 space-y-2.5 text-xs shadow-xs">
+                <div className="flex items-center justify-between font-bold text-amber-950 border-b border-amber-200 pb-2">
+                  <div className="flex items-center space-x-2">
+                    <Lightbulb className="w-4 h-4 text-amber-600 fill-amber-400" />
+                    <span className="font-extrabold uppercase tracking-wide text-amber-900">Active Word Hints Unlocked</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-900 font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                    {Object.keys(revealedLetters).length} Letter(s) {meaningHintUnlocked ? '• Meaning' : ''} {synonymHintUnlocked ? '• Sentence Clue' : ''}
+                  </span>
+                </div>
+
+                {/* Unlocked Letter Positions */}
+                {Object.keys(revealedLetters).length > 0 && (
+                  <div className="space-y-1">
+                    <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block">Revealed Letter Positions:</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {Object.entries(revealedLetters).map(([posStr, letter]) => {
+                        const pos = parseInt(posStr, 10);
+                        return (
+                          <span key={pos} className="bg-amber-100 border border-amber-300 text-amber-950 px-2.5 py-1 rounded-xl font-black text-xs shadow-xs flex items-center space-x-1.5">
+                            <span className="text-[10px] text-amber-700 font-bold">Spot #{pos + 1}:</span>
+                            <strong className="text-sm font-black text-amber-900 bg-white px-1.5 py-0.5 rounded-md border border-amber-200">{letter}</strong>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Unlocked Meaning Hint */}
+                {meaningHintUnlocked && (
+                  <div className="bg-white/90 p-3 rounded-xl border border-amber-200 space-y-1 text-slate-800">
+                    <div className="font-bold text-indigo-900 flex items-center space-x-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Definition Hint:</span>
+                    </div>
+                    <p className="text-xs font-medium text-slate-700 leading-relaxed pl-5">
+                      "{targetWordObj.definition}"
+                    </p>
+                    {targetWordObj.hindiMeaning && (
+                      <p className="text-xs font-bold text-amber-800 pl-5">
+                        हिंदी अर्थ: {targetWordObj.hindiMeaning}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Unlocked Synonym & Sentence Clue Hint */}
+                {synonymHintUnlocked && (
+                  <div className="bg-white/90 p-3 rounded-xl border border-indigo-200 space-y-1 text-slate-800">
+                    <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-300" />
+                      <span>Clue & Part of Speech: <span className="text-indigo-700 font-extrabold uppercase">{targetWordObj.partOfSpeech}</span></span>
+                    </div>
+                    {targetWordObj.exampleSentence && (
+                      <p className="text-xs italic text-slate-700 pl-5">
+                        Sentence Clue: "{targetWordObj.exampleSentence.replace(new RegExp(targetWord, 'gi'), '_____')}"
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ------------------------------------------------------------- */}
             {/* 1. WORDLE GRID BOXES (Centered, dynamic rows & columns)       */}
             {/* ------------------------------------------------------------- */}
@@ -869,7 +1057,10 @@ export const WordleGame: React.FC = () => {
                   return (
                     <div key={rowIndex} className="flex gap-1.5 sm:gap-2 justify-center">
                       {rowChars.map((char, colIndex) => {
-                        let tileClass = "border-2 rounded-xl flex items-center justify-center font-black transition-all duration-300 ";
+                        const isRevealedHintTile = isCurrent && !char.trim() && revealedLetters[colIndex] !== undefined;
+                        const displayChar = isRevealedHintTile ? revealedLetters[colIndex] : char.trim();
+
+                        let tileClass = "border-2 rounded-xl flex items-center justify-center font-black transition-all duration-300 relative ";
 
                         if (wordLength === 4) {
                           tileClass += "w-12 h-12 sm:w-14 sm:h-14 text-xl sm:text-2xl ";
@@ -890,6 +1081,8 @@ export const WordleGame: React.FC = () => {
                           }
                         } else if (isCurrent && char.trim()) {
                           tileClass += "bg-white border-indigo-600 text-slate-900 scale-105 shadow-md shadow-indigo-500/10";
+                        } else if (isRevealedHintTile) {
+                          tileClass += "bg-amber-50 border-amber-400 text-amber-900 font-black shadow-xs shadow-amber-200";
                         } else {
                           tileClass += "bg-slate-50 border-slate-200 text-slate-400";
                         }
@@ -905,9 +1098,17 @@ export const WordleGame: React.FC = () => {
                               }
                             }}
                             className={`${tileClass} ${isSubmitted ? 'cursor-pointer hover:opacity-90' : ''}`}
-                            title={isSubmitted ? `Click to view meaning for ${guessResult.word}` : undefined}
+                            title={
+                              isSubmitted ? `Click to view meaning for ${guessResult.word}` :
+                              isRevealedHintTile ? `Position ${colIndex + 1} revealed hint: ${revealedLetters[colIndex]}` : undefined
+                            }
                           >
-                            {char.trim()}
+                            {displayChar}
+                            {isRevealedHintTile && (
+                              <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-amber-950 rounded-full p-0.5 text-[9px] shadow-xs">
+                                💡
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -1291,6 +1492,153 @@ export const WordleGame: React.FC = () => {
         )}
 
       </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* HINT SHOP MODAL DIALOG                                        */}
+      {/* ------------------------------------------------------------- */}
+      {showHintModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-5 relative">
+            
+            {/* Modal Close Button */}
+            <button
+              onClick={() => setShowHintModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="space-y-1 border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-600">
+                  <Lightbulb className="w-5 h-5 fill-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Wordle Hints Shop</h3>
+                  <p className="text-xs text-slate-500 font-medium">Use your diamonds to unlock clues for the secret word</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Diamond Balance Bar */}
+            <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-2xl p-3.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Gem className="w-5 h-5 text-cyan-500 fill-cyan-400" />
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Your Diamond Balance</span>
+                  <span className="text-lg font-black text-slate-900">{progress.gems} Diamonds</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-sky-700 bg-white px-3 py-1.5 rounded-xl border border-sky-200 shadow-2xs">
+                Earn 💎 from lessons
+              </span>
+            </div>
+
+            {/* Hint Options Stack */}
+            <div className="space-y-3">
+              
+              {/* Option 1: Reveal Specific Letter */}
+              <div className="border border-slate-200 hover:border-amber-300 rounded-2xl p-4 space-y-2 transition bg-slate-50/50 hover:bg-amber-50/30">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-emerald-600" />
+                    <span className="font-extrabold text-sm text-slate-900">1. Reveal Letter in Position</span>
+                  </div>
+                  <span className="bg-amber-100 text-amber-900 font-black text-xs px-2.5 py-1 rounded-lg border border-amber-300 flex items-center space-x-1">
+                    <Gem className="w-3 h-3 text-cyan-500 fill-cyan-400" />
+                    <span>15 💎</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Automatically reveals one correct letter at its exact slot in the secret word grid.
+                </p>
+                <button
+                  onClick={() => {
+                    handleRevealLetterHint();
+                  }}
+                  disabled={gameStatus !== 'playing'}
+                  className="w-full mt-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold py-2 rounded-xl text-xs transition shadow-sm"
+                >
+                  Reveal A Letter (15 💎)
+                </button>
+              </div>
+
+              {/* Option 2: Word Meaning / Definition */}
+              <div className="border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 space-y-2 transition bg-slate-50/50 hover:bg-indigo-50/30">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                    <span className="font-extrabold text-sm text-slate-900">2. Definition & Hindi Meaning</span>
+                  </div>
+                  <span className="bg-indigo-100 text-indigo-900 font-black text-xs px-2.5 py-1 rounded-lg border border-indigo-300 flex items-center space-x-1">
+                    <Gem className="w-3 h-3 text-cyan-500 fill-cyan-400" />
+                    <span>10 💎</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Unlocks the short English definition and Hindi meaning of the secret word.
+                </p>
+                <button
+                  onClick={() => {
+                    handleRevealMeaningHint();
+                  }}
+                  disabled={gameStatus !== 'playing' || meaningHintUnlocked}
+                  className={`w-full mt-1 font-extrabold py-2 rounded-xl text-xs transition shadow-sm ${
+                    meaningHintUnlocked
+                      ? 'bg-emerald-100 text-emerald-800 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  }`}
+                >
+                  {meaningHintUnlocked ? '✓ Definition Already Unlocked' : 'Unlock Definition (10 💎)'}
+                </button>
+              </div>
+
+              {/* Option 3: Synonyms & Sentence Clue */}
+              <div className="border border-slate-200 hover:border-purple-300 rounded-2xl p-4 space-y-2 transition bg-slate-50/50 hover:bg-purple-50/30">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span className="font-extrabold text-sm text-slate-900">3. Synonyms & Sentence Clue</span>
+                  </div>
+                  <span className="bg-purple-100 text-purple-900 font-black text-xs px-2.5 py-1 rounded-lg border border-purple-300 flex items-center space-x-1">
+                    <Gem className="w-3 h-3 text-cyan-500 fill-cyan-400" />
+                    <span>10 💎</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  Unlocks part of speech and example sentence with the secret word masked as blank.
+                </p>
+                <button
+                  onClick={() => {
+                    handleRevealSynonymHint();
+                  }}
+                  disabled={gameStatus !== 'playing' || synonymHintUnlocked}
+                  className={`w-full mt-1 font-extrabold py-2 rounded-xl text-xs transition shadow-sm ${
+                    synonymHintUnlocked
+                      ? 'bg-emerald-100 text-emerald-800 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }`}
+                >
+                  {synonymHintUnlocked ? '✓ Sentence Clue Already Unlocked' : 'Unlock Sentence Clue (10 💎)'}
+                </button>
+              </div>
+
+            </div>
+
+            {/* Done button */}
+            <div className="pt-2">
+              <button
+                onClick={() => setShowHintModal(false)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition"
+              >
+                Return to Game
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -12,6 +12,7 @@ interface LearningContextType {
   deductHeart: () => boolean; // returns false if no hearts left
   refillHearts: () => void;
   buyGems: (amount: number) => void;
+  spendGems: (amount: number) => boolean;
   addXpAndGems: (xp: number, gems: number) => void;
   activeDayId: string;
   setActiveDayId: (id: string) => void;
@@ -212,6 +213,14 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProgress(prev => ({ ...prev, gems: prev.gems + amount }));
   };
 
+  const spendGems = (amount: number): boolean => {
+    if (progress.gems < amount) {
+      return false;
+    }
+    setProgress(prev => ({ ...prev, gems: Math.max(0, prev.gems - amount) }));
+    return true;
+  };
+
   const addXpAndGems = (xpAmount: number, gemAmount: number) => {
     setProgress(prev => ({
       ...prev,
@@ -231,6 +240,7 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deductHeart,
         refillHearts,
         buyGems,
+        spendGems,
         addXpAndGems,
         activeDayId,
         setActiveDayId,
