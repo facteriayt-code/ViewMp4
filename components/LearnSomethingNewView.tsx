@@ -32,7 +32,56 @@ export const LearnSomethingNewView: React.FC = () => {
   const { addXP, language } = useLearning();
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [currentFact, setCurrentFact] = useState<LearnFact>(LEARN_FACTS_DATABASE[0]);
+  
+  // Persistent Discovered History
+  const [discoveredHistory, setDiscoveredHistory] = useState<LearnFact[]>(() => {
+    try {
+      const stored = localStorage.getItem('lingo_discovered_history');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load discovered history", e);
+    }
+    return [LEARN_FACTS_DATABASE[0]];
+  });
+
+  // Persistent Seen Fact IDs
+  const [seenFactIds, setSeenFactIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('lingo_seen_fact_ids');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error("Failed to load seen fact ids", e);
+    }
+    return [LEARN_FACTS_DATABASE[0].id];
+  });
+
+  // Persistent Current Fact
+  const [currentFact, setCurrentFact] = useState<LearnFact>(() => {
+    try {
+      const storedId = localStorage.getItem('lingo_current_fact_id');
+      if (storedId) {
+        const foundInDb = LEARN_FACTS_DATABASE.find(f => f.id === storedId);
+        if (foundInDb) return foundInDb;
+
+        const storedHistory = localStorage.getItem('lingo_discovered_history');
+        if (storedHistory) {
+          const parsedHistory: LearnFact[] = JSON.parse(storedHistory);
+          const foundInHist = parsedHistory.find(f => f.id === storedId);
+          if (foundInHist) return foundInHist;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load current fact", e);
+    }
+    return LEARN_FACTS_DATABASE[0];
+  });
+
   const [isQuizMode, setIsQuizMode] = useState<boolean>(false);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState<boolean>(true);
   const [savedFactIds, setSavedFactIds] = useState<string[]>(() => {
@@ -43,7 +92,6 @@ export const LearnSomethingNewView: React.FC = () => {
       return [];
     }
   });
-  const [discoveredHistory, setDiscoveredHistory] = useState<LearnFact[]>([LEARN_FACTS_DATABASE[0]]);
   const [showHindi, setShowHindi] = useState<boolean>(false);
   const [isLoadingAI, setIsLoadingAI] = useState<boolean>(false);
   const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
@@ -75,6 +123,35 @@ export const LearnSomethingNewView: React.FC = () => {
       console.error("Failed to save favorites to localStorage", e);
     }
   }, [savedFactIds]);
+
+  // Sync discoveredHistory to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('lingo_discovered_history', JSON.stringify(discoveredHistory));
+    } catch (e) {
+      console.error("Failed to save discovered history to localStorage", e);
+    }
+  }, [discoveredHistory]);
+
+  // Sync seenFactIds to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('lingo_seen_fact_ids', JSON.stringify(seenFactIds));
+    } catch (e) {
+      console.error("Failed to save seen fact IDs to localStorage", e);
+    }
+  }, [seenFactIds]);
+
+  // Sync currentFact.id to localStorage
+  useEffect(() => {
+    try {
+      if (currentFact && currentFact.id) {
+        localStorage.setItem('lingo_current_fact_id', currentFact.id);
+      }
+    } catch (e) {
+      console.error("Failed to save current fact ID to localStorage", e);
+    }
+  }, [currentFact]);
 
   // Handle AI Q&A Question Submit
   const handleAskAIAboutFact = async (questionText?: string) => {
@@ -133,7 +210,7 @@ export const LearnSomethingNewView: React.FC = () => {
     }
   };
 
-  // Handle category change
+  // Filter facts by active category
   const filteredDatabase = LEARN_FACTS_DATABASE.filter(fact => {
     if (activeCategory === 'all') return true;
     return fact.category === activeCategory;
@@ -142,13 +219,30 @@ export const LearnSomethingNewView: React.FC = () => {
   const handleNextFact = async () => {
     setIsAnswerRevealed(!isQuizMode);
     
-    // Pick next random fact from filtered DB or fetch AI generated fact
-    const remaining = filteredDatabase.filter(f => f.id !== currentFact.id);
-    const chosenList = remaining.length > 0 ? remaining : filteredDatabase;
-    const randomIndex = Math.floor(Math.random() * chosenList.length);
-    const nextFact = chosenList[randomIndex] || LEARN_FACTS_DATABASE[0];
+    // 1. Prioritize facts that have NOT been seen yet in the current category
+    const unseenFacts = filteredDatabase.filter(f => !seenFactIds.includes(f.id));
+
+    let nextFact: LearnFact;
+    if (unseenFacts.length > 0) {
+      // Pick randomly among unseen facts
+      const randomIndex = Math.floor(Math.random() * unseenFacts.length);
+      nextFact = unseenFacts[randomIndex];
+    } else {
+      // If all facts in category have been seen, pick from remaining excluding currentFact
+      const remaining = filteredDatabase.filter(f => f.id !== currentFact.id);
+      const chosenList = remaining.length > 0 ? remaining : filteredDatabase;
+      const randomIndex = Math.floor(Math.random() * chosenList.length);
+      nextFact = chosenList[randomIndex] || LEARN_FACTS_DATABASE[0];
+    }
 
     setCurrentFact(nextFact);
+
+    // Update seen IDs
+    if (!seenFactIds.includes(nextFact.id)) {
+      setSeenFactIds(prev => [...prev, nextFact.id]);
+    }
+
+    // Update discovered history
     if (!discoveredHistory.some(h => h.id === nextFact.id)) {
       setDiscoveredHistory(prev => [nextFact, ...prev]);
       addXP(5);
@@ -173,7 +267,13 @@ export const LearnSomethingNewView: React.FC = () => {
       if (data.success && data.fact) {
         const newAiFact: LearnFact = data.fact;
         setCurrentFact(newAiFact);
-        setDiscoveredHistory(prev => [newAiFact, ...prev]);
+
+        if (!seenFactIds.includes(newAiFact.id)) {
+          setSeenFactIds(prev => [...prev, newAiFact.id]);
+        }
+        if (!discoveredHistory.some(h => h.id === newAiFact.id)) {
+          setDiscoveredHistory(prev => [newAiFact, ...prev]);
+        }
         addXP(10);
         confetti({
           particleCount: 40,
