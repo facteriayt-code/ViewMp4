@@ -695,6 +695,76 @@ Return JSON with:
     }
   });
 
+  // --- Learn Something New Ask AI Endpoint ---
+  apiRouter.post("/learn-ask-ai", async (req, res) => {
+    try {
+      const { factTitle, factContent, exampleSentence, userQuestion, language = "en" } = req.body;
+      
+      if (!userQuestion || !userQuestion.trim()) {
+        return res.status(400).json({ success: false, error: "User question is required" });
+      }
+
+      const ai = getGeminiClient();
+
+      const prompt = `You are a world-class English language tutor, etymologist, and friendly linguistic guide.
+The user is learning a fascinating English fact and has a question about it.
+
+CURRENT FACT CONTEXT:
+- Title: "${factTitle || 'English Language Fact'}"
+- Explanation: "${factContent || 'N/A'}"
+- Example Sentence: "${exampleSentence || 'N/A'}"
+
+USER QUESTION: "${userQuestion}"
+PREFERRED USER LANGUAGE: ${language === 'hi' ? 'Include simple Hindi explanation (हिंदी में संक्षिप्त उत्तर) alongside English' : 'Clear, engaging English'}
+
+Provide a helpful, precise, easy-to-digest response.
+Include:
+1. "answer": Clear, engaging explanation (2-3 short paragraphs or clean bullet points). Explain reasons, give 2 fresh real-world examples, or clarify edge cases.
+2. "followUpQuestions": Array of 3 short, intriguing follow-up questions the user might want to click next (e.g., "Are there exceptions to this?", "How to use this in a job interview?", "What is another related weird English rule?").
+3. "hindiSummary": 1-2 sentence Hindi translation/summary if language preference is Hindi or helpful for conceptual clarity.
+
+Return JSON matching this schema:`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              answer: { type: Type.STRING },
+              followUpQuestions: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              hindiSummary: { type: Type.STRING }
+            },
+            required: ["answer", "followUpQuestions"]
+          }
+        }
+      });
+
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+
+      return res.json({ success: true, response: data });
+    } catch (error: any) {
+      console.error("Learn Ask AI Error:", error);
+      // Fallback answer if Gemini API fails or encounters error
+      const fallbackAnswer = {
+        answer: `That is a great question about "${req.body.factTitle || 'this fact'}"!\n\nIn English, rules and word origins often evolved from Old English, Latin, or French influences over centuries. Many strange patterns happen because English absorbed vocabulary from multiple language families while keeping older spoken pronunciations.\n\nKey Takeaway: Notice how native speakers naturally use this rule in daily conversation without overthinking the technical grammar.`,
+        followUpQuestions: [
+          "Can you give me 3 more real-life examples?",
+          "How is this used in formal writing vs informal chat?",
+          "Are there any exceptions I should avoid?"
+        ],
+        hindiSummary: "अंग्रेजी भाषा के कई नियम पुरानी भाषाओं से आए हैं। इनका नियमित अभ्यास आपको बेहतर बोलने में मदद करता है।"
+      };
+      return res.json({ success: true, response: fallbackAnswer, note: "Fallback response used" });
+    }
+  });
+
   // --- Pronunciation AI Feedback Endpoint ---
   apiRouter.post("/pronunciation-feedback", async (req, res) => {
     try {

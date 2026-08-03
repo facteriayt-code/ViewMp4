@@ -17,7 +17,12 @@ import {
   ChevronRight, 
   Eye, 
   Search,
-  Bot
+  Bot,
+  Send,
+  MessageSquare,
+  Lightbulb,
+  ThumbsUp,
+  RotateCcw
 } from 'lucide-react';
 import { LEARN_FACTS_DATABASE, LearnFact } from '../data/learnSomethingNewData';
 import { useLearning } from '../src/context/LearningContext';
@@ -44,6 +49,24 @@ export const LearnSomethingNewView: React.FC = () => {
   const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // AI Q&A State
+  const [aiQuestionInput, setAiQuestionInput] = useState<string>('');
+  const [isAskingAI, setIsAskingAI] = useState<boolean>(false);
+  const [aiChatHistory, setAiChatHistory] = useState<Array<{
+    id: string;
+    question: string;
+    answer: string;
+    followUpQuestions?: string[];
+    hindiSummary?: string;
+    timestamp: string;
+  }>>([]);
+
+  // Reset AI chat thread whenever a new fact is selected
+  useEffect(() => {
+    setAiChatHistory([]);
+    setAiQuestionInput('');
+  }, [currentFact.id]);
+
   // Sync saved facts to localStorage
   useEffect(() => {
     try {
@@ -52,6 +75,63 @@ export const LearnSomethingNewView: React.FC = () => {
       console.error("Failed to save favorites to localStorage", e);
     }
   }, [savedFactIds]);
+
+  // Handle AI Q&A Question Submit
+  const handleAskAIAboutFact = async (questionText?: string) => {
+    const query = (questionText || aiQuestionInput).trim();
+    if (!query || isAskingAI) return;
+
+    setIsAskingAI(true);
+    setAiQuestionInput('');
+
+    try {
+      const response = await fetch('/api/learn-ask-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          factTitle: currentFact.title,
+          factContent: currentFact.factContent,
+          exampleSentence: currentFact.exampleSentence,
+          userQuestion: query,
+          language
+        })
+      });
+      const data = await response.json();
+      if (data.success && data.response) {
+        setAiChatHistory(prev => [
+          ...prev,
+          {
+            id: 'qa-' + Date.now(),
+            question: query,
+            answer: data.response.answer,
+            followUpQuestions: data.response.followUpQuestions,
+            hindiSummary: data.response.hindiSummary,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+        addXP(5);
+        confetti({
+          particleCount: 15,
+          spread: 50,
+          origin: { y: 0.85 }
+        });
+      }
+    } catch (err) {
+      console.error("Ask AI Error:", err);
+      setAiChatHistory(prev => [
+        ...prev,
+        {
+          id: 'qa-' + Date.now(),
+          question: query,
+          answer: `Great question regarding "${currentFact.title}"!\n\nIn English, rules and word origins developed over centuries from Old English, Latin, and French influences. Native English speakers naturally use this expression in everyday conversations.`,
+          followUpQuestions: ["Can you give me 2 more real-life examples?", "Are there exceptions to this rule?"],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } finally {
+      setIsAskingAI(false);
+    }
+  };
 
   // Handle category change
   const filteredDatabase = LEARN_FACTS_DATABASE.filter(fact => {
@@ -463,6 +543,158 @@ export const LearnSomethingNewView: React.FC = () => {
           </button>
 
         </div>
+
+      </div>
+
+      {/* AI FACT ASSISTANT CARD - Ask Anything About This Fact */}
+      <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 rounded-3xl p-6 border border-indigo-500/30 text-white shadow-xl space-y-5 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-500 text-slate-950 shadow-md">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-white">
+                  Ask Gemini AI About This Fact
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider border border-amber-400/30">
+                  AI Fact Assistant
+                </span>
+              </div>
+              <p className="text-xs text-indigo-200">
+                Have a question about "{currentFact.title.slice(0, 40)}..."? Ask Gemini AI anything!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Suggested Question Chips */}
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">
+            💡 Quick Questions to Ask AI:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Why does this rule happen in English?",
+              "Can you give me 3 more real-life examples?",
+              "How do native speakers use this in daily chat?",
+              "Are there any exceptions I should watch out for?"
+            ].map((suggested, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleAskAIAboutFact(suggested)}
+                disabled={isAskingAI}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-indigo-100 text-xs font-semibold transition active:scale-95 text-left disabled:opacity-50"
+              >
+                ✨ {suggested}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Answers History */}
+        {aiChatHistory.length > 0 && (
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
+            {aiChatHistory.map((item) => (
+              <div key={item.id} className="p-4 rounded-2xl bg-white/10 border border-white/15 space-y-3 animate-fadeIn text-xs">
+                
+                {/* Question */}
+                <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2">
+                  <div className="flex items-center space-x-2 font-bold text-amber-300">
+                    <MessageSquare className="w-4 h-4 text-amber-400" />
+                    <span>Q: {item.question}</span>
+                  </div>
+                  <span className="text-[10px] text-indigo-300 font-mono">{item.timestamp}</span>
+                </div>
+
+                {/* AI Answer Text */}
+                <div className="text-indigo-50 leading-relaxed whitespace-pre-line text-xs font-normal">
+                  {item.answer}
+                </div>
+
+                {/* Optional Hindi Summary */}
+                {item.hindiSummary && (
+                  <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-200 text-xs">
+                    <span className="font-bold text-emerald-400 block mb-0.5">🇮🇳 Hindi Explanation:</span>
+                    {item.hindiSummary}
+                  </div>
+                )}
+
+                {/* Action Buttons: Listen & Follow-ups */}
+                <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                  <button
+                    onClick={() => speakText(item.answer)}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-indigo-200 text-[11px] font-bold flex items-center space-x-1.5 transition"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Listen AI Answer</span>
+                  </button>
+                </div>
+
+                {/* Follow up question buttons if provided */}
+                {item.followUpQuestions && item.followUpQuestions.length > 0 && (
+                  <div className="pt-2 space-y-1.5">
+                    <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">
+                      Suggested Follow Up Questions:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.followUpQuestions.map((fq, fqIdx) => (
+                        <button
+                          key={fqIdx}
+                          onClick={() => handleAskAIAboutFact(fq)}
+                          disabled={isAskingAI}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-400/30 text-indigo-200 text-[11px] font-medium transition"
+                        >
+                          ➔ {fq}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAskAIAboutFact();
+          }}
+          className="flex items-center gap-2 pt-2"
+        >
+          <input
+            type="text"
+            value={aiQuestionInput}
+            onChange={(e) => setAiQuestionInput(e.target.value)}
+            placeholder={`Ask AI anything about "${currentFact.title.slice(0, 30)}..."`}
+            disabled={isAskingAI}
+            className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-xs text-white placeholder-indigo-200 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={!aiQuestionInput.trim() || isAskingAI}
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-5 py-3 rounded-2xl text-xs flex items-center space-x-2 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isAskingAI ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
+                <span>Thinking...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 text-slate-950" />
+                <span>Ask AI</span>
+              </>
+            )}
+          </button>
+        </form>
 
       </div>
 
