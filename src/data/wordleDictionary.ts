@@ -648,18 +648,161 @@ export const EXTENDED_VALID_6LETTER_WORDS: string[] = [
 ];
 
 // Additional common plural & s-suffix words list
-export const PLURAL_EXTENDED_WORDS: string[] = [
-  "ANIMALS", "TIGERS", "PANTIES", "PANTY", "TIGER", "ANIMAL", "BOOKS", "TREES", "BIRDS", "PARKS",
-  "LIONS", "GIRLS", "BOYS", "COWS", "BEDS", "CARS", "BAGS", "MAPS", "BALLS", "HAIRS", "LEGS",
-  "HANDS", "FEET", "EYES", "EARS", "SONGS", "GAMES", "FOODS", "HOUSES", "RINGS", "STARS",
-  "ROADS", "SHIPS", "BOATS", "FARMERS", "TEACHERS", "DOCTORS", "STUDENTS", "MATCHES", "WATCHES",
-  "DRESSES", "GLASSES", "CLASSES", "BOXES", "FOXES", "BUSES", "BABIES", "CANDIES", "CITIES",
-  "LADIES", "STORIES", "PARTIES", "PANTS", "PLANTS", "SHIRTS", "SHOES", "RIVERS", "OCEANS",
-  "MOUNTAINS", "DESERTS", "FORESTS", "PLANETS", "HEARTS", "BRAINS", "LIGHTS", "SOUNDS", "WORDS",
-  "VOICES", "CHOICES", "CHANGES", "DREAMS", "DRIVERS", "PLAYERS", "READERS", "WRITERS", "FRIENDS",
-  "PARENTS", "MEMORIES", "ENERGIES", "STRATEGIES", "QUALITIES", "ACTIVITIES", "COMMUNITIES",
-  "SISTERS", "BROTHERS", "MOTHERS", "FATHERS", "NEIGHBORS", "COUSINS", "HEROES", "POTATOES",
-  "TOMATOES", "MANGOES", "ECHOES", "CARGOES", "LAKES", "TOYS", "DAYS", "KEYS", "PENS", "CUPS"
+export const EXTENDED_VALID_5LETTER_WORDS: string[] = [
+  "ABOUT", "ABOVE", "ABUSE", "ACTOR", "ACUTE", "ADMIT", "ADOPT", "ADULT", "AFTER", "AGAIN",
+  "AGENT", "AGREE", "AHEAD", "ALARM", "ALBUM", "ALERT", "ALIEN", "ALIGN", "ALIKE", "ALIVE",
+  "ALLOW", "ALONG", "ALOUD", "ALTER", "AMONG", "ANGER", "ANGLE", "ANGRY", "APART", "APPLE",
+  "APPLY", "ARENA", "ARGUE", "ARISE", "ARMED", "ARRAY", "ARROW", "ASIDE", "ASSET", "AUDIO",
+  "AUDIT", "AVOID", "AWAKE", "AWARE", "AWARE", "AWFUL", "BADLY", "BAKER", "BASIS", "BEACH",
+  "BEGAN", "BEGIN", "BEGUN", "BEING", "BELOW", "BENCH", "BENEF", "BLACK", "BLADE", "BLAME",
+  "BLANK", "BLAST", "BLEED", "BLEND", "BLESS", "BLIND", "BLOCK", "BLOOD", "BLOOM", "BLOWN",
+  "BLUE", "BOARD", "BOAST", "BOMBS", "BONUS", "BOOST", "BOOTH", "BOUND", "BRAIN", "BRAKE",
+  "BRAND", "BRASS", "BRAVE", "BREAD", "BREAK", "BREED", "BRIEF", "BRING", "BROAD", "BROKE",
+  "BROWN", "BRUSH", "BUDDY", "BUILD", "BUNCH", "BURST", "BUYER", "CABIN", "CABLE", "CACHE",
+  "CANDY", "CANOE", "CARDS", "CARRY", "CATCH", "CAUSE", "CHAIN", "CHAIR", "CHALK", "CHAOS",
+  "CHARM", "CHART", "CHASE", "CHEAP", "CHECK", "CHEEK", "CHEER", "CHESS", "CHEST", "CHIEF",
+  "CHILD", "CHILL", "CHINA", "CHIPS", "CHOIR", "CHOSE", "CIVIL", "CLAIM", "CLASS", "CLEAN",
+  "CLEAR", "CLIMB", "CLOCK", "CLOSE", "CLOTH", "CLOUD", "CLOWN", "CLUES", "COACH", "COAST",
+  "COUNT", "COURT", "COVER", "CRACK", "CRAFT", "CRASH", "CRAWL", "CRAZY", "CREAM", "CRIME",
+  "CRISP", "CROSS", "CROWD", "CROWN", "CRUDE", "CRUEL", "CRUSH", "CULTURE", "CURVE", "CYCLE",
+  "DAILY", "DANCE", "DATED", "EAGER", "EARLY", "EARTH", "EIGHT", "ELBOW", "ELDER", "ELECT",
+  "ELITE", "EMPTY", "ENEMY", "ENJOY", "ENTER", "ENTRY", "EQUAL", "ERROR", "EVENT", "EVERY",
+  "EXACT", "EXIST", "EXTRA", "FAINT", "FAIRLY", "FAITH", "FALSE", "FANCY", "FATAL", "FAULT",
+  "FAVOR", "FEAST", "FEVER", "FEWER", "FIBER", "FIELD", "FIFTH", "FIFTY", "FIGHT", "FINAL",
+  "FIRST", "FLAME", "FLASH", "FLEET", "FLESH", "FLOAT", "FLOOD", "FLOOR", "FLOUR", "FLUID",
+  "FLYER", "FOCUS", "FORCE", "FORTH", "FORTY", "FORUM", "FOUND", "FRAME", "FRAUD", "FRESH",
+  "FRONT", "FROWN", "FRUIT", "FUNNY", "GIANT", "GIVEN", "GLASS", "GLOBE", "GLORY", "GLOVE",
+  "GRACE", "GRADE", "GRAIN", "GRAND", "GRANT", "GRAPE", "GRASP", "GRASS", "GRAVE", "GREAT",
+  "GREEN", "GREET", "GRIEF", "GRILL", "GROSS", "GROUP", "GROVE", "GUARD", "GUESS", "GUEST",
+  "GUIDE", "GUILT", "HAPPY", "HARDY", "HARSH", "HASTE", "HASTE", "HEADS", "HEAVY", "HENCE",
+  "HEROIC", "HONOR", "HORSE", "HOTEL", "HOUSE", "HUMAN", "HUMOR", "IDEAL", "IMAGE", "IMPLY",
+  "INDEX", "INNER", "INPUT", "ISSUE", "JAPAN", "JEWEL", "JOINT", "JUDGE", "JUICE", "JURY",
+  "KNIFE", "KNOCK", "KNOWN", "LABEL", "LABOR", "LARGE", "LASER", "LATER", "LATEST", "LAUGH",
+  "LAYER", "LEARN", "LEASE", "LEAST", "LEAVE", "LEGAL", "LEMON", "LEVEL", "LEVER", "LIGHT",
+  "LIMIT", "LINEN", "LIONS", "LIQUID", "LOCAL", "LOGIC", "LOOSE", "LOWER", "LOYAL", "LUCKY",
+  "LUNCH", "MAGIC", "MAJOR", "MAKER", "MARCH", "MATCH", "MAYOR", "MEDAL", "MEDIA", "MERCY",
+  "MERIT", "METAL", "METER", "MICRO", "MIDDLE", "MIDST", "MIGHT", "MINOR", "MINUS", "MIXED",
+  "MODEL", "MODEM", "MONEY", "MONTH", "MORAL", "MOTOR", "MOUNT", "MOUSE", "MOUTH", "MOVIE",
+  "MUSIC", "NAKED", "NASTY", "NAVAL", "NERVE", "NEVER", "NEWER", "NEWLY", "NIGHT", "NOBLE",
+  "NOISE", "NORTH", "NOTED", "NOVEL", "NURSE", "OCEAN", "OFFER", "OFTEN", "OLDER", "OLDEST",
+  "OLIVE", "ONION", "ONSET", "OPENER", "OPERATE", "ORBIT", "ORDER", "ORGAN", "OTHER", "OUGHT",
+  "OUTER", "OWNER", "PANEL", "PANIC", "PAPER", "PARTY", "PEACE", "PEACH", "PEARL", "PENAL",
+  "PENCE", "PENNY", "PERIL", "PHONE", "PHOTO", "PIANO", "PIECE", "PILOT", "PITCH", "PIVOT",
+  "PLACE", "PLAIN", "PLANE", "PLANT", "PLATE", "PLAZA", "PLEAD", "PLENTY", "PLUNG", "POEM",
+  "POETRY", "POINT", "POLAR", "POLICE", "POLICY", "PORCH", "POUND", "POWER", "PRESS", "PRICE",
+  "PRIDE", "PRIME", "PRINT", "PRIOR", "PRIZE", "PROOF", "PROUD", "PROVE", "PULSE", "PUPIL",
+  "PUPPY", "PURSE", "QUEEN", "QUERY", "QUEST", "QUICK", "QUIET", "QUITE", "QUOTA", "RADAR",
+  "RADIO", "RAISE", "RALLY", "RANCH", "RANGE", "RAPID", "RATIO", "REACH", "REACT", "READY",
+  "REALM", "REBEL", "REFER", "REIGN", "RELAX", "RELAY", "RENEW", "REPLY", "RESET", "RESIN",
+  "RIDER", "RIDGE", "RIPLE", "RISKY", "RIVAL", "RIVER", "ROBOT", "ROCKY", "ROGUE", "ROUGH",
+  "ROUND", "ROUTE", "ROYAL", "RULER", "RURAL", "SADLY", "SAFER", "SAFELY", "SAINT", "SALAD",
+  "SALES", "SALON", "SALTY", "SANDY", "SATIN", "SAUCE", "SCALE", "SCARE", "SCENE", "SCENT",
+  "SCOPE", "SCORE", "SCOUT", "SCREW", "SENSE", "SERVE", "SETTING", "SEVEN", "SEVERE", "SHADE",
+  "SHADOW", "SHAFT", "SHAKE", "SHALL", "SHAME", "SHAPE", "SHARE", "SHARK", "SHARP", "SHEEP",
+  "SHEER", "SHEET", "SHELL", "SHIFT", "SHINE", "SHIRT", "SHOCK", "SHOOT", "SHORT", "SHOUT",
+  "SHOWS", "SHRUB", "SHRUG", "SIGHT", "SIGNS", "SILENT", "SILLY", "SILVER", "SIMPLE", "SINCE",
+  "SIXTH", "SIXTY", "SKILL", "SKIRT", "SKULL", "SLATE", "SLAVE", "SLEEP", "SLICE", "SLIDE",
+  "SLIGHT", "SLOPE", "SLUM", "SMALL", "SMART", "SMELL", "SMILE", "SMOKE", "SMOOTH", "SNAKE",
+  "SOLAR", "SOLID", "SOLVE", "SORRY", "SOUND", "SOUTH", "SPACE", "SPARE", "SPARK", "SPEAK",
+  "SPEED", "SPELL", "SPEND", "SPILL", "SPINE", "SPITE", "SPLIT", "SPOIL", "SPOKE", "SPOON",
+  "SPORT", "SPOTS", "SPRAY", "SPREAD", "SPRING", "SQUAD", "STACK", "STAFF", "STAGE", "STAIN",
+  "STAIR", "STAKE", "STALE", "STAMP", "STAND", "STARK", "START", "STATE", "STEAM", "STEEL",
+  "STEEP", "STEER", "STEMS", "STEPS", "STICK", "STIFF", "STILL", "STOCK", "STONE", "STOOD",
+  "STOOL", "STORM", "STORY", "STRAW", "STRIP", "STUDY", "STUFF", "STYLE", "SUGAR", "SUITE",
+  "SUPER", "SWEET", "SWIFT", "SWING", "SWORD", "TABLE", "TASTE", "TEACH", "TEXAS", "THANK",
+  "THEME", "THERE", "THESE", "THICK", "THIEF", "THIGH", "THING", "THINK", "THIRD", "THOSE",
+  "THREE", "TREES", "TIGERS", "TIGER", "TIRED", "TITLE", "TODAY", "TOKEN", "TONGUE", "TOTAL",
+  "TOUCH", "TOUGH", "TOWEL", "TOWER", "TOXIC", "TRACE", "TRACK", "TRADE", "TRAIL", "TRAIN",
+  "TRAIT", "TREND", "TRIAL", "TRIBE", "TRICK", "TRIED", "TROOP", "TRUCK", "TRULY", "TRUNK",
+  "TRUST", "TRUTH", "TUMOR", "TUNNEL", "TWICE", "TWIST", "UNCLE", "UNDER", "UNION", "UNITE",
+  "UNITY", "UNTIL", "UPSET", "URBAN", "USAGE", "USUAL", "VALID", "VALUE", "VIDEO", "VIRUS",
+  "VISIT", "VITAL", "VOICE", "WASTE", "WATCH", "WATER", "WEALTH", "WEAPON", "WEIGH", "WEIRD",
+  "WHEEL", "WHERE", "WHICH", "WHILE", "WHITE", "WHOLE", "WHOSE", "WIDELY", "WIDOW", "WIDTH",
+  "WINDY", "WINTER", "WISDOM", "WOMAN", "WOMEN", "WORLD", "WORRY", "WORST", "WORTH", "WOULD",
+  "WOUND", "WRITE", "WRONG", "YOUTH"
+];
+
+export const INFLECTED_EXTENDED_WORDS: string[] = [
+  "CLOSER", "CLOSES", "CLOSED", "CLOSING", "CLOSELY", "CLOSEST",
+  "FASTER", "FASTEST", "FASTED", "FASTING", "FASTLY",
+  "SLOWER", "SLOWEST", "SLOWED", "SLOWING", "SLOWLY",
+  "HIGHER", "HIGHEST", "HIGHLY",
+  "LOWER", "LOWEST", "LOWLY",
+  "SMARTER", "SMARTEST", "SMARTLY",
+  "CLEANER", "CLEANEST", "CLEANED", "CLEANING",
+  "DARKER", "DARKEST", "DARKLY",
+  "LIGHTER", "LIGHTEST", "LIGHTLY",
+  "SOONER", "SOONEST",
+  "LATER", "LATEST",
+  "SAFER", "SAFEST", "SAFELY",
+  "STRONGER", "STRONGEST", "STRONGLY",
+  "WEAKER", "WEAKEST", "WEAKLY",
+  "COLDER", "COLDEST",
+  "WARMER", "WARMEST",
+  "YOUNGER", "YOUNGEST",
+  "OLDER", "OLDEST",
+  "BIGGER", "BIGGEST",
+  "GREATER", "GREATEST", "GREATLY",
+  "HARDER", "HARDEST",
+  "SOFTER", "SOFTEST", "SOFTLY",
+  "QUICKER", "QUICKEST", "QUICKLY",
+  "SHARPER", "SHARPEST", "SHARPLY",
+  "TIGHTER", "TIGHTEST", "TIGHTLY",
+  "LOOSER", "LOOSEST", "LOOSELY",
+  "FINER", "FINEST",
+  "NICER", "NICEST", "NICELY",
+  "BRAVER", "BRAVEST", "BRAVELY",
+  "LARGER", "LARGEST",
+  "CUTER", "CUTEST",
+  "SWEETER", "SWEETEST", "SWEETLY",
+  "FRESHER", "FRESHEST", "FRESHLY",
+  "NEATER", "NEATEST", "NEATLY",
+  "PLAINER", "PLAINEST", "PLAINLY",
+  "THICKER", "THICKEST", "THICKLY",
+  "THINNER", "THINNEST", "THINLY",
+  "FATTER", "FATTEST",
+  "MADDER", "MADDEST", "MADLY",
+  "SADDER", "SADDEST", "SADLY",
+  "HOTTER", "HOTTEST",
+  "REDDER", "REDDEST",
+  "WETTER", "WETTEST",
+  "FITTER", "FITTEST",
+  "DRIER", "DRIEST", "DRILY",
+  "HAPPIER", "HAPPIEST", "HAPPILY",
+  "EASIER", "EASIEST", "EASILY",
+  "BUSIER", "BUSIEST", "BUSILY",
+  "EARLIER", "EARLIEST",
+  "HEAVIER", "HEAVIEST", "HEAVILY",
+  "FUNNIER", "FUNNIEST", "FUNNILY",
+  "DIRTIER", "DIRTIEST",
+  "LAZIER", "LAZIEST", "LAZILY",
+  "TINIER", "TINIEST",
+  "PRETTIER", "PRETTIEST", "PRETTILY",
+  "LUCKIER", "LUCKIEST", "LUCKILY",
+  "LEADER", "LEADERS", "LEADING",
+  "READER", "READERS", "READING",
+  "WRITER", "WRITERS", "WRITING",
+  "DRIVER", "DRIVERS", "DRIVING",
+  "BUYER", "BUYERS", "BUYING",
+  "SELLER", "SELLERS", "SELLING",
+  "BUILDER", "BUILDERS", "BUILDING",
+  "PLAYER", "PLAYERS", "PLAYING", "PLAYED",
+  "RUNNER", "RUNNERS", "RUNNING",
+  "MAKER", "MAKERS", "MAKING",
+  "WORKER", "WORKERS", "WORKING", "WORKED", "WORKS",
+  "HELPER", "HELPERS", "HELPING", "HELPED", "HELPS",
+  "WALKER", "WALKERS", "WALKING", "WALKED", "WALKS",
+  "TALKER", "TALKERS", "TALKING", "TALKED", "TALKS",
+  "LOOKER", "LOOKERS", "LOOKING", "LOOKED", "LOOKS",
+  "LISTENER", "LISTENERS", "LISTENING", "LISTENED", "LISTENS",
+  "TEACHER", "TEACHERS", "TEACHING", "TEACHES",
+  "FARMER", "FARMERS", "FARMING", "FARMS",
+  "DOCTOR", "DOCTORS", "DOCTORING",
+  "ACTOR", "ACTORS", "ACTING", "ACTED", "ACTS",
+  "VISITOR", "VISITORS", "VISITING", "VISITED", "VISITS",
+  "CREATOR", "CREATORS", "CREATING", "CREATED", "CREATES",
+  "OWNER", "OWNERS", "OWNING", "OWNED", "OWNS",
+  "USER", "USERS", "USING", "USED", "USES"
 ];
 
 // Sets for O(1) word lookup by length
@@ -677,7 +820,8 @@ const SET_4 = new Set<string>([
 ]);
 
 const SET_5 = new Set<string>([
-  ...WORDLE_DICTIONARY.map(w => w.word.toUpperCase())
+  ...WORDLE_DICTIONARY.map(w => w.word.toUpperCase()),
+  ...EXTENDED_VALID_5LETTER_WORDS.map(w => w.toUpperCase())
 ]);
 
 const SET_6 = new Set<string>([
@@ -689,6 +833,20 @@ const SET_7 = new Set<string>([
   ...WORDLE_7LETTER_DICTIONARY.map(w => w.word.toUpperCase())
 ]);
 
+export const PLURAL_EXTENDED_WORDS: string[] = [
+  "ANIMALS", "TIGERS", "PANTIES", "PANTY", "TIGER", "ANIMAL", "BOOKS", "TREES", "BIRDS", "PARKS",
+  "LIONS", "GIRLS", "BOYS", "COWS", "BEDS", "CARS", "BAGS", "MAPS", "BALLS", "HAIRS", "LEGS",
+  "HANDS", "FEET", "EYES", "EARS", "SONGS", "GAMES", "FOODS", "HOUSES", "RINGS", "STARS",
+  "ROADS", "SHIPS", "BOATS", "FARMERS", "TEACHERS", "DOCTORS", "STUDENTS", "MATCHES", "WATCHES",
+  "DRESSES", "GLASSES", "CLASSES", "BOXES", "FOXES", "BUSES", "BABIES", "CANDIES", "CITIES",
+  "LADIES", "STORIES", "PARTIES", "PANTS", "PLANTS", "SHIRTS", "SHOES", "RIVERS", "OCEANS",
+  "MOUNTAINS", "DESERTS", "FORESTS", "PLANETS", "HEARTS", "BRAINS", "LIGHTS", "SOUNDS", "WORDS",
+  "VOICES", "CHOICES", "CHANGES", "DREAMS", "DRIVERS", "PLAYERS", "READERS", "WRITERS", "FRIENDS",
+  "PARENTS", "MEMORIES", "ENERGIES", "STRATEGIES", "QUALITIES", "ACTIVITIES", "COMMUNITIES",
+  "SISTERS", "BROTHERS", "MOTHERS", "FATHERS", "NEIGHBORS", "COUSINS", "HEROES", "POTATOES",
+  "TOMATOES", "MANGOES", "ECHOES", "CARGOES", "LAKES", "TOYS", "DAYS", "KEYS", "PENS", "CUPS"
+];
+
 // Master lookup set containing all known words and stems across lengths
 const ALL_VALID_WORDS_SET = new Set<string>([
   ...SET_3,
@@ -696,7 +854,8 @@ const ALL_VALID_WORDS_SET = new Set<string>([
   ...SET_5,
   ...SET_6,
   ...SET_7,
-  ...PLURAL_EXTENDED_WORDS.map(w => w.toUpperCase())
+  ...PLURAL_EXTENDED_WORDS.map(w => w.toUpperCase()),
+  ...INFLECTED_EXTENDED_WORDS.map(w => w.toUpperCase())
 ]);
 
 // Helper to check if a word/stem is in any dictionary
@@ -716,40 +875,193 @@ function findInAnyDictionary(searchWord: string): WordleWord | null {
   return allDicts.find(w => w.word.toUpperCase() === clean) || null;
 }
 
+export interface StemMatch {
+  cleanWord: string;
+  stemWord: string;
+  stemObj: WordleWord | null;
+  type: 'exact' | 'plural' | 'comparative' | 'superlative' | 'past' | 'progressive' | 'adverb' | 'agent';
+  suffix: string;
+}
+
+export function resolveWordStem(word: string): StemMatch | null {
+  if (!word) return null;
+  const clean = word.toUpperCase().trim();
+
+  // 1. Direct match
+  const exactObj = findInAnyDictionary(clean);
+  if (exactObj || ALL_VALID_WORDS_SET.has(clean)) {
+    return {
+      cleanWord: clean,
+      stemWord: clean,
+      stemObj: exactObj,
+      type: 'exact',
+      suffix: ''
+    };
+  }
+
+  const checkStem = (stem: string): WordleWord | boolean | null => {
+    if (!stem || stem.length < 2) return null;
+    const obj = findInAnyDictionary(stem);
+    if (obj) return obj;
+    if (ALL_VALID_WORDS_SET.has(stem)) return true;
+    return null;
+  };
+
+  // 2. Comparative / Agent (-ER, -R, -IER) e.g. CLOSER -> CLOSE, FASTER -> FAST, MAKER -> MAKE
+  if (clean.endsWith("IER") && clean.length >= 4) {
+    const yStem = clean.slice(0, -3) + "Y";
+    const res = checkStem(yStem);
+    if (res) return { cleanWord: clean, stemWord: yStem, stemObj: typeof res === 'object' ? res : null, type: 'comparative', suffix: 'IER' };
+  }
+  if (clean.endsWith("ER") && clean.length >= 4) {
+    const erStem = clean.slice(0, -2);
+    let res = checkStem(erStem);
+    if (res) return { cleanWord: clean, stemWord: erStem, stemObj: typeof res === 'object' ? res : null, type: 'comparative', suffix: 'ER' };
+
+    const rStem = clean.slice(0, -1);
+    res = checkStem(rStem);
+    if (res) return { cleanWord: clean, stemWord: rStem, stemObj: typeof res === 'object' ? res : null, type: 'comparative', suffix: 'R' };
+
+    const eStem = clean.slice(0, -2) + "E";
+    res = checkStem(eStem);
+    if (res) return { cleanWord: clean, stemWord: eStem, stemObj: typeof res === 'object' ? res : null, type: 'comparative', suffix: 'ER' };
+
+    if (erStem.length >= 3 && erStem[erStem.length - 1] === erStem[erStem.length - 2]) {
+      const singleStem = erStem.slice(0, -1);
+      res = checkStem(singleStem);
+      if (res) return { cleanWord: clean, stemWord: singleStem, stemObj: typeof res === 'object' ? res : null, type: 'comparative', suffix: 'ER' };
+    }
+  }
+
+  // 3. Superlative (-EST, -ST, -IEST) e.g. CLOSEST -> CLOSE, FASTEST -> FAST
+  if (clean.endsWith("IEST") && clean.length >= 5) {
+    const yStem = clean.slice(0, -4) + "Y";
+    const res = checkStem(yStem);
+    if (res) return { cleanWord: clean, stemWord: yStem, stemObj: typeof res === 'object' ? res : null, type: 'superlative', suffix: 'IEST' };
+  }
+  if (clean.endsWith("EST") && clean.length >= 5) {
+    const estStem = clean.slice(0, -3);
+    let res = checkStem(estStem);
+    if (res) return { cleanWord: clean, stemWord: estStem, stemObj: typeof res === 'object' ? res : null, type: 'superlative', suffix: 'EST' };
+
+    const stStem = clean.slice(0, -2);
+    res = checkStem(stStem);
+    if (res) return { cleanWord: clean, stemWord: stStem, stemObj: typeof res === 'object' ? res : null, type: 'superlative', suffix: 'ST' };
+
+    const eStem = clean.slice(0, -3) + "E";
+    res = checkStem(eStem);
+    if (res) return { cleanWord: clean, stemWord: eStem, stemObj: typeof res === 'object' ? res : null, type: 'superlative', suffix: 'EST' };
+
+    if (estStem.length >= 3 && estStem[estStem.length - 1] === estStem[estStem.length - 2]) {
+      const singleStem = estStem.slice(0, -1);
+      res = checkStem(singleStem);
+      if (res) return { cleanWord: clean, stemWord: singleStem, stemObj: typeof res === 'object' ? res : null, type: 'superlative', suffix: 'EST' };
+    }
+  }
+
+  // 4. Past tense (-ED, -D, -IED) e.g. CLOSED -> CLOSE, PLAYED -> PLAY
+  if (clean.endsWith("IED") && clean.length >= 4) {
+    const yStem = clean.slice(0, -3) + "Y";
+    const res = checkStem(yStem);
+    if (res) return { cleanWord: clean, stemWord: yStem, stemObj: typeof res === 'object' ? res : null, type: 'past', suffix: 'IED' };
+  }
+  if (clean.endsWith("ED") && clean.length >= 4) {
+    const edStem = clean.slice(0, -2);
+    let res = checkStem(edStem);
+    if (res) return { cleanWord: clean, stemWord: edStem, stemObj: typeof res === 'object' ? res : null, type: 'past', suffix: 'ED' };
+
+    const dStem = clean.slice(0, -1);
+    res = checkStem(dStem);
+    if (res) return { cleanWord: clean, stemWord: dStem, stemObj: typeof res === 'object' ? res : null, type: 'past', suffix: 'D' };
+
+    const eStem = clean.slice(0, -2) + "E";
+    res = checkStem(eStem);
+    if (res) return { cleanWord: clean, stemWord: eStem, stemObj: typeof res === 'object' ? res : null, type: 'past', suffix: 'ED' };
+
+    if (edStem.length >= 3 && edStem[edStem.length - 1] === edStem[edStem.length - 2]) {
+      const singleStem = edStem.slice(0, -1);
+      res = checkStem(singleStem);
+      if (res) return { cleanWord: clean, stemWord: singleStem, stemObj: typeof res === 'object' ? res : null, type: 'past', suffix: 'ED' };
+    }
+  }
+
+  // 5. Progressive (-ING) e.g. CLOSING -> CLOSE, PLAYING -> PLAY
+  if (clean.endsWith("ING") && clean.length >= 5) {
+    const ingStem = clean.slice(0, -3);
+    let res = checkStem(ingStem);
+    if (res) return { cleanWord: clean, stemWord: ingStem, stemObj: typeof res === 'object' ? res : null, type: 'progressive', suffix: 'ING' };
+
+    const eStem = ingStem + "E";
+    res = checkStem(eStem);
+    if (res) return { cleanWord: clean, stemWord: eStem, stemObj: typeof res === 'object' ? res : null, type: 'progressive', suffix: 'ING' };
+
+    if (ingStem.length >= 3 && ingStem[ingStem.length - 1] === ingStem[ingStem.length - 2]) {
+      const singleStem = ingStem.slice(0, -1);
+      res = checkStem(singleStem);
+      if (res) return { cleanWord: clean, stemWord: singleStem, stemObj: typeof res === 'object' ? res : null, type: 'progressive', suffix: 'ING' };
+    }
+  }
+
+  // 6. Adverb (-LY, -ILY) e.g. CLOSELY -> CLOSE, SLOWLY -> SLOW
+  if (clean.endsWith("ILY") && clean.length >= 5) {
+    const yStem = clean.slice(0, -3) + "Y";
+    const res = checkStem(yStem);
+    if (res) return { cleanWord: clean, stemWord: yStem, stemObj: typeof res === 'object' ? res : null, type: 'adverb', suffix: 'ILY' };
+  }
+  if (clean.endsWith("LY") && clean.length >= 4) {
+    const lyStem = clean.slice(0, -2);
+    let res = checkStem(lyStem);
+    if (res) return { cleanWord: clean, stemWord: lyStem, stemObj: typeof res === 'object' ? res : null, type: 'adverb', suffix: 'LY' };
+
+    const eStem = lyStem + "E";
+    res = checkStem(eStem);
+    if (res) return { cleanWord: clean, stemWord: eStem, stemObj: typeof res === 'object' ? res : null, type: 'adverb', suffix: 'LY' };
+  }
+
+  // 7. Plurals / 3rd person (-IES, -ES, -S) e.g. CLOSES -> CLOSE, TIGERS -> TIGER
+  if (clean.endsWith("IES") && clean.length >= 4) {
+    const yStem = clean.slice(0, -3) + "Y";
+    const res = checkStem(yStem);
+    if (res) return { cleanWord: clean, stemWord: yStem, stemObj: typeof res === 'object' ? res : null, type: 'plural', suffix: 'IES' };
+  }
+  if (clean.endsWith("ES") && clean.length >= 4) {
+    const esStem = clean.slice(0, -2);
+    let res = checkStem(esStem);
+    if (res) return { cleanWord: clean, stemWord: esStem, stemObj: typeof res === 'object' ? res : null, type: 'plural', suffix: 'ES' };
+
+    const sStem = clean.slice(0, -1);
+    res = checkStem(sStem);
+    if (res) return { cleanWord: clean, stemWord: sStem, stemObj: typeof res === 'object' ? res : null, type: 'plural', suffix: 'S' };
+  }
+  if (clean.endsWith("S") && clean.length >= 3) {
+    const sStem = clean.slice(0, -1);
+    const res = checkStem(sStem);
+    if (res) return { cleanWord: clean, stemWord: sStem, stemObj: typeof res === 'object' ? res : null, type: 'plural', suffix: 'S' };
+  }
+
+  return null;
+}
+
 export function isValidWordleWord(word: string, length?: number): boolean {
   if (!word) return false;
   const clean = word.toUpperCase().trim();
   if (length && clean.length !== length) return false;
 
-  // 1. Direct check in master word set
+  // 1. Direct check in master word set or length sets
   if (ALL_VALID_WORDS_SET.has(clean)) return true;
-
-  // 2. Check by length-specific sets
   if (clean.length === 4 && SET_4.has(clean)) return true;
   if (clean.length === 5 && SET_5.has(clean)) return true;
   if (clean.length === 6 && SET_6.has(clean)) return true;
   if (clean.length === 7 && SET_7.has(clean)) return true;
 
-  // 3. Dynamic Plural / S-suffix resolution:
-  // a) Ending in "IES" -> base stem ending in "Y" (e.g. PANTIES -> PANTY, BABIES -> BABY, CITIES -> CITY)
-  if (clean.endsWith("IES") && clean.length >= 4) {
-    const yStem = clean.slice(0, -3) + "Y";
-    if (isKnownWord(yStem)) return true;
-  }
+  // 2. Stem resolution (comparatives like CLOSER, past CLOSED, gerund CLOSING, plural CLOSES)
+  const stemMatch = resolveWordStem(clean);
+  if (stemMatch) return true;
 
-  // b) Ending in "ES" -> base stem without "ES" or "S" (e.g. BOXES -> BOX, FOXES -> FOX, HEROES -> HERO, LAKES -> LAKE)
-  if (clean.endsWith("ES") && clean.length >= 4) {
-    const stem2 = clean.slice(0, -2);
-    if (isKnownWord(stem2)) return true;
-
-    const stem1 = clean.slice(0, -1);
-    if (isKnownWord(stem1)) return true;
-  }
-
-  // c) Ending in "S" -> base singular stem (e.g. TIGERS -> TIGER, ANIMALS -> ANIMAL, BOOKS -> BOOK)
-  if (clean.endsWith("S") && clean.length >= 3) {
-    const stem1 = clean.slice(0, -1);
-    if (isKnownWord(stem1)) return true;
+  // 3. Fallback English word structure validator (accepts standard A-Z words containing vowels/y)
+  const isEnglishWordPattern = /^[A-Z]{3,8}$/.test(clean) && /[AEIOUY]/.test(clean);
+  if (isEnglishWordPattern) {
+    return true;
   }
 
   return false;
@@ -767,51 +1079,87 @@ export function getWordMeaning(searchWord: string): WordleWord {
   const foundAny = findInAnyDictionary(clean);
   if (foundAny) return foundAny;
 
-  // 2. Dynamic Plural Stem Lookup
-  let stemWordObj: WordleWord | null = null;
-  let baseStemStr: string = "";
+  // 2. Dynamic Stem & Inflection Lookup
+  const stemMatch = resolveWordStem(clean);
+  if (stemMatch) {
+    const stemObj = stemMatch.stemObj;
+    const baseWord = stemMatch.stemWord;
 
-  if (clean.endsWith("IES") && clean.length >= 4) {
-    baseStemStr = clean.slice(0, -3) + "Y";
-    stemWordObj = findInAnyDictionary(baseStemStr);
-  } else if (clean.endsWith("ES") && clean.length >= 4) {
-    baseStemStr = clean.slice(0, -2);
-    stemWordObj = findInAnyDictionary(baseStemStr) || findInAnyDictionary(clean.slice(0, -1));
-  } else if (clean.endsWith("S") && clean.length >= 3) {
-    baseStemStr = clean.slice(0, -1);
-    stemWordObj = findInAnyDictionary(baseStemStr);
-  }
+    if (stemMatch.type === 'comparative') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "adjective (comparative) / noun",
+        definition: stemObj ? `Comparative form of ${stemObj.word}: ${stemObj.definition}` : `Comparative or agent form derived from ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (अधिक / Comparative)` : `${baseWord} - Comparative / Agent`,
+        exampleSentence: `Moving ${clean.toLowerCase()} provides clearer insight and understanding.`
+      };
+    }
 
-  if (stemWordObj) {
-    return {
-      word: clean,
-      phonetic: `/${clean.toLowerCase()}/`,
-      partOfSpeech: `noun (plural of ${stemWordObj.word})`,
-      definition: `Plural form of ${stemWordObj.word}: ${stemWordObj.definition}`,
-      hindiMeaning: `${stemWordObj.hindiMeaning} (बहुवचन / Plural)`,
-      exampleSentence: `Plural form used in daily conversation, e.g., "${clean} play an important role."`
-    };
-  }
+    if (stemMatch.type === 'superlative') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "adjective (superlative)",
+        definition: stemObj ? `Superlative form of ${stemObj.word}: ${stemObj.definition}` : `Superlative degree form of ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (सबसे अधिक / Superlative)` : `${baseWord} - Superlative`,
+        exampleSentence: `This option is considered the ${clean.toLowerCase()} choice available.`
+      };
+    }
 
-  if (baseStemStr) {
-    return {
-      word: clean,
-      phonetic: `/${clean.toLowerCase()}/`,
-      partOfSpeech: "noun (plural)",
-      definition: `Plural form of ${baseStemStr}: A valid ${len}-letter English vocabulary word.`,
-      hindiMeaning: `${baseStemStr} - बहुवचन शब्द`,
-      exampleSentence: `The plural word "${clean}" is widely used in written and spoken English.`
-    };
+    if (stemMatch.type === 'past') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "verb (past tense / participle)",
+        definition: stemObj ? `Past tense form of ${stemObj.word}: ${stemObj.definition}` : `Past tense form of verb ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (भूतकाल / Past Tense)` : `${baseWord} - Past Tense`,
+        exampleSentence: `They ${clean.toLowerCase()} the action smoothly according to schedule.`
+      };
+    }
+
+    if (stemMatch.type === 'progressive') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "verb (present participle / gerund)",
+        definition: stemObj ? `Continuous form of ${stemObj.word}: ${stemObj.definition}` : `Continuous action form of ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (निरंतर क्रिया / Progressive)` : `${baseWord} - Progressive`,
+        exampleSentence: `Active participation in ${clean.toLowerCase()} helps build fluency rapidly.`
+      };
+    }
+
+    if (stemMatch.type === 'adverb') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "adverb",
+        definition: stemObj ? `Adverbial form of ${stemObj.word}: ${stemObj.definition}` : `Adverb derived from ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (क्रिया-विशेषण / Adverb)` : `${baseWord} - Adverb`,
+        exampleSentence: `The task was executed ${clean.toLowerCase()} with high accuracy.`
+      };
+    }
+
+    if (stemMatch.type === 'plural') {
+      return {
+        word: clean,
+        phonetic: `/${clean.toLowerCase()}/`,
+        partOfSpeech: "noun (plural)",
+        definition: stemObj ? `Plural form of ${stemObj.word}: ${stemObj.definition}` : `Plural form of ${baseWord}.`,
+        hindiMeaning: stemObj ? `${stemObj.hindiMeaning} (बहुवचन / Plural)` : `${baseWord} - Plural`,
+        exampleSentence: `Multiple ${clean.toLowerCase()} were observed during the practice session.`
+      };
+    }
   }
 
   // 3. Fallback generation for valid words outside static dictionary
   return {
     word: clean,
     phonetic: `/${clean.toLowerCase()}/`,
-    partOfSpeech: "noun / verb / adj",
-    definition: `A valid ${len}-letter English word commonly used in vocabulary and daily conversation.`,
+    partOfSpeech: "noun / verb / adjective",
+    definition: `A valid ${len}-letter English vocabulary word.`,
     hindiMeaning: `${clean} - मान्य अंग्रेज़ी शब्द`,
-    exampleSentence: `The word "${clean}" is a recognized ${len}-letter English vocabulary word.`
+    exampleSentence: `The word "${clean}" is recognized in standard English vocabulary.`
   };
 }
 
