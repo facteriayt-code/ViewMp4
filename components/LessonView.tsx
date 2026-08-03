@@ -885,10 +885,10 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
             <button
               onClick={() => setShowDownloadMenu(!showDownloadMenu)}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30"
-              title="Download Lesson Summary for Offline Review"
+              title="Download Lesson Summary for Offline Review (PDF / TXT)"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Offline Summary</span>
+              <span>Offline PDF/Summary</span>
             </button>
 
             {showDownloadMenu && (

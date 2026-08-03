@@ -453,16 +453,226 @@ export const WORDLE_DICTIONARY: WordleWord[] = [
 
 export function getWordMeaning(searchWord: string): WordleWord {
   const clean = searchWord.toUpperCase().trim();
-  const found = WORDLE_DICTIONARY.find(w => w.word.toUpperCase() === clean);
+  const len = clean.length;
+  const pool = getWordsForLength(len);
+  const found = pool.find(w => w.word.toUpperCase() === clean);
   if (found) return found;
 
   // Fallback generation for words outside static dictionary
   return {
     word: clean,
     phonetic: `/${clean.toLowerCase()}/`,
-    partOfSpeech: "noun / verb",
-    definition: `An English word consisting of 5 letters.`,
-    hindiMeaning: `${clean} - अंग्रेज़ी शब्द`,
-    exampleSentence: `The word "${clean}" can be used in daily English conversation.`
+    partOfSpeech: "noun / verb / adj",
+    definition: `A valid ${len}-letter English word commonly used in vocabulary and daily conversation.`,
+    hindiMeaning: `${clean} - मान्य अंग्रेज़ी शब्द`,
+    exampleSentence: `The word "${clean}" is a recognized ${len}-letter English vocabulary word.`
   };
 }
+
+export const WORDLE_4LETTER_DICTIONARY: WordleWord[] = [
+  { word: "BOOK", phonetic: "/bʊk/", partOfSpeech: "noun", definition: "A written or printed work consisting of pages bound together.", hindiMeaning: "पुस्तक / किताब", exampleSentence: "Reading a book every day expands your English knowledge." },
+  { word: "MIND", phonetic: "/maɪnd/", partOfSpeech: "noun", definition: "The element of a person that enables them to be aware of the world and their experiences.", hindiMeaning: "मन / दिमाग", exampleSentence: "Keep an open mind when learning new language skills." },
+  { word: "LIFE", phonetic: "/laɪf/", partOfSpeech: "noun", definition: "The condition that distinguishes animals and plants from inorganic matter.", hindiMeaning: "जीवन / ज़िंदगी", exampleSentence: "Continuous learning brings joy to life." },
+  { word: "STAR", phonetic: "/stɑːr/", partOfSpeech: "noun", definition: "A luminous astronomical body visible in the night sky.", hindiMeaning: "तारा / सितारा", exampleSentence: "The bright star shines brightly in the night sky." },
+  { word: "MOON", phonetic: "/muːn/", partOfSpeech: "noun", definition: "The natural satellite of the earth, visible by reflected light from the sun.", hindiMeaning: "चाँद / चंद्रमा", exampleSentence: "The full moon illuminated the quiet evening." },
+  { word: "READ", phonetic: "/riːd/", partOfSpeech: "verb", definition: "Look at and comprehend the meaning of written or printed matter.", hindiMeaning: "पढ़ना", exampleSentence: "I read daily to improve my reading comprehension." },
+  { word: "WORK", phonetic: "/wɜːrk/", partOfSpeech: "noun / verb", definition: "Activity involving mental or physical effort done in order to achieve a result.", hindiMeaning: "कार्य / काम", exampleSentence: "Hard work pays off in mastering any subject." },
+  { word: "WORD", phonetic: "/wɜːrd/", partOfSpeech: "noun", definition: "A single distinct meaningful element of speech or writing.", hindiMeaning: "शब्द", exampleSentence: "Learn one new word every single day." },
+  { word: "TALK", phonetic: "/tɔːk/", partOfSpeech: "verb", definition: "Speak in order to give information or express ideas.", hindiMeaning: "बात करना / बोलना", exampleSentence: "We talk in English to build natural fluency." },
+  { word: "HOPE", phonetic: "/hoʊp/", partOfSpeech: "noun / verb", definition: "A feeling of expectation and desire for a certain thing to happen.", hindiMeaning: "आशा / उम्मीद", exampleSentence: "Never lose hope when working toward your goals." },
+  { word: "FAST", phonetic: "/fæst/", partOfSpeech: "adjective / adverb", definition: "Moving or capable of moving at high speed.", hindiMeaning: "तेज़ / तीव्र", exampleSentence: "Consistent practice leads to fast progress." },
+  { word: "EASY", phonetic: "/ˈiːzi/", partOfSpeech: "adjective", definition: "Achieved without great effort; presenting no difficulty.", hindiMeaning: "आसान / सरल", exampleSentence: "Grammar rules become easy once understood." },
+  { word: "TIME", phonetic: "/taɪm/", partOfSpeech: "noun", definition: "The indefinite continued progress of existence and events.", hindiMeaning: "समय / वक्त", exampleSentence: "Manage your study time effectively every day." },
+  { word: "LOVE", phonetic: "/lʌv/", partOfSpeech: "noun / verb", definition: "An intense feeling of deep affection.", hindiMeaning: "प्रेम / प्यार", exampleSentence: "They love practicing languages together." },
+  { word: "HELP", phonetic: "/hɛlp/", partOfSpeech: "verb / noun", definition: "Make it easier for someone to do something by offering services.", hindiMeaning: "मदद / सहायता", exampleSentence: "Always ask for help when facing difficulties." },
+  { word: "BLUE", phonetic: "/bluː/", partOfSpeech: "noun / adjective", definition: "The color of the clear sky and the deep sea.", hindiMeaning: "नीला रंग", exampleSentence: "The sky is clear and blue today." },
+  { word: "GOLD", phonetic: "/ɡoʊld/", partOfSpeech: "noun", definition: "A yellow precious metal, chemical element of atomic number 79.", hindiMeaning: "सोना / स्वर्ण", exampleSentence: "Gold has been valued throughout human history." },
+  { word: "KIND", phonetic: "/kaɪnd/", partOfSpeech: "adjective", definition: "Having or showing a friendly, generous, and considerate nature.", hindiMeaning: "दयालु / प्रकार", exampleSentence: "Always be kind and encouraging to others." },
+  { word: "HERO", phonetic: "/ˈhɪəroʊ/", partOfSpeech: "noun", definition: "A person who is admired for their courage, outstanding achievements, or noble qualities.", hindiMeaning: "नायक / वीर", exampleSentence: "He became a local hero after saving the puppy." },
+  { word: "COOL", phonetic: "/kuːl/", partOfSpeech: "adjective", definition: "Fairly cold, or fashionably attractive and impressive.", hindiMeaning: "शीतल / शानदार", exampleSentence: "A cool breeze refreshed everyone during the walk." },
+  { word: "FREE", phonetic: "/friː/", partOfSpeech: "adjective", definition: "Not under the control or in the power of another.", hindiMeaning: "मुफ़्त / स्वतंत्र", exampleSentence: "Feel free to ask any questions during the lesson." },
+  { word: "GAME", phonetic: "/ɡeɪm/", partOfSpeech: "noun", definition: "A form of play or sport, especially one with rules.", hindiMeaning: "खेल", exampleSentence: "Word games make vocabulary building fun." },
+  { word: "BEST", phonetic: "/bɛst/", partOfSpeech: "adjective", definition: "Of the most excellent, effective, or desirable type.", hindiMeaning: "सर्वश्रेष्ठ / सबसे अच्छा", exampleSentence: "Always try your best in every challenge." },
+  { word: "TEAM", phonetic: "/tiːm/", partOfSpeech: "noun", definition: "A group of players forming one side in a competitive game.", hindiMeaning: "दल / टीम", exampleSentence: "Our study team helps each other improve." },
+  { word: "WIND", phonetic: "/wɪnd/", partOfSpeech: "noun", definition: "The perceptible natural movement of the air.", hindiMeaning: "हवा / पवन", exampleSentence: "A gentle wind rustled through the green leaves." },
+  { word: "SNOW", phonetic: "/snoʊ/", partOfSpeech: "noun", definition: "Atmospheric water vapor frozen into ice crystals.", hindiMeaning: "बर्फ / हिम", exampleSentence: "Fresh snow covered the mountain peaks." },
+  { word: "RAIN", phonetic: "/reɪn/", partOfSpeech: "noun", definition: "Moisture condensed from the atmosphere that falls in drops.", hindiMeaning: "बारिश / वर्षा", exampleSentence: "The soothing sound of rain filled the quiet night." },
+  { word: "DEEP", phonetic: "/diːp/", partOfSpeech: "adjective", definition: "Extending far down from the top or surface.", hindiMeaning: "गहरा / गंभीर", exampleSentence: "Take a deep breath before speaking confidently." },
+  { word: "RICH", phonetic: "/rɪtʃ/", partOfSpeech: "adjective", definition: "Having a great deal of money or assets; plentiful.", hindiMeaning: "धनी / समृद्ध", exampleSentence: "English has a rich history and vast vocabulary." },
+  { word: "WILD", phonetic: "/waɪld/", partOfSpeech: "adjective", definition: "Living or growing in the natural environment.", hindiMeaning: "जंगली / प्राकृतिक", exampleSentence: "Wild animals roam freely in the forest reserve." },
+  { word: "SURE", phonetic: "/ʃʊər/", partOfSpeech: "adjective", definition: "Confident in what one thinks or knows; having no doubt.", hindiMeaning: "पक्का / निश्चित", exampleSentence: "Are you sure about your answer?" },
+  { word: "TRUE", phonetic: "/truː/", partOfSpeech: "adjective", definition: "In accordance with fact or reality.", hindiMeaning: "सत्य / सच", exampleSentence: "A true friend is always supportive and honest." },
+  { word: "REAL", phonetic: "/riːəl/", partOfSpeech: "adjective", definition: "Actually existing or occurring; not imagined or supposed.", hindiMeaning: "वास्तविक / असली", exampleSentence: "Practice with real conversations for fast progress." },
+  { word: "SAFE", phonetic: "/seɪf/", partOfSpeech: "adjective", definition: "Protected from or not exposed to danger or risk.", hindiMeaning: "सुरक्षित", exampleSentence: "Keep your study notes in a safe place." },
+  { word: "GROW", phonetic: "/ɡroʊ/", partOfSpeech: "verb", definition: "Undergo natural development by increasing in size and capacity.", hindiMeaning: "बढ़ना / विकसित होना", exampleSentence: "Daily study helps your vocabulary grow rapidly." },
+  { word: "RISE", phonetic: "/raɪz/", partOfSpeech: "verb", definition: "Move upward or increase in amount, number, or degree.", hindiMeaning: "उठना / वृद्धि", exampleSentence: "The sun begins to rise early in the morning." },
+  { word: "PLAY", phonetic: "/pleɪ/", partOfSpeech: "verb", definition: "Engage in activity for enjoyment and recreation.", hindiMeaning: "खेलना", exampleSentence: "Children play happily in the neighborhood park." },
+  { word: "WALK", phonetic: "/wɔːk/", partOfSpeech: "verb", definition: "Move at a regular pace by lifting and setting down each foot.", hindiMeaning: "टहलना / चलना", exampleSentence: "A morning walk keeps the mind fresh and active." },
+  { word: "HOME", phonetic: "/hoʊm/", partOfSpeech: "noun", definition: "The place where one lives permanently.", hindiMeaning: "घर / गृह", exampleSentence: "Home is where family comes together." },
+  { word: "CITY", phonetic: "/ˈsɪti/", partOfSpeech: "noun", definition: "A large human settlement with organized infrastructure.", hindiMeaning: "शहर / नगर", exampleSentence: "The vibrant city lights lit up the evening skyline." }
+];
+
+export const WORDLE_6LETTER_DICTIONARY: WordleWord[] = [
+  { word: "ACTION", phonetic: "/ˈæk.ʃən/", partOfSpeech: "noun", definition: "The fact or process of doing something, typically to achieve an aim.", hindiMeaning: "कार्य / क्रिया", exampleSentence: "Taking daily action is the key to building strong habits." },
+  { word: "ACTIVE", phonetic: "/ˈæk.tɪv/", partOfSpeech: "adjective", definition: "Engaging or ready to engage in physically energetic pursuits.", hindiMeaning: "सक्रिय / चुस्त", exampleSentence: "An active mind absorbs new English concepts rapidly." },
+  { word: "BEAUTY", phonetic: "/ˈbjuː.ti/", partOfSpeech: "noun", definition: "A combination of qualities that pleases the aesthetic senses.", hindiMeaning: "सुंदरता / सौंदर्य", exampleSentence: "The beauty of nature inspires peace and creativity." },
+  { word: "CHANGE", phonetic: "/tʃeɪndʒ/", partOfSpeech: "noun / verb", definition: "Make or become different.", hindiMeaning: "बदलाव / परिवर्तन", exampleSentence: "Positive change happens step by step through daily study." },
+  { word: "CLEVER", phonetic: "/ˈklɛv.ər/", partOfSpeech: "adjective", definition: "Quick to understand, learn, and devise ideas.", hindiMeaning: "चतुर / होशियार", exampleSentence: "She solved the difficult puzzle with a clever idea." },
+  { word: "DANCE", phonetic: "/dæns/", partOfSpeech: "verb / noun", definition: "Move rhythmically to music, typically following a set sequence of steps.", hindiMeaning: "नृत्य / नाचना", exampleSentence: "Music makes people want to dance and celebrate." },
+  { word: "DRIVEN", phonetic: "/ˈdrɪv.ən/", partOfSpeech: "adjective", definition: "Motivated by a strong determination to succeed.", hindiMeaning: "प्रेरित / लक्ष्यबद्ध", exampleSentence: "A driven student practices consistently every single day." },
+  { word: "ENERGY", phonetic: "/ˈɛn.ər.dʒi/", partOfSpeech: "noun", definition: "The strength and vitality required for sustained physical or mental activity.", hindiMeaning: "ऊर्जा / शक्ति", exampleSentence: "High energy helps you stay focused during learning." },
+  { word: "FAMILY", phonetic: "/ˈfæm.ɪ.li/", partOfSpeech: "noun", definition: "A group of one or more parents and their children living together as a unit.", hindiMeaning: "परिवार / कुटुंब", exampleSentence: "Spending quality time with family brings lasting happiness." },
+  { word: "FRIEND", phonetic: "/frɛnd/", partOfSpeech: "noun", definition: "A person with whom one has a bond of mutual affection.", hindiMeaning: "मित्र / दोस्त", exampleSentence: "A good friend always encourages you to do your best." },
+  { word: "FUTURE", phonetic: "/ˈfjuː.tʃər/", partOfSpeech: "noun", definition: "A period of time following the moment of speaking or writing.", hindiMeaning: "भविष्य", exampleSentence: "Investing in education creates a bright future." },
+  { word: "GARDEN", phonetic: "/ˈɡɑːr.dən/", partOfSpeech: "noun", definition: "A piece of ground used for growing flowers, fruit, or vegetables.", hindiMeaning: "बगीचा / उद्यान", exampleSentence: "Colorful flowers bloom in the neighborhood garden." },
+  { word: "GLOBAL", phonetic: "/ˈɡloʊ.bəl/", partOfSpeech: "adjective", definition: "Relating to the whole world; worldwide.", hindiMeaning: "वैश्विक / दुनिया भर में", exampleSentence: "English is a global language that connects people everywhere." },
+  { word: "GROWTH", phonetic: "/ɡroʊθ/", partOfSpeech: "noun", definition: "The process of increasing in physical size or mental capacity.", hindiMeaning: "विकास / वृद्धि", exampleSentence: "Personal growth comes from trying new challenges." },
+  { word: "HONEST", phonetic: "/ˈɒn.ɪst/", partOfSpeech: "adjective", definition: "Free of deceit and untruthfulness; sincere.", hindiMeaning: "ईमानदार / सच्चा", exampleSentence: "An honest answer builds trust and good relationships." },
+  { word: "IMPACT", phonetic: "/ˈɪm.pækt/", partOfSpeech: "noun", definition: "The marked effect or influence of something.", hindiMeaning: "प्रभाव / असर", exampleSentence: "Effective communication has a powerful impact on success." },
+  { word: "INSIGHT", phonetic: "/ˈɪn.saɪt/", partOfSpeech: "noun", definition: "The capacity to gain an accurate and deep intuitive understanding.", hindiMeaning: "अंतर्दृष्टि / समझ", exampleSentence: "Deep insights make grammar rules easy to understand." },
+  { word: "LEADER", phonetic: "/ˈliː.dər/", partOfSpeech: "noun", definition: "The person who leads or commands a group, organization, or country.", hindiMeaning: "नेता / मार्गदर्शक", exampleSentence: "A great leader inspires others through clear words." },
+  { word: "MASTER", phonetic: "/ˈmæs.tər/", partOfSpeech: "noun / verb", definition: "Acquire complete knowledge or skill in an accomplishment or subject.", hindiMeaning: "माहिर होना / स्वामी", exampleSentence: "With daily practice, you will master conversational English." },
+  { word: "MEMORY", phonetic: "/ˈmɛm.ər.i/", partOfSpeech: "noun", definition: "The faculty by which the mind stores and remembers information.", hindiMeaning: "स्मृति / याददाश्त", exampleSentence: "Spaced repetition helps lock vocabulary into long-term memory." },
+  { word: "MODERN", phonetic: "/ˈmɒd.ərn/", partOfSpeech: "adjective", definition: "Relating to the present or recent times as opposed to the remote past.", hindiMeaning: "आधुनिक / नवीन", exampleSentence: "Modern learning tools make language practice engaging." },
+  { word: "NATURE", phonetic: "/ˈneɪ.tʃər/", partOfSpeech: "noun", definition: "The physical world including plants, animals, landscapes, and natural features.", hindiMeaning: "प्रकृति / स्वभाव", exampleSentence: "Walking in nature refreshes the mind and reduces stress." },
+  { word: "PLANET", phonetic: "/ˈplæn.ɪt/", partOfSpeech: "noun", definition: "A celestial body moving in an elliptical orbit around a star.", hindiMeaning: "ग्रह", exampleSentence: "Earth is a unique planet capable of supporting life." },
+  { word: "POLITE", phonetic: "/pəˈlaɪt/", partOfSpeech: "adjective", definition: "Having or showing behavior that is respectful and considerate of others.", hindiMeaning: "विनम्र / सभ्य", exampleSentence: "Using polite phrases makes social interactions smoother." },
+  { word: "REASON", phonetic: "/ˈriː.zən/", partOfSpeech: "noun", definition: "A cause, explanation, or justification for an action or event.", hindiMeaning: "कारण / वजह", exampleSentence: "Understanding the reason behind rules helps long-term recall." },
+  { word: "SEARCH", phonetic: "/sɜːrtʃ/", partOfSpeech: "verb / noun", definition: "Try to find something by looking or otherwise seeking carefully.", hindiMeaning: "खोजना / तलाश", exampleSentence: "Search for opportunities to speak English aloud." },
+  { word: "SILENT", phonetic: "/ˈsaɪ.lənt/", partOfSpeech: "adjective", definition: "Not making or accompanied by any sound; quiet.", hindiMeaning: "शांत / मौन", exampleSentence: "A silent library is a peaceful place for deep study." },
+  { word: "SPIRIT", phonetic: "/ˈspɪr.ɪt/", partOfSpeech: "noun", definition: "The non-physical part of a person which is the seat of emotions and character.", hindiMeaning: "आत्मा / उत्साह", exampleSentence: "Keep a positive spirit when learning something new." },
+  { word: "STRONG", phonetic: "/strɒŋ/", partOfSpeech: "adjective", definition: "Having the power to move heavy weights or perform heavy tasks.", hindiMeaning: "मजबूत / बलवान", exampleSentence: "Building a strong vocabulary empowers confidence." },
+  { word: "SUMMER", phonetic: "/ˈsʌm.ər/", partOfSpeech: "noun", definition: "The warmest season of the year, between spring and autumn.", hindiMeaning: "गर्मी का मौसम", exampleSentence: "Warm summer days are great for outdoor activities." },
+  { word: "SYSTEM", phonetic: "/ˈsɪs.təm/", partOfSpeech: "noun", definition: "A set of things working together as parts of a mechanism or network.", hindiMeaning: "प्रणाली / तंत्र", exampleSentence: "A structured study system ensures steady improvement." },
+  { word: "TRAVEL", phonetic: "/ˈtræv.əl/", partOfSpeech: "verb / noun", definition: "Make a journey, typically of some length or abroad.", hindiMeaning: "यात्रा करना", exampleSentence: "Traveling opens up opportunities to practice new languages." },
+  { word: "UNIQUE", phonetic: "/juːˈniːk/", partOfSpeech: "adjective", definition: "Being the only one of its kind; unlike anything else.", hindiMeaning: "अनोखा / अद्वितीय", exampleSentence: "Everyone has a unique way of processing language concepts." },
+  { word: "VISION", phonetic: "/ˈvɪʒ.ən/", partOfSpeech: "noun", definition: "The state of being able to see, or the ability to think about the future with wisdom.", hindiMeaning: "दृष्टि / दृष्टिकोण", exampleSentence: "A clear vision guides your learning roadmap effectively." },
+  { word: "WISDOM", phonetic: "/ˈwɪz.dəm/", partOfSpeech: "noun", definition: "The quality of having experience, knowledge, and good judgment.", hindiMeaning: "बुद्धिमत्ता / ज्ञान", exampleSentence: "Wisdom grows through experience and continuous reflection." },
+  { word: "WONDER", phonetic: "/ˈwʌn.dər/", partOfSpeech: "noun / verb", definition: "A feeling of surprise mingled with admiration, caused by something beautiful.", hindiMeaning: "आश्चर्य / चमत्कार", exampleSentence: "The child looked at the starry sky with pure wonder." }
+];
+
+export function getWordsForLength(length: number): WordleWord[] {
+  if (length === 4) return WORDLE_4LETTER_DICTIONARY;
+  if (length === 6) return WORDLE_6LETTER_DICTIONARY;
+  return WORDLE_DICTIONARY; // Default 5 letters
+}
+
+// Extra words valid set for 4, 5, 6 letter words
+export const EXTENDED_VALID_4LETTER_WORDS: string[] = [
+  "ABLE", "ACID", "AGED", "ALSO", "AREA", "ARMY", "AWAY", "BABY", "BACK", "BALL",
+  "BAND", "BANK", "BASE", "BATH", "BEAR", "BEAT", "BEEN", "BELL", "BELT", "BEST",
+  "BIRD", "BLOW", "BLUE", "BOAT", "BODY", "BOND", "BONE", "BOOK", "BORN", "BOTH",
+  "BOWL", "BULK", "BURN", "BUSH", "BUSY", "CALL", "CALM", "CAME", "CAMP", "CARD",
+  "CARE", "CASE", "CASH", "CAST", "CELL", "CHAT", "CHIP", "CITY", "CLUB", "COAL",
+  "COAT", "CODE", "COLD", "COOK", "COOL", "COPY", "CORE", "COST", "CREW", "CROP",
+  "DARK", "DATA", "DATE", "DAWN", "DAYS", "DEAD", "DEAF", "DEAL", "DEAN", "DEAR",
+  "DEEP", "DESK", "DIET", "DISC", "DISK", "DOOR", "DOSE", "DOWN", "DRAW", "DROP",
+  "DRUG", "DUAL", "DUCK", "DUTY", "EACH", "EARN", "EASE", "EAST", "EASY", "EDGE",
+  "ELSE", "EVEN", "EVER", "EVIL", "EXAM", "EXIT", "FACE", "FACT", "FAIR", "FALL",
+  "FARM", "FAST", "FATE", "FEAR", "FEED", "FEEL", "FEET", "FILE", "FILL", "FILM",
+  "FIND", "FINE", "FIRE", "FIRM", "FISH", "FLAT", "FLOW", "FOLK", "FOOD", "FOOT",
+  "FORM", "FORT", "FOUR", "FREE", "FROM", "FUEL", "FULL", "FUND", "GAIN", "GAME",
+  "GATE", "GEAR", "GIFT", "GIRL", "GIVE", "GLAD", "GOAL", "GOLD", "GOLF", "GONE",
+  "GOOD", "GRAY", "GREY", "GROW", "GULF", "HALF", "HALL", "HAND", "HANG", "HARD",
+  "HAVE", "HEAD", "HEAR", "HEAT", "HELL", "HELP", "HERE", "HERO", "HIGH", "HILL",
+  "HIRE", "HOLD", "HOLE", "HOLY", "HOME", "HOPE", "HOST", "HOUR", "HUGE", "HUNG",
+  "HUNT", "HURT", "IDEA", "INCH", "INTO", "IRON", "ITEM", "JACK", "JOIN", "JUMP",
+  "JUST", "KEEP", "KENT", "KEPT", "KICK", "KILL", "KIND", "KING", "KNEE", "KNOW",
+  "LACK", "LADY", "LAKE", "LAND", "LANE", "LAST", "LATE", "LEAD", "LEAF", "LEAN",
+  "LEFT", "LESS", "LIFE", "LIFT", "LIGHT", "LIKE", "LINE", "LINK", "LION", "LIST",
+  "LIVE", "LOAD", "LOAN", "LOCK", "LOGO", "LONG", "LOOK", "LORD", "LOSS", "LOTS",
+  "LOVE", "LUCK", "MAIN", "MAKE", "MALE", "MANY", "MAPS", "MARK", "MASS", "MATH",
+  "MEAL", "MEAN", "MEAT", "MEET", "MIND", "MINE", "MOON", "MORE", "MOST", "MOVE",
+  "MUCH", "NAME", "NAVY", "NEAR", "NECK", "NEED", "NEWS", "NEXT", "NICE", "NIGHT",
+  "NONE", "NOON", "NORM", "NOSE", "NOTE", "OKAY", "ONCE", "ONLY", "OPEN", "ORAL",
+  "PACK", "PAGE", "PAIN", "PAIR", "PARK", "PART", "PASS", "PATH", "PEAK", "PICK",
+  "PINK", "PIPE", "PLAN", "PLAY", "PLOT", "PLUG", "PLUS", "POEM", "POET", "POLE",
+  "POLL", "POOL", "POOR", "PORT", "POST", "PURE", "PUSH", "RACE", "RAIL", "RAIN",
+  "RANK", "RARE", "RATE", "READ", "REAL", "REAR", "RELY", "RENT", "REST", "RICE",
+  "RICH", "RIDE", "RING", "RISE", "RISK", "ROAD", "ROCK", "ROLE", "ROLL", "ROOF",
+  "ROOM", "ROOT", "ROSE", "RULE", "RUSH", "SAFE", "SAID", "SAIL", "SALE", "SAME",
+  "SAND", "SAVE", "SEAT", "SEED", "SEEK", "SEEM", "SEEN", "SELF", "SELL", "SEND",
+  "SHIP", "SHOP", "SHOT", "SHOW", "SHUT", "SICK", "SIDE", "SIGN", "SILK", "SITE",
+  "SIZE", "SKIN", "SLOW", "SNOW", "SOAP", "SOFT", "SOIL", "SOLD", "SOLE", "SOME",
+  "SONG", "SOON", "SORT", "SOUL", "SPOT", "STAR", "STAY", "STEP", "STOP", "SUCH",
+  "SUIT", "SURE", "SWIM", "TAIL", "TAKE", "TALK", "TALL", "TANK", "TAPE", "TASK",
+  "TEAM", "TEAR", "TECH", "TELL", "TERM", "TEST", "TEXT", "THAT", "THEM", "THEN",
+  "THEY", "THIN", "THIS", "THUS", "TIME", "TINY", "TIP", "TOOL", "TOWN", "TREE",
+  "TRIP", "TRUE", "TUBE", "TURN", "TWIN", "TYPE", "UNIT", "UPON", "URBAN", "USED",
+  "USER", "VARY", "VAST", "VERY", "VIEW", "VOTE", "WAGE", "WAIT", "WAKE", "WALK",
+  "WALL", "WANT", "WARM", "WASH", "WAVE", "WAYS", "WEAK", "WEAR", "WEEK", "WELL",
+  "WEST", "WHAT", "WHEN", "WHICH", "WIDE", "WILD", "WILL", "WIND", "WINE", "WING",
+  "WISH", "WITH", "WOOD", "WORD", "WORK", "WORLD", "YARD", "YEAR", "ZERO", "ZONE"
+];
+
+export const EXTENDED_VALID_6LETTER_WORDS: string[] = [
+  "ACCEPT", "ACCESS", "ACCORD", "ACROSS", "ACTION", "ACTIVE", "ACTUAL", "ADVICE", "ADVISE", "AFFECT",
+  "AFFORD", "AGAINST", "AGENCY", "AGENDA", "ALMOST", "ALWAYS", "AMOUNT", "ANIMAL", "ANNUAL", "ANSWER",
+  "ANYONE", "ANYWAY", "APPEAR", "ASTATIC", "AROUND", "ARRIVE", "ARTIST", "ASPECT", "ASSIST", "ASSUME",
+  "ATTACK", "ATTEND", "AUTHOR", "AUTUMN", "AVENUE", "BAKERY", "BEAUTY", "BECOME", "BEFORE", "BEHIND",
+  "BELIEF", "BELONG", "BESIDE", "BETTER", "BEYOND", "BISHOP", "BORDER", "BORROW", "BOTTLE", "BOTTOM",
+  "BRANCH", "BREATH", "BRIDGE", "BRIGHT", "BROKEN", "BUDGET", "BURDEN", "CAMERA", "CANDLE", "CAMPUS",
+  "CANCER", "CANDID", "CARBON", "CAREER", "CASTLE", "CASUAL", "CAUGHT", "CENTER", "CENTURY", "CHAIRS",
+  "CHANCE", "CHANGE", "CHARGE", "CHARM", "CHEAP", "CHEESE", "CHERRY", "CHOICE", "CHOOSE", "CHURCH",
+  "CIRCLE", "CLIENT", "CLIMATE", "CLOTHES", "CLOUDY", "COFFEE", "COLLAR", "COLUMN", "COMBAT", "COMEDY",
+  "COMMON", "COPPER", "CORNER", "COUNTY", "COUPLE", "COURT", "COUSIN", "CREDIT", "CRIME", "CRISIS",
+  "CUSTOM", "DAMAGE", "DANGER", "DATED", "DEBATE", "DECIDE", "DECREASE", "DEFEND", "DEGREE", "DEMAND",
+  "DESIGN", "DESIRE", "DETAIL", "DETECT", "DEVICE", "DIRECT", "DOCTOR", "DOMAIN", "DOUBLE", "DRAGON",
+  "DREAM", "DRIVEN", "DRIVER", "DURING", "EASILY", "EATING", "EFFECT", "EFFORT", "EIGHTH", "EITHER",
+  "ELEVEN", "EMERGE", "EMPIRE", "EMPLOY", "ENABLE", "ENERGY", "ENGINE", "ENOUGH", "ENSURE", "ENTIRE",
+  "ESCAPE", "ESTATE", "ETHICS", "EXCEED", "EXCEPT", "EXCUSE", "EXPAND", "EXPECT", "EXPERT", "EXPORT",
+  "EXTEND", "EXTENT", "FABRIC", "FACTOR", "FAMILY", "FAMOUS", "FATHER", "FELLOW", "FEMALE", "FIGURE",
+  "FILING", "FILTER", "FINALE", "FINGER", "FINISH", "FISCAL", "FLIGHT", "FLOWER", "FLYING", "FOLDER",
+  "FOLLOW", "FOREST", "FORGET", "FORMAL", "FORMAT", "FORMER", "FOSTER", "FOURTH", "FRIEND", "FUTURE",
+  "GARDEN", "GATHER", "GENDER", "GENTLE", "GLOBAL", "GOLDEN", "GROUND", "GROWTH", "HANDLE", "HAPPEN",
+  "HARDLY", "HEALTH", "HEAVEN", "HEIGHT", "HIDDEN", "HOLDER", "HONEST", "IMPACT", "IMPORT", "INCOME",
+  "INDIGO", "INJURY", "INSIGHT", "INTENT", "INVEST", "ISLAND", "ITSELF", "JACKET", "JUNGLE", "JUNIOR",
+  "KEEPER", "KERNEL", "KITCHEN", "LADDER", "LANDING", "LATEST", "LIVING", "LONDON", "LUXURY", "MAGNET",
+  "MAJORITY", "MANAGE", "MANNER", "MANUAL", "MARGIN", "MARKET", "MARTIN", "MASTER", "MATTER", "MEMORY",
+  "MENTAL", "METHOD", "MIDDLE", "MODERN", "MOMENT", "MOTHER", "MOTION", "MUSEUM", "MUTUAL", "MYSTERY",
+  "NATION", "NATIVE", "NATURE", "NEIGHBOR", "NORMAL", "NOTICE", "NUMBER", "OBJECT", "OBTAIN", "OFFICE",
+  "ONLINE", "OPTION", "ORANGE", "ORIGIN", "OUTPUT", "PARENT", "PATIENT", "PATTERN", "PEOPLE", "PEPPER",
+  "PERIOD", "PERSON", "PLANET", "PLAYER", "PLEASE", "POCKET", "POLICE", "POLICY", "POLITE", "POTATO",
+  "POWDER", "POWERFUL", "PRACTICE", "PREFER", "PRESERVE", "PRESS", "PREVENT", "PRICE", "PRIDE", "PRIEST",
+  "PRINCE", "PRISON", "PROFIT", "PROMPT", "PROPER", "PROTECT", "PROVE", "PUBLIC", "PUNISH", "PUPIL",
+  "PURPLE", "PURPOSE", "PURSUE", "QUALITY", "QUESTION", "RABBIT", "RATHER", "RATING", "READER", "REALLY",
+  "REASON", "RECIPE", "RECORD", "REDUCE", "REFORM", "REFUSE", "REGION", "REGRET", "RELATE", "RELIEF",
+  "REMAIN", "REMEDY", "REMOVE", "REPAIR", "REPEAT", "REPORT", "RESCUE", "RESULT", "RETAIL", "RETAIN",
+  "RETURN", "REVEAL", "REVIEW", "REWARD", "RHYTHM", "RISING", "ROCKET", "SAFETY", "SALARY", "SAMPLE",
+  "SAVING", "SCHEME", "SCHOOL", "SCREEN", "SCRIPT", "SEARCH", "SEASON", "SECOND", "SECRET", "SECTOR",
+  "SECURE", "SENIOR", "SENSOR", "SERIES", "SERVER", "SETTLE", "SEVERE", "SHADOW", "SHARED", "SHIELD",
+  "SHOULD", "SILENT", "SILVER", "SIMPLE", "SINGLE", "SISTER", "SKILL", "SLIGHT", "SMOOTH", "SOCIAL",
+  "SOCIETY", "SOURCE", "SPEECH", "SPIRIT", "SPREAD", "SPRING", "STABLE", "STATUS", "STREAM", "STREET",
+  "STRESS", "STRICT", "STRIKE", "STRING", "STRONG", "STUDIO", "SUMMER", "SUNDAY", "SUNRISE", "SUPERB",
+  "SUPPLY", "SYSTEM", "TARGET", "TAXATION", "TEMPLE", "TENNIS", "THANKS", "THEORY", "THIRTY", "THREAT",
+  "TIMING", "TISSUE", "TOWARD", "TRAVEL", "TREATY", "TUNNEL", "TWELVE", "TWENTY", "UNIQUE", "UNITED",
+  "UPDATE", "URGENT", "USEFUL", "VALUABLE", "VICTOR", "VIOLIN", "VISION", "VISUAL", "VOLUME", "WALKER",
+  "WALLET", "WANDER", "WARMTH", "WEALTH", "WEAPON", "WEEKLY", "WEIGHT", "WINDOW", "WINTER", "WISDOM",
+  "WITHIN", "WONDER", "WORKER", "WRITER", "YELLOW"
+];
+
+// Sets for O(1) word lookup by length
+const SET_4 = new Set<string>([
+  ...WORDLE_4LETTER_DICTIONARY.map(w => w.word.toUpperCase()),
+  ...EXTENDED_VALID_4LETTER_WORDS.map(w => w.toUpperCase())
+]);
+
+const SET_5 = new Set<string>([
+  ...WORDLE_DICTIONARY.map(w => w.word.toUpperCase())
+]);
+
+const SET_6 = new Set<string>([
+  ...WORDLE_6LETTER_DICTIONARY.map(w => w.word.toUpperCase()),
+  ...EXTENDED_VALID_6LETTER_WORDS.map(w => w.toUpperCase())
+]);
+
+export function isValidWordleWord(word: string, length: number = 5): boolean {
+  if (!word || word.length !== length) return false;
+  const clean = word.toUpperCase().trim();
+  
+  if (length === 4) return SET_4.has(clean);
+  if (length === 6) return SET_6.has(clean);
+  return SET_5.has(clean);
+}
+
+

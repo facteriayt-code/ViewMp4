@@ -31,7 +31,14 @@ import confetti from 'canvas-confetti';
 export const LearnSomethingNewView: React.FC = () => {
   const { addXP, language } = useLearning();
 
+  // Active category filter state
   const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  // Filter facts by active category
+  const filteredDatabase = LEARN_FACTS_DATABASE.filter(fact => {
+    if (activeCategory === 'all') return true;
+    return fact.category === activeCategory;
+  });
   
   // Persistent Discovered History
   const [discoveredHistory, setDiscoveredHistory] = useState<LearnFact[]>(() => {
@@ -108,6 +115,23 @@ export const LearnSomethingNewView: React.FC = () => {
     hindiSummary?: string;
     timestamp: string;
   }>>([]);
+
+  // When category changes, select an unseen or fresh fact in that category
+  useEffect(() => {
+    const categoryPool = LEARN_FACTS_DATABASE.filter(f => activeCategory === 'all' || f.category === activeCategory);
+    if (categoryPool.length > 0) {
+      // Check if current fact belongs to new category; if not, pick new
+      if (activeCategory !== 'all' && currentFact.category !== activeCategory) {
+        const unseen = categoryPool.filter(f => !seenFactIds.includes(f.id));
+        const choices = unseen.length > 0 ? unseen : categoryPool;
+        const next = choices[Math.floor(Math.random() * choices.length)];
+        if (next) {
+          setCurrentFact(next);
+          setSeenFactIds(prev => prev.includes(next.id) ? prev : [...prev, next.id]);
+        }
+      }
+    }
+  }, [activeCategory]);
 
   // Reset AI chat thread whenever a new fact is selected
   useEffect(() => {
@@ -210,30 +234,24 @@ export const LearnSomethingNewView: React.FC = () => {
     }
   };
 
-  // Filter facts by active category
-  const filteredDatabase = LEARN_FACTS_DATABASE.filter(fact => {
-    if (activeCategory === 'all') return true;
-    return fact.category === activeCategory;
-  });
-
   const handleNextFact = async () => {
     setIsAnswerRevealed(!isQuizMode);
     
-    // 1. Prioritize facts that have NOT been seen yet in the current category
-    const unseenFacts = filteredDatabase.filter(f => !seenFactIds.includes(f.id));
+    // Prioritize facts that have NOT been seen in current category
+    const categoryFacts = LEARN_FACTS_DATABASE.filter(f => activeCategory === 'all' || f.category === activeCategory);
+    let unseenFacts = categoryFacts.filter(f => !seenFactIds.includes(f.id));
 
-    let nextFact: LearnFact;
-    if (unseenFacts.length > 0) {
-      // Pick randomly among unseen facts
-      const randomIndex = Math.floor(Math.random() * unseenFacts.length);
-      nextFact = unseenFacts[randomIndex];
-    } else {
-      // If all facts in category have been seen, pick from remaining excluding currentFact
-      const remaining = filteredDatabase.filter(f => f.id !== currentFact.id);
-      const chosenList = remaining.length > 0 ? remaining : filteredDatabase;
-      const randomIndex = Math.floor(Math.random() * chosenList.length);
-      nextFact = chosenList[randomIndex] || LEARN_FACTS_DATABASE[0];
+    // If all facts in current category have been seen, reset seen IDs for this pool so we cycle endlessly with fresh picks
+    if (unseenFacts.length === 0) {
+      const catIds = new Set(categoryFacts.map(f => f.id));
+      setSeenFactIds(prev => prev.filter(id => !catIds.has(id)));
+      unseenFacts = categoryFacts.filter(f => f.id !== currentFact.id);
     }
+
+    const pool = unseenFacts.length > 0 ? unseenFacts : categoryFacts.filter(f => f.id !== currentFact.id);
+    const chosenPool = pool.length > 0 ? pool : categoryFacts;
+    const randomIndex = Math.floor(Math.random() * chosenPool.length);
+    const nextFact = chosenPool[randomIndex] || LEARN_FACTS_DATABASE[0];
 
     setCurrentFact(nextFact);
 

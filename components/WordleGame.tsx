@@ -1,12 +1,71 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles, CheckCircle2, RotateCcw, Volume2, VolumeX, ArrowRight,
-  HelpCircle, BookOpen, Search, Trophy, Zap, AlertCircle, Eye, Info, History
+  HelpCircle, BookOpen, Search, Trophy, Zap, AlertCircle, Eye, Info, History,
+  Sliders, Settings, Flame, Shield, Check, Layers, Target
 } from 'lucide-react';
-import { WORDLE_DICTIONARY, getWordMeaning, WordleWord } from '../src/data/wordleDictionary';
+import {
+  WORDLE_DICTIONARY,
+  WORDLE_4LETTER_DICTIONARY,
+  WORDLE_6LETTER_DICTIONARY,
+  getWordMeaning,
+  isValidWordleWord,
+  getWordsForLength,
+  WordleWord
+} from '../src/data/wordleDictionary';
 import { useLearning } from '../src/context/LearningContext';
 
 type LetterStatus = 'correct' | 'present' | 'absent' | 'empty';
+export type DifficultyPreset = 'easy' | 'medium' | 'hard' | 'expert' | 'custom';
+
+interface DifficultyConfig {
+  id: DifficultyPreset;
+  label: string;
+  badgeBg: string;
+  badgeTextColor: string;
+  wordLength: number;
+  maxGuesses: number;
+  description: string;
+}
+
+export const DIFFICULTY_PRESETS: DifficultyConfig[] = [
+  {
+    id: 'easy',
+    label: 'Easy',
+    badgeBg: 'bg-emerald-100 border-emerald-300 text-emerald-800',
+    badgeTextColor: 'text-emerald-700',
+    wordLength: 4,
+    maxGuesses: 7,
+    description: '4-letter words • 7 attempts (Great for beginners)'
+  },
+  {
+    id: 'medium',
+    label: 'Medium (Classic)',
+    badgeBg: 'bg-sky-100 border-sky-300 text-sky-800',
+    badgeTextColor: 'text-sky-700',
+    wordLength: 5,
+    maxGuesses: 6,
+    description: '5-letter words • 6 attempts (Standard Wordle)'
+  },
+  {
+    id: 'hard',
+    label: 'Hard',
+    badgeBg: 'bg-amber-100 border-amber-300 text-amber-900',
+    badgeTextColor: 'text-amber-700',
+    wordLength: 6,
+    maxGuesses: 5,
+    description: '6-letter words • 5 attempts (Challenging)'
+  },
+  {
+    id: 'expert',
+    label: 'Expert',
+    badgeBg: 'bg-rose-100 border-rose-300 text-rose-900',
+    badgeTextColor: 'text-rose-700',
+    wordLength: 6,
+    maxGuesses: 4,
+    description: '6-letter words • 4 attempts (For masters)'
+  }
+];
 
 interface GuessResult {
   word: string;
@@ -184,7 +243,32 @@ class WordleSoundEngine {
 const soundEngine = new WordleSoundEngine();
 
 export const WordleGame: React.FC = () => {
-  const { addXpAndGems, triggerConfetti, language } = useLearning();
+  const { addXpAndGems, triggerConfetti } = useLearning();
+
+  // Difficulty & Customization Settings State
+  const [wordLength, setWordLength] = useState<number>(() => {
+    const saved = localStorage.getItem('lingo_wordle_word_length');
+    return saved ? Math.min(Math.max(parseInt(saved, 10), 4), 6) : 5;
+  });
+
+  const [maxGuesses, setMaxGuesses] = useState<number>(() => {
+    const saved = localStorage.getItem('lingo_wordle_max_guesses');
+    return saved ? Math.min(Math.max(parseInt(saved, 10), 3), 8) : 6;
+  });
+
+  const [difficultyPreset, setDifficultyPreset] = useState<DifficultyPreset>(() => {
+    const saved = localStorage.getItem('lingo_wordle_preset');
+    return (saved as DifficultyPreset) || 'medium';
+  });
+
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
+
+  // Sync settings with localStorage
+  useEffect(() => {
+    localStorage.setItem('lingo_wordle_word_length', wordLength.toString());
+    localStorage.setItem('lingo_wordle_max_guesses', maxGuesses.toString());
+    localStorage.setItem('lingo_wordle_preset', difficultyPreset);
+  }, [wordLength, maxGuesses, difficultyPreset]);
 
   // Sound Mute Toggle State
   const [soundMuted, setSoundMuted] = useState<boolean>(() => {
@@ -211,14 +295,24 @@ export const WordleGame: React.FC = () => {
     localStorage.setItem('lingo_completed_wordle_words', JSON.stringify(completedWords));
   }, [completedWords]);
 
-  // Target Secret Word State (Picked from unplayed dictionary words)
-  const [targetWordObj, setTargetWordObj] = useState<WordleWord>(() => {
+  // Helper to pick a random target secret word for a given word length
+  const getRandomTargetWord = useCallback((len: number, excludeWord?: string): WordleWord => {
+    const dictionary = getWordsForLength(len);
     const savedCompleted: string[] = (() => {
       try { return JSON.parse(localStorage.getItem('lingo_completed_wordle_words') || '[]'); } catch (e) { return []; }
     })();
-    const unplayed = WORDLE_DICTIONARY.filter(w => !savedCompleted.includes(w.word.toUpperCase()));
-    const pool = unplayed.length > 0 ? unplayed : WORDLE_DICTIONARY;
-    return pool[Math.floor(Math.random() * pool.length)];
+
+    const unplayed = dictionary.filter(
+      w => !savedCompleted.includes(w.word.toUpperCase()) && w.word.toUpperCase() !== excludeWord
+    );
+    const pool = unplayed.length > 0 ? unplayed : dictionary.filter(w => w.word.toUpperCase() !== excludeWord);
+    const poolToUse = pool.length > 0 ? pool : dictionary;
+    return poolToUse[Math.floor(Math.random() * poolToUse.length)];
+  }, []);
+
+  // Target Secret Word State
+  const [targetWordObj, setTargetWordObj] = useState<WordleWord>(() => {
+    return getRandomTargetWord(wordLength);
   });
 
   const targetWord = targetWordObj.word.toUpperCase();
@@ -240,32 +334,18 @@ export const WordleGame: React.FC = () => {
   const [gameStatus, setGameStatus] = useState<'playing' | 'won' | 'lost'>('playing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Active word meaning being viewed (defaults to latest guess, or target word on game over)
+  // Active word meaning being viewed
   const [selectedWordMeaning, setSelectedWordMeaning] = useState<WordleWord | null>(null);
 
   // Deep dive state from API
   const [deepDiveData, setDeepDiveData] = useState<DeepDiveData | null>(null);
   const [loadingDeepDive, setLoadingDeepDive] = useState<boolean>(false);
 
-  // Reset Game for new word (Guarantees picking an unplayed word)
-  const startNewGame = () => {
-    const currentCompleted: string[] = (() => {
-      try { return JSON.parse(localStorage.getItem('lingo_completed_wordle_words') || '[]'); } catch (e) { return []; }
-    })();
-
-    const unplayedPool = WORDLE_DICTIONARY.filter(
-      w => !currentCompleted.includes(w.word.toUpperCase()) && w.word.toUpperCase() !== targetWord
-    );
-
-    if (unplayedPool.length === 0) {
-      // If all dictionary words have been completed, cycle or reset seamlessly
-      const fallbackPool = WORDLE_DICTIONARY.filter(w => w.word.toUpperCase() !== targetWord);
-      const nextObj = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
-      setTargetWordObj(nextObj);
-    } else {
-      const nextObj = unplayedPool[Math.floor(Math.random() * unplayedPool.length)];
-      setTargetWordObj(nextObj);
-    }
+  // Reset Game for new word
+  const startNewGame = useCallback((newLen?: number) => {
+    const activeLength = newLen ?? wordLength;
+    const nextTarget = getRandomTargetWord(activeLength, targetWordObj?.word?.toUpperCase());
+    setTargetWordObj(nextTarget);
 
     setGuesses([]);
     setCurrentGuess('');
@@ -273,6 +353,26 @@ export const WordleGame: React.FC = () => {
     setErrorMessage(null);
     setSelectedWordMeaning(null);
     setDeepDiveData(null);
+  }, [getRandomTargetWord, targetWordObj, wordLength]);
+
+  // Difficulty Switcher Handler
+  const handleSelectDifficulty = (preset: DifficultyPreset, customLen?: number, customGuesses?: number) => {
+    if (preset === 'custom') {
+      const targetLen = customLen ?? wordLength;
+      const targetGuesses = customGuesses ?? maxGuesses;
+      setDifficultyPreset('custom');
+      setWordLength(targetLen);
+      setMaxGuesses(targetGuesses);
+      startNewGame(targetLen);
+    } else {
+      const config = DIFFICULTY_PRESETS.find(p => p.id === preset);
+      if (config) {
+        setDifficultyPreset(preset);
+        setWordLength(config.wordLength);
+        setMaxGuesses(config.maxGuesses);
+        startNewGame(config.wordLength);
+      }
+    }
   };
 
   // Text-to-Speech Helper
@@ -286,15 +386,16 @@ export const WordleGame: React.FC = () => {
     }
   };
 
-  // Evaluate a 5-letter guess
+  // Evaluate a guess dynamically against secret target word
   const evaluateGuess = (guessWord: string): LetterStatus[] => {
-    const statuses: LetterStatus[] = Array(5).fill('absent');
+    const len = targetWord.length;
+    const statuses: LetterStatus[] = Array(len).fill('absent');
     const targetArr = targetWord.split('');
     const guessArr = guessWord.split('');
-    const taken = Array(5).fill(false);
+    const taken = Array(len).fill(false);
 
     // First pass: Green (correct position)
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < len; i++) {
       if (guessArr[i] === targetArr[i]) {
         statuses[i] = 'correct';
         taken[i] = true;
@@ -302,7 +403,7 @@ export const WordleGame: React.FC = () => {
     }
 
     // Second pass: Yellow (present in wrong position)
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < len; i++) {
       if (statuses[i] !== 'correct') {
         const char = guessArr[i];
         const matchIdx = targetArr.findIndex((tChar, idx) => tChar === char && !taken[idx]);
@@ -336,16 +437,25 @@ export const WordleGame: React.FC = () => {
   const submitGuess = useCallback(() => {
     if (gameStatus !== 'playing') return;
 
-    if (currentGuess.length !== 5) {
+    if (currentGuess.length !== wordLength) {
       soundEngine.playErrorAlert();
-      setErrorMessage("Please enter a 5-letter word!");
+      setErrorMessage(`Please enter a ${wordLength}-letter word!`);
+      setTimeout(() => setErrorMessage(null), 2500);
+      return;
+    }
+
+    const guessUpper = currentGuess.toUpperCase();
+
+    // Verify word validity - only real English words of correct length allowed
+    if (!isValidWordleWord(guessUpper, wordLength)) {
+      soundEngine.playErrorAlert();
+      setErrorMessage(`Not in word list! Please enter a valid ${wordLength}-letter English word.`);
       setTimeout(() => setErrorMessage(null), 2500);
       return;
     }
 
     soundEngine.playEnterClick();
     setErrorMessage(null);
-    const guessUpper = currentGuess.toUpperCase();
     const statuses = evaluateGuess(guessUpper);
     const meaning = getWordMeaning(guessUpper);
 
@@ -371,14 +481,14 @@ export const WordleGame: React.FC = () => {
       setSelectedWordMeaning(targetWordObj);
       markWordAsCompleted(targetWord);
       triggerConfetti();
-      addXpAndGems(25, 10);
-    } else if (updatedGuesses.length >= 6) {
+      addXpAndGems(25 + (wordLength - 4) * 5, 10);
+    } else if (updatedGuesses.length >= maxGuesses) {
       soundEngine.playLossTone();
       setGameStatus('lost');
       setSelectedWordMeaning(targetWordObj);
       markWordAsCompleted(targetWord);
     }
-  }, [currentGuess, gameStatus, guesses, targetWord, targetWordObj, triggerConfetti, addXpAndGems, markWordAsCompleted]);
+  }, [currentGuess, gameStatus, guesses, targetWord, targetWordObj, wordLength, maxGuesses, triggerConfetti, addXpAndGems, markWordAsCompleted]);
 
   // Physical keyboard key listener
   useEffect(() => {
@@ -393,7 +503,7 @@ export const WordleGame: React.FC = () => {
         soundEngine.playDeleteClick();
         setCurrentGuess(prev => prev.slice(0, -1));
       } else if (/^[a-zA-Z]$/.test(e.key)) {
-        if (currentGuess.length < 5 && gameStatus === 'playing') {
+        if (currentGuess.length < wordLength && gameStatus === 'playing') {
           soundEngine.playKeyClick();
           setCurrentGuess(prev => (prev + e.key).toUpperCase());
         }
@@ -402,7 +512,7 @@ export const WordleGame: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentGuess, gameStatus, submitGuess]);
+  }, [currentGuess, gameStatus, submitGuess, wordLength]);
 
   // Fetch AI Deep Dive for the selected word
   const fetchDeepDive = async (wordToFetch: string) => {
@@ -436,29 +546,55 @@ export const WordleGame: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* Top Banner with Clear Quick Action Buttons */}
+      {/* Top Banner with Difficulty Bar & Action Buttons */}
       <div className="bg-gradient-to-r from-emerald-50 via-white to-indigo-50 rounded-3xl p-5 border border-emerald-200 shadow-sm space-y-4">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-100 pb-4">
           <div className="space-y-1">
-            <div className="flex items-center space-x-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-emerald-600" />
-              <span>5-Letter Vocabulary Wordle Challenge</span>
-              <span className="ml-2 bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-300">
-                Mastered: {completedWords.length} / {WORDLE_DICTIONARY.length}
+              <span>Vocabulary Wordle Challenge</span>
+              
+              {/* Dynamic Difficulty Badge */}
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                difficultyPreset === 'easy' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' :
+                difficultyPreset === 'medium' ? 'bg-sky-100 border-sky-300 text-sky-800' :
+                difficultyPreset === 'hard' ? 'bg-amber-100 border-amber-300 text-amber-900' :
+                difficultyPreset === 'expert' ? 'bg-rose-100 border-rose-300 text-rose-900' :
+                'bg-purple-100 border-purple-300 text-purple-900'
+              }`}>
+                {difficultyPreset === 'custom' ? `Custom (${wordLength} Ltrs • ${maxGuesses} Attempts)` : `${DIFFICULTY_PRESETS.find(p => p.id === difficultyPreset)?.label}`}
+              </span>
+
+              <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-300">
+                Mastered: {completedWords.length}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
               Guess the English Secret Word
             </h2>
             <p className="text-xs text-slate-600">
-              Test your vocabulary intuition! Every guess reveals full definitions, audio pronunciations, and Hindi translations.
+              Test your vocabulary intuition! Choose word lengths (4-6 letters) and difficulty attempt limits.
             </p>
           </div>
 
-          {/* Core Requested Control Buttons Bar */}
+          {/* Core Control Buttons Bar */}
           <div className="flex flex-wrap items-center gap-2">
             
+            {/* Difficulty Settings Toggle Button */}
+            <button
+              onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border shadow-2xs ${
+                showSettingsDrawer
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20'
+                  : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50'
+              }`}
+              title="Customize Word Lengths and Attempt Limits"
+            >
+              <Sliders className="w-4 h-4 text-emerald-600" />
+              <span>Difficulty Settings</span>
+            </button>
+
             {/* 1. Word Meaning & Vocabulary Button */}
             <button
               onClick={() => {
@@ -499,7 +635,7 @@ export const WordleGame: React.FC = () => {
 
             {/* 3. Reset Button */}
             <button
-              onClick={startNewGame}
+              onClick={() => startNewGame()}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow-sm"
               title="Reset board & pick a fresh new word challenge"
             >
@@ -524,8 +660,128 @@ export const WordleGame: React.FC = () => {
           </div>
         </div>
 
+        {/* DIFFICULTY PRESETS & CUSTOMIZATION DRAWER */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              Quick Difficulty Selection:
+            </span>
+            <button
+              onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+              className="text-xs text-indigo-600 font-bold hover:underline flex items-center space-x-1"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>{showSettingsDrawer ? 'Hide Custom Options' : 'Custom Options (4-6 Letters, Guesses)'}</span>
+            </button>
+          </div>
+
+          {/* Preset Buttons Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {DIFFICULTY_PRESETS.map((preset) => {
+              const isSelected = difficultyPreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => handleSelectDifficulty(preset.id)}
+                  className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10 scale-[1.02]'
+                      : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs">{preset.label}</span>
+                    {isSelected && <Check className="w-4 h-4 text-emerald-400" />}
+                  </div>
+                  <div className={`text-[10px] mt-1 font-medium ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {preset.wordLength} Letters • {preset.maxGuesses} Guesses
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Detailed Custom Settings Panel */}
+          {showSettingsDrawer && (
+            <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-4 animate-fadeIn border border-slate-800">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                  <Sliders className="w-4 h-4" />
+                  <span>Custom Word Game Configuration</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Changes apply immediately with a fresh secret word
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. Word Length Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-200 block">
+                    Word Length (Letters):
+                  </label>
+                  <div className="flex gap-2">
+                    {[4, 5, 6].map((len) => (
+                      <button
+                        key={len}
+                        onClick={() => handleSelectDifficulty('custom', len, maxGuesses)}
+                        className={`flex-1 py-2.5 rounded-xl font-black text-sm transition border ${
+                          wordLength === len
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        {len} Letters
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {wordLength === 4 && 'Short 4-letter vocabulary words (Easy & Fast)'}
+                    {wordLength === 5 && 'Classic 5-letter vocabulary words (Standard Wordle)'}
+                    {wordLength === 6 && 'Longer 6-letter vocabulary words (Advanced Challenge)'}
+                  </p>
+                </div>
+
+                {/* 2. Max Guesses Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-200 block">
+                    Allowed Guesses (Attempts):
+                  </label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[3, 4, 5, 6, 7, 8].map((gCount) => (
+                      <button
+                        key={gCount}
+                        onClick={() => handleSelectDifficulty('custom', wordLength, gCount)}
+                        className={`px-3 py-2 rounded-xl font-bold text-xs transition border ${
+                          maxGuesses === gCount
+                            ? 'bg-indigo-500 text-white border-indigo-400 shadow-sm'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        {gCount} Guesses
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Fewer guesses require precise deduction; more guesses allow room for exploration.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setShowSettingsDrawer(false)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition"
+                >
+                  Apply & Start Game
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* View Toggle Filters */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1 border-t border-emerald-100">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">View Layout:</span>
           <button
             onClick={() => setActiveViewSection('all')}
@@ -587,32 +843,40 @@ export const WordleGame: React.FC = () => {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* 1. WORDLE GRID BOXES (Centered, clear 6 rows)                 */}
+            {/* 1. WORDLE GRID BOXES (Centered, dynamic rows & columns)       */}
             {/* ------------------------------------------------------------- */}
             <div className="space-y-2">
               <div className="text-center">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Step 1: Word Guess Grid (6 Attempts)
+                  Step 1: Word Guess Grid ({wordLength} Letters • {maxGuesses} Attempts)
                 </span>
               </div>
 
-              <div className="flex flex-col items-center gap-2 max-w-xs mx-auto py-2">
-                {Array.from({ length: 6 }).map((_, rowIndex) => {
+              <div className="flex flex-col items-center gap-2 max-w-md mx-auto py-2">
+                {Array.from({ length: maxGuesses }).map((_, rowIndex) => {
                   const isSubmitted = rowIndex < guesses.length;
                   const isCurrent = rowIndex === guesses.length && gameStatus === 'playing';
                   const guessResult = guesses[rowIndex];
 
-                  let rowChars = Array(5).fill('');
+                  let rowChars = Array(wordLength).fill('');
                   if (isSubmitted) {
                     rowChars = guessResult.word.split('');
                   } else if (isCurrent) {
-                    rowChars = currentGuess.padEnd(5, ' ').split('');
+                    rowChars = currentGuess.padEnd(wordLength, ' ').split('');
                   }
 
                   return (
-                    <div key={rowIndex} className="flex gap-2 justify-center">
+                    <div key={rowIndex} className="flex gap-1.5 sm:gap-2 justify-center">
                       {rowChars.map((char, colIndex) => {
-                        let tileClass = "w-11 h-11 sm:w-12 sm:h-12 border-2 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-300 ";
+                        let tileClass = "border-2 rounded-xl flex items-center justify-center font-black transition-all duration-300 ";
+
+                        if (wordLength === 4) {
+                          tileClass += "w-12 h-12 sm:w-14 sm:h-14 text-xl sm:text-2xl ";
+                        } else if (wordLength === 6) {
+                          tileClass += "w-9 h-9 sm:w-11 sm:h-11 text-base sm:text-lg ";
+                        } else {
+                          tileClass += "w-11 h-11 sm:w-12 sm:h-12 text-lg ";
+                        }
 
                         if (isSubmitted && guessResult) {
                           const status = guessResult.statuses[colIndex];
@@ -663,7 +927,7 @@ export const WordleGame: React.FC = () => {
                   {gameStatus === 'won' ? (
                     <>
                       <Trophy className="w-6 h-6 text-amber-500" />
-                      <span className="text-emerald-900">Brilliant! You Guessed the Word! (+25 XP)</span>
+                      <span className="text-emerald-900">Brilliant! You Guessed the Word! (+{25 + (wordLength - 4) * 5} XP)</span>
                     </>
                   ) : (
                     <>
@@ -754,7 +1018,7 @@ export const WordleGame: React.FC = () => {
                         <button
                           key={key}
                           onClick={() => {
-                            if (currentGuess.length < 5 && gameStatus === 'playing') {
+                            if (currentGuess.length < wordLength && gameStatus === 'playing') {
                               soundEngine.playKeyClick();
                               setCurrentGuess(prev => (prev + key).toUpperCase());
                             }
@@ -796,7 +1060,7 @@ export const WordleGame: React.FC = () => {
 
               {/* Rules instructions */}
               <p className="text-[11px] text-slate-600 text-center leading-relaxed max-w-md mx-auto font-medium">
-                Type any valid 5-letter English word and press <strong>ENTER</strong>. You have 6 attempts to guess the secret word. Click any tile or word in history to read its full definition and listen to pronunciation!
+                Type any valid <strong>{wordLength}-letter</strong> English word and press <strong>ENTER</strong>. You have <strong>{maxGuesses} attempts</strong> to guess the secret word. Click any tile or word in history to read its full definition and listen to pronunciation!
               </p>
             </div>
 
