@@ -637,6 +637,64 @@ Return JSON with:
     }
   });
 
+  // --- Learn Something New AI Fact Endpoint ---
+  apiRouter.post("/learn-something-new", async (req, res) => {
+    try {
+      const { category = "random", language = "en", promptTopic } = req.body;
+      const ai = getGeminiClient();
+
+      const prompt = `Generate a fascinating, mind-blowing, highly educational English linguistic or language fact, word origin story, unwritten grammar secret, strange linguistic anomaly, or idiom history.
+Category requested: ${category}
+${promptTopic ? `Topic focus: ${promptTopic}` : 'Choose a completely unexpected, surprising, or strange topic.'}
+
+Return JSON with:
+1. "id": unique string (e.g. "ai-fact-${Date.now()}")
+2. "title": catchy question or headline (e.g., "Why Do We Say 'Shed Crocodile Tears'?")
+3. "category": one of ["strange_facts", "word_origins", "linguistic_reasons", "important_idioms", "mindblowing_vocab"]
+4. "categoryLabel": e.g., "Etymology & Origin Story", "Unwritten Grammar Secret", "Strange English Anomaly"
+5. "categoryIcon": one of ["Brain", "Zap", "History", "Sparkles", "HelpCircle", "BookOpen"]
+6. "shortTeaser": intriguing 1-sentence riddle or teaser question before revealing the fact
+7. "factContent": detailed, engaging explanation of the surprising fact, historical reason, or hidden rule
+8. "whyItMatters": clear practical takeaway for an English learner to improve their speaking/writing
+9. "exampleSentence": natural example sentence demonstrating the word, rule, or idiom in action
+10. "hindiTranslation": clear 2-3 sentence explanation in Hindi (हिंदी) so Hindi speakers can easily understand the concept
+11. "tags": array of 3 relevant strings
+12. "funRating": integer 5`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              title: { type: Type.STRING },
+              category: { type: Type.STRING },
+              categoryLabel: { type: Type.STRING },
+              categoryIcon: { type: Type.STRING },
+              shortTeaser: { type: Type.STRING },
+              factContent: { type: Type.STRING },
+              whyItMatters: { type: Type.STRING },
+              exampleSentence: { type: Type.STRING },
+              hindiTranslation: { type: Type.STRING },
+              tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+              funRating: { type: Type.INTEGER }
+            },
+            required: ["id", "title", "category", "categoryLabel", "categoryIcon", "shortTeaser", "factContent", "whyItMatters", "exampleSentence", "hindiTranslation", "tags", "funRating"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || "{}");
+      res.json({ success: true, fact: data });
+    } catch (error: any) {
+      console.error("Learn Something New API Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to generate AI fact" });
+    }
+  });
+
   // --- Pronunciation AI Feedback Endpoint ---
   apiRouter.post("/pronunciation-feedback", async (req, res) => {
     try {

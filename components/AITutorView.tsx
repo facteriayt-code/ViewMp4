@@ -289,15 +289,15 @@ export const AITutorView: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
       
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 border border-amber-500/30 shadow-2xl space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
-          <Bot className="w-4 h-4 text-amber-400" />
+      <div className="bg-gradient-to-r from-amber-50 via-white to-indigo-50 rounded-3xl p-6 sm:p-8 border border-amber-200 shadow-sm space-y-3">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
+          <Bot className="w-4 h-4 text-amber-600" />
           <span>AI English Professor & Sentence Doctor</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-white">
+        <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900">
           Ask Any Question or Check Written English
         </h1>
-        <p className="text-slate-300 text-sm leading-relaxed max-w-2xl">
+        <p className="text-slate-600 text-sm leading-relaxed max-w-2xl">
           Get instant, personalized feedback on your written sentences, grammar queries, or word choices tailored to your current level ({progress.userLevel}).
         </p>
       </div>
@@ -305,7 +305,7 @@ export const AITutorView: React.FC = () => {
       {/* Quick Try Prompts */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block">
+          <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
             📖 Request Step-by-Step Topic Lessons:
           </span>
           <div className="flex flex-wrap gap-2">
@@ -317,9 +317,9 @@ export const AITutorView: React.FC = () => {
                   setSentenceToAnalyze('');
                   handleAskTutor('', p.query);
                 }}
-                className="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 border border-indigo-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                <BookOpen className="w-3.5 h-3.5 text-amber-600" />
                 <span>{p.label}</span>
               </button>
             ))}
@@ -327,7 +327,7 @@ export const AITutorView: React.FC = () => {
         </div>
 
         <div className="space-y-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
             🔍 Check Sentence Errors & Grammar Differences:
           </span>
           <div className="flex flex-wrap gap-2">
@@ -339,9 +339,9 @@ export const AITutorView: React.FC = () => {
                   setUserQuery(p.query);
                   handleAskTutor(p.sentence, p.query);
                 }}
-                className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 shadow-sm"
+                className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 shadow-xs"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>{p.label}</span>
               </button>
             ))}
@@ -350,9 +350,9 @@ export const AITutorView: React.FC = () => {
       </div>
 
       {/* Input Section */}
-      <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-4 shadow-xl">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4 shadow-sm">
         <div className="space-y-2">
-          <label className="text-xs font-bold text-amber-300 uppercase tracking-wider block">
+          <label className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
             Paste Sentence / Paragraph to Analyze & Correct:
           </label>
           <textarea
@@ -360,12 +360,12 @@ export const AITutorView: React.FC = () => {
             value={sentenceToAnalyze}
             onChange={(e) => setSentenceToAnalyze(e.target.value)}
             placeholder="e.g. Me and him was going to the market..."
-            className="w-full bg-slate-950 text-white font-medium p-3.5 rounded-2xl border border-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            className="w-full bg-slate-50 text-slate-900 font-medium p-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
             Or Ask a Custom Question ("Why do we say...?"):
           </label>
           <input
@@ -373,13 +373,13 @@ export const AITutorView: React.FC = () => {
             value={userQuery}
             onChange={(e) => setUserQuery(e.target.value)}
             placeholder="e.g. What is the difference between 'few' and 'a few'?"
-            className="w-full bg-slate-950 text-slate-200 text-xs px-4 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full bg-slate-50 text-slate-800 text-xs px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
 
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -387,7 +387,7 @@ export const AITutorView: React.FC = () => {
         <button
           onClick={() => handleAskTutor()}
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-amber-600 via-purple-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-amber-600/20 transition flex items-center justify-center space-x-2 text-sm"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl shadow-sm transition flex items-center justify-center space-x-2 text-sm"
         >
           {isLoading ? (
             <>
@@ -405,33 +405,33 @@ export const AITutorView: React.FC = () => {
 
       {/* AI Tutor Feedback Card */}
       {tutorResult && (
-        <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 border border-amber-500/30 space-y-6 shadow-2xl animate-fadeIn">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-amber-300 space-y-6 shadow-sm animate-fadeIn">
           
-          <div className="space-y-2 border-b border-slate-800 pb-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30">
+          <div className="space-y-2 border-b border-slate-100 pb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
               Professor Feedback
             </span>
-            <p className="text-slate-200 text-sm leading-relaxed">
+            <p className="text-slate-800 text-sm leading-relaxed">
               {tutorResult.feedbackSummary}
             </p>
           </div>
 
           {/* Corrected Sentence */}
           {tutorResult.correctedSentence && (
-            <div className="bg-emerald-950/60 p-4 rounded-2xl border border-emerald-500/30 space-y-2">
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
                   ✅ Corrected Sentence:
                 </span>
                 <button
                   onClick={() => speakText(tutorResult.correctedSentence)}
-                  className="p-1.5 text-emerald-300 hover:text-white"
+                  className="p-1.5 text-emerald-700 hover:text-emerald-900"
                   title="Listen"
                 >
                   <Volume2 className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-white font-bold text-base italic">
+              <p className="text-emerald-950 font-bold text-base italic">
                 "{tutorResult.correctedSentence}"
               </p>
             </div>
@@ -440,14 +440,14 @@ export const AITutorView: React.FC = () => {
           {/* Key Rules Breakdown */}
           {tutorResult.keyRulesExplained && (
             <div className="space-y-3">
-              <h4 className="font-bold text-sm text-indigo-300 uppercase tracking-wider">
+              <h4 className="font-bold text-sm text-indigo-800 uppercase tracking-wider">
                 Grammar Rules & Reasons Explained:
               </h4>
 
               {tutorResult.keyRulesExplained.map((rule: any, idx: number) => (
-                <div key={idx} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-1">
-                  <span className="font-bold text-amber-300 text-sm">{rule.concept}</span>
-                  <p className="text-xs text-slate-300 leading-relaxed">{rule.explanation}</p>
+                <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-amber-900 text-sm">{rule.concept}</span>
+                  <p className="text-xs text-slate-700 leading-relaxed">{rule.explanation}</p>
                 </div>
               ))}
             </div>
@@ -455,7 +455,7 @@ export const AITutorView: React.FC = () => {
 
           {/* Encouragement */}
           {tutorResult.encouragingNote && (
-            <div className="bg-indigo-950/60 p-4 rounded-2xl border border-indigo-500/30 text-xs text-indigo-200 italic">
+            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-200 text-xs text-indigo-900 italic">
               🌟 {tutorResult.encouragingNote}
             </div>
           )}

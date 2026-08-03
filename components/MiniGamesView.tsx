@@ -749,31 +749,31 @@ export const MiniGamesView: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 border border-emerald-500/30 shadow-2xl space-y-4">
+      <div className="bg-gradient-to-r from-emerald-50 via-white to-indigo-50 rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
-            <Gamepad2 className="w-4 h-4 text-emerald-400" />
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+            <Gamepad2 className="w-4 h-4 text-emerald-600" />
             <span>Course Progression Mini-Games</span>
           </div>
 
           <div className="flex items-center space-x-3 text-xs font-bold">
-            <span className="bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-amber-300 flex items-center space-x-1">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-amber-800 flex items-center space-x-1 shadow-xs">
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
               <span>Unlocked Lessons: {unlockedLessons.length} / {DAYS_CURRICULUM.length}</span>
             </span>
           </div>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-white">
+        <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-slate-900">
           Progression-Linked English Puzzles
         </h1>
-        <p className="text-slate-300 text-sm leading-relaxed max-w-2xl">
+        <p className="text-slate-600 text-sm leading-relaxed max-w-2xl">
           Practice pronunciation with Gemini voice evaluation, grammar sentence builders, and mistake detective challenges with instant solutions and feedback!
         </p>
 
         {/* Day Progression Selector */}
         <div className="space-y-2 pt-2">
-          <label className="text-xs font-bold text-emerald-300 uppercase tracking-wider block">
+          <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">
             Select Lesson Content to Practice:
           </label>
           <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
@@ -781,11 +781,11 @@ export const MiniGamesView: React.FC = () => {
               onClick={() => setSelectedDayId('all_unlocked')}
               className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
                 selectedDayId === 'all_unlocked'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                  : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
               <span>All Unlocked Days (Blitz)</span>
             </button>
 
@@ -797,16 +797,16 @@ export const MiniGamesView: React.FC = () => {
                   onClick={() => setSelectedDayId(lesson.id)}
                   className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
                     selectedDayId === lesson.id
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                       : unlocked
-                      ? 'bg-slate-950 text-slate-200 hover:bg-slate-800 border border-slate-800'
-                      : 'bg-slate-950/50 text-slate-500 border border-slate-900'
+                      ? 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-200'
+                      : 'bg-slate-100 text-slate-400 border border-slate-200'
                   }`}
                 >
                   {unlocked ? (
-                    <Sparkles className="w-3 h-3 text-emerald-400" />
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
                   ) : (
-                    <Lock className="w-3 h-3 text-slate-600" />
+                    <Lock className="w-3 h-3 text-slate-400" />
                   )}
                   <span>Day {lesson.dayNumber}</span>
                 </button>
@@ -818,17 +818,17 @@ export const MiniGamesView: React.FC = () => {
 
         {/* LOCKED DAY ALERT SCREEN */}
       {isSelectedLocked ? (
-        <div className="bg-slate-900 rounded-3xl p-8 border border-amber-500/30 text-center space-y-4 shadow-2xl">
-          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30">
-            <Lock className="w-8 h-8 text-amber-400" />
+        <div className="bg-white rounded-3xl p-8 border border-amber-300 text-center space-y-4 shadow-sm">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto border border-amber-200">
+            <Lock className="w-8 h-8 text-amber-600" />
           </div>
-          <h2 className="text-xl font-bold text-white">Lesson Locked!</h2>
-          <p className="text-slate-300 text-sm max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-slate-900">Lesson Locked!</h2>
+          <p className="text-slate-600 text-sm max-w-md mx-auto">
             Day {activeLesson?.dayNumber} games will unlock automatically once you complete earlier lessons in your English Roadmap.
           </p>
           <button
             onClick={() => setSelectedDayId('all_unlocked')}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-2xl text-xs transition shadow-lg"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-2xl text-xs transition shadow-md"
           >
             Play All Unlocked Content
           </button>
@@ -836,16 +836,16 @@ export const MiniGamesView: React.FC = () => {
       ) : activeGameMode === 'hub' ? (
         /* GAME SELECTION HUB - CARDS GRID */
         <div className="space-y-6 animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
-              <h2 className="text-xl font-extrabold text-white font-heading">
+              <h2 className="text-xl font-extrabold text-slate-900 font-heading">
                 Choose an English Mini-Game
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Select any interactive challenge below to open it in a dedicated game view:
               </p>
             </div>
-            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
               5 Dedicated Games
             </span>
           </div>
@@ -854,31 +854,31 @@ export const MiniGamesView: React.FC = () => {
             {/* CARD 1: VOCABULARY WORDLE */}
             <div
               onClick={() => setActiveGameMode('wordle')}
-              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/60 p-6 rounded-3xl border border-emerald-500/30 hover:border-emerald-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1 space-y-4"
+              className="group relative bg-white hover:bg-emerald-50/30 p-6 rounded-3xl border border-emerald-200 hover:border-emerald-400 transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 space-y-4"
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700">
                   <Sparkles className="w-6 h-6 animate-pulse" />
                 </div>
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
                   Dictionary & Puzzles
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition flex items-center space-x-2">
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-emerald-700 transition flex items-center space-x-2">
                   <span>🔤 Vocabulary Wordle</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Guess the hidden 5-letter English word. Every guess reveals definitions, phonetics, and Hindi translations!
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <span className="text-[11px] font-bold text-slate-400">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500">
                   Unique Words Guarantee
                 </span>
-                <span className="text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                <span className="text-xs font-bold text-emerald-600 group-hover:translate-x-1 transition flex items-center space-x-1">
                   <span>Open Wordle Page</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
@@ -888,31 +888,31 @@ export const MiniGamesView: React.FC = () => {
             {/* CARD 2: PRONUNCIATION ARENA */}
             <div
               onClick={() => setActiveGameMode('arena')}
-              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/60 p-6 rounded-3xl border border-amber-500/30 hover:border-amber-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1 space-y-4"
+              className="group relative bg-white hover:bg-amber-50/30 p-6 rounded-3xl border border-amber-200 hover:border-amber-400 transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 space-y-4"
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
                   <Mic className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30">
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200">
                   Gemini Voice AI
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition flex items-center space-x-2">
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-amber-700 transition flex items-center space-x-2">
                   <span>🎙️ Pronunciation Arena</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Speak difficult English words into your mic and receive instant AI voice accuracy score, IPA phonetics, and mouth tips.
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <span className="text-[11px] font-bold text-slate-400">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500">
                   Level {arenaLevel} / 5 Difficulty
                 </span>
-                <span className="text-xs font-bold text-amber-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                <span className="text-xs font-bold text-amber-600 group-hover:translate-x-1 transition flex items-center space-x-1">
                   <span>Open Arena Page</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
@@ -922,31 +922,31 @@ export const MiniGamesView: React.FC = () => {
             {/* CARD 3: SENTENCE BUILDER */}
             <div
               onClick={() => setActiveGameMode('builder')}
-              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-6 rounded-3xl border border-indigo-500/30 hover:border-indigo-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 space-y-4"
+              className="group relative bg-white hover:bg-indigo-50/30 p-6 rounded-3xl border border-indigo-200 hover:border-indigo-400 transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 space-y-4"
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 border border-indigo-300 flex items-center justify-center text-indigo-700">
                   <Gamepad2 className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/30">
+                <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2.5 py-1 rounded-full border border-indigo-200">
                   Grammar & Structure
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-white group-hover:text-indigo-300 transition flex items-center space-x-2">
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-700 transition flex items-center space-x-2">
                   <span>🧩 Sentence Builder</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Reorder scrambled English word tiles into natural, grammatically sound sentences based on your daily course curriculum.
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <span className="text-[11px] font-bold text-slate-400">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500">
                   {sentenceBuilderPool.length} Puzzles Ready
                 </span>
-                <span className="text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                <span className="text-xs font-bold text-indigo-600 group-hover:translate-x-1 transition flex items-center space-x-1">
                   <span>Open Builder Page</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
@@ -956,31 +956,31 @@ export const MiniGamesView: React.FC = () => {
             {/* CARD 4: VOCAB MATCH BLITZ */}
             <div
               onClick={() => setActiveGameMode('match')}
-              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/60 p-6 rounded-3xl border border-purple-500/30 hover:border-purple-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1 space-y-4"
+              className="group relative bg-white hover:bg-purple-50/30 p-6 rounded-3xl border border-purple-200 hover:border-purple-400 transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 space-y-4"
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 border border-purple-300 flex items-center justify-center text-purple-700">
                   <Zap className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/30">
+                <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-2.5 py-1 rounded-full border border-purple-200">
                   Speed Memory
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-white group-hover:text-purple-300 transition flex items-center space-x-2">
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-purple-700 transition flex items-center space-x-2">
                   <span>🃏 Vocab Match Blitz</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Match English vocabulary words with their correct Hindi meanings as fast as possible to build instant recall.
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <span className="text-[11px] font-bold text-slate-400">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500">
                   {wordPairsPool.length} Vocabulary Pairs
                 </span>
-                <span className="text-xs font-bold text-purple-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                <span className="text-xs font-bold text-purple-600 group-hover:translate-x-1 transition flex items-center space-x-1">
                   <span>Open Match Page</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
@@ -990,31 +990,31 @@ export const MiniGamesView: React.FC = () => {
             {/* CARD 5: COMMON MISTAKES DETECTIVE */}
             <div
               onClick={() => setActiveGameMode('detective')}
-              className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/60 p-6 rounded-3xl border border-rose-500/30 hover:border-rose-400 transition-all cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1 space-y-4 md:col-span-2"
+              className="group relative bg-white hover:bg-rose-50/30 p-6 rounded-3xl border border-rose-200 hover:border-rose-400 transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 space-y-4 md:col-span-2"
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700">
                   <HelpCircle className="w-6 h-6" />
                 </div>
-                <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2.5 py-1 rounded-full border border-rose-500/30">
+                <span className="text-[10px] font-bold text-rose-800 bg-rose-100 px-2.5 py-1 rounded-full border border-rose-200">
                   Error Spotting
                 </span>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-white group-hover:text-rose-300 transition flex items-center space-x-2">
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-rose-700 transition flex items-center space-x-2">
                   <span>🔍 Common Mistakes Detective</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Spot frequent Indian English grammar errors (e.g., "Myself Rahul", "Revert back") and choose the correct natural phrasing.
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <span className="text-[11px] font-bold text-slate-400">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500">
                   {mistakesPool.length} Real Scenarios
                 </span>
-                <span className="text-xs font-bold text-rose-400 group-hover:translate-x-1 transition flex items-center space-x-1">
+                <span className="text-xs font-bold text-rose-600 group-hover:translate-x-1 transition flex items-center space-x-1">
                   <span>Open Detective Page</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
@@ -1026,28 +1026,28 @@ export const MiniGamesView: React.FC = () => {
         /* DEDICATED GAME PAGE VIEW */
         <div className="space-y-6 animate-fadeIn">
           {/* Top Bar with Back Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 backdrop-blur-md shadow-xl sticky top-2 z-20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm sticky top-2 z-20">
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setActiveGameMode('hub')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-emerald-600/20 active:scale-95"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-sm active:scale-95"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>← Back to All Games</span>
               </button>
 
-              <div className="h-5 w-px bg-slate-800 hidden sm:block" />
+              <div className="h-5 w-px bg-slate-200 hidden sm:block" />
 
               <div>
-                <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                   {activeGameMode === 'wordle' && '🔤 Vocabulary Wordle'}
                   {activeGameMode === 'arena' && '🎙️ Pronunciation Arena'}
                   {activeGameMode === 'builder' && '🧩 Sentence Builder'}
                   {activeGameMode === 'match' && '🃏 Vocab Match Blitz'}
                   {activeGameMode === 'detective' && '🔍 Mistake Detective'}
                 </h2>
-                <p className="text-[11px] text-slate-400">
-                  Practicing: <span className="text-emerald-400 font-bold">{selectedDayId === 'all_unlocked' ? 'All Unlocked Days' : `Day ${activeLesson?.dayNumber}`}</span>
+                <p className="text-[11px] text-slate-500">
+                  Practicing: <span className="text-emerald-700 font-bold">{selectedDayId === 'all_unlocked' ? 'All Unlocked Days' : `Day ${activeLesson?.dayNumber}`}</span>
                 </p>
               </div>
             </div>
@@ -1057,7 +1057,7 @@ export const MiniGamesView: React.FC = () => {
               <button
                 onClick={() => setActiveGameMode('wordle')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  activeGameMode === 'wordle' ? 'bg-gradient-to-r from-emerald-500 to-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  activeGameMode === 'wordle' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Wordle
@@ -1065,7 +1065,7 @@ export const MiniGamesView: React.FC = () => {
               <button
                 onClick={() => setActiveGameMode('arena')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  activeGameMode === 'arena' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  activeGameMode === 'arena' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Arena
@@ -1073,7 +1073,7 @@ export const MiniGamesView: React.FC = () => {
               <button
                 onClick={() => setActiveGameMode('builder')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  activeGameMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  activeGameMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Builder
@@ -1081,7 +1081,7 @@ export const MiniGamesView: React.FC = () => {
               <button
                 onClick={() => setActiveGameMode('match')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  activeGameMode === 'match' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  activeGameMode === 'match' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Match
@@ -1089,7 +1089,7 @@ export const MiniGamesView: React.FC = () => {
               <button
                 onClick={() => setActiveGameMode('detective')}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                  activeGameMode === 'detective' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  activeGameMode === 'detective' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Detective

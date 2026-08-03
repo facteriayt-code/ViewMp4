@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sparkles, CheckCircle2, RotateCcw, Volume2, ArrowRight,
-  HelpCircle, BookOpen, Search, Trophy, Zap, AlertCircle, Eye, Info
+  Sparkles, CheckCircle2, RotateCcw, Volume2, VolumeX, ArrowRight,
+  HelpCircle, BookOpen, Search, Trophy, Zap, AlertCircle, Eye, Info, History
 } from 'lucide-react';
 import { WORDLE_DICTIONARY, getWordMeaning, WordleWord } from '../src/data/wordleDictionary';
 import { useLearning } from '../src/context/LearningContext';
@@ -27,8 +27,174 @@ interface DeepDiveData {
   whyUsedInExample: string;
 }
 
+// Web Audio API Synthesizer for Wordle Sound Effects
+class WordleSoundEngine {
+  private ctx: AudioContext | null = null;
+  public isMuted: boolean = false;
+
+  private getContext(): AudioContext | null {
+    if (this.isMuted) return null;
+    if (!this.ctx && typeof window !== 'undefined') {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    return this.ctx;
+  }
+
+  // Key tap sound (virtual keyboard press)
+  playKeyClick() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(650, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(350, ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Delete / Backspace sound
+  playDeleteClick() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Enter / Submit guess sound
+  playEnterClick() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.08);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(now + 0.08);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Error alert sound
+  playErrorAlert() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.setValueAtTime(140, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(now + 0.16);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Victory fanfare sound
+  playWinFanfare() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = ctx.currentTime + i * 0.11;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.22, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.25);
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Game over loss sound
+  playLossTone() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const notes = [311.13, 293.66, 261.63]; // Eb4, D4, C4
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = ctx.currentTime + i * 0.14;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.18, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.28);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.28);
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+const soundEngine = new WordleSoundEngine();
+
 export const WordleGame: React.FC = () => {
   const { addXpAndGems, triggerConfetti, language } = useLearning();
+
+  // Sound Mute Toggle State
+  const [soundMuted, setSoundMuted] = useState<boolean>(() => {
+    return localStorage.getItem('lingo_wordle_muted') === 'true';
+  });
+
+  useEffect(() => {
+    soundEngine.isMuted = soundMuted;
+    localStorage.setItem('lingo_wordle_muted', soundMuted ? 'true' : 'false');
+  }, [soundMuted]);
 
   // Persistent Played Target Words State (Prevents repeating words)
   const [completedWords, setCompletedWords] = useState<string[]>(() => {
@@ -171,11 +337,13 @@ export const WordleGame: React.FC = () => {
     if (gameStatus !== 'playing') return;
 
     if (currentGuess.length !== 5) {
+      soundEngine.playErrorAlert();
       setErrorMessage("Please enter a 5-letter word!");
       setTimeout(() => setErrorMessage(null), 2500);
       return;
     }
 
+    soundEngine.playEnterClick();
     setErrorMessage(null);
     const guessUpper = currentGuess.toUpperCase();
     const statuses = evaluateGuess(guessUpper);
@@ -198,12 +366,14 @@ export const WordleGame: React.FC = () => {
 
     // Check Win/Loss
     if (guessUpper === targetWord) {
+      soundEngine.playWinFanfare();
       setGameStatus('won');
       setSelectedWordMeaning(targetWordObj);
       markWordAsCompleted(targetWord);
       triggerConfetti();
       addXpAndGems(25, 10);
     } else if (updatedGuesses.length >= 6) {
+      soundEngine.playLossTone();
       setGameStatus('lost');
       setSelectedWordMeaning(targetWordObj);
       markWordAsCompleted(targetWord);
@@ -220,9 +390,11 @@ export const WordleGame: React.FC = () => {
       if (e.key === 'Enter') {
         submitGuess();
       } else if (e.key === 'Backspace') {
+        soundEngine.playDeleteClick();
         setCurrentGuess(prev => prev.slice(0, -1));
       } else if (/^[a-zA-Z]$/.test(e.key)) {
         if (currentGuess.length < 5 && gameStatus === 'playing') {
+          soundEngine.playKeyClick();
           setCurrentGuess(prev => (prev + e.key).toUpperCase());
         }
       }
@@ -252,6 +424,9 @@ export const WordleGame: React.FC = () => {
     }
   };
 
+  // View section state for quick navigation buttons
+  const [activeViewSection, setActiveViewSection] = useState<'game' | 'meaning' | 'history' | 'all'>('all');
+
   const keyboardRows = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
     ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
@@ -261,437 +436,594 @@ export const WordleGame: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* Intro Banner */}
-      <div className="bg-gradient-to-r from-emerald-900/60 via-slate-900 to-indigo-950/60 rounded-2xl p-5 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" />
-            <span>Vocabulary Wordle • Unique Words Guarantee</span>
-            <span className="ml-2 bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] border border-emerald-500/30">
-              Mastered: {completedWords.length} / {WORDLE_DICTIONARY.length}
-            </span>
+      {/* Top Banner with Clear Quick Action Buttons */}
+      <div className="bg-gradient-to-r from-emerald-50 via-white to-indigo-50 rounded-3xl p-5 border border-emerald-200 shadow-sm space-y-4">
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-100 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span>5-Letter Vocabulary Wordle Challenge</span>
+              <span className="ml-2 bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] border border-emerald-300">
+                Mastered: {completedWords.length} / {WORDLE_DICTIONARY.length}
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+              Guess the English Secret Word
+            </h2>
+            <p className="text-xs text-slate-600">
+              Test your vocabulary intuition! Every guess reveals full definitions, audio pronunciations, and Hindi translations.
+            </p>
           </div>
-          <h2 className="text-xl font-extrabold text-white">
-            Guess the 5-Letter English Word
-          </h2>
-          <p className="text-xs text-slate-300">
-            Guessed words never repeat! Every guess reveals definitions, phonetics, and Hindi meaning.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {completedWords.length > 0 && (
+          {/* Core Requested Control Buttons Bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            
+            {/* 1. Word Meaning & Vocabulary Button */}
             <button
               onClick={() => {
-                if (window.confirm("Reset your completed Wordle words list to replay them all?")) {
-                  setCompletedWords([]);
-                  localStorage.removeItem('lingo_completed_wordle_words');
+                if (selectedWordMeaning) {
+                  setActiveViewSection('meaning');
+                } else if (guesses.length > 0) {
+                  setSelectedWordMeaning(guesses[guesses.length - 1].meaning);
+                  setActiveViewSection('meaning');
+                } else {
+                  setSelectedWordMeaning(targetWordObj);
+                  setActiveViewSection('meaning');
                 }
               }}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2.5 rounded-xl text-xs transition border border-slate-700"
-              title="Reset completed words list"
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border shadow-2xs ${
+                activeViewSection === 'meaning'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-600/20'
+                  : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+              }`}
+              title="View Word Meaning & Vocabulary"
             >
-              Reset List
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span>Word Meaning & Vocabulary</span>
             </button>
-          )}
 
+            {/* 2. Sound Button */}
+            <button
+              onClick={() => setSoundMuted(!soundMuted)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border shadow-2xs ${
+                soundMuted
+                  ? 'bg-slate-100 text-slate-500 border-slate-300'
+                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+              }`}
+              title={soundMuted ? 'Unmute game sounds' : 'Mute game sounds'}
+            >
+              {soundMuted ? <VolumeX className="w-4 h-4 text-slate-500" /> : <Volume2 className="w-4 h-4 text-indigo-600" />}
+              <span>Sound {soundMuted ? 'OFF' : 'ON'}</span>
+            </button>
+
+            {/* 3. Reset Button */}
+            <button
+              onClick={startNewGame}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow-sm"
+              title="Reset board & pick a fresh new word challenge"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reset Game</span>
+            </button>
+
+            {/* 4. Word History Button */}
+            <button
+              onClick={() => setActiveViewSection(activeViewSection === 'history' ? 'all' : 'history')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border shadow-2xs ${
+                activeViewSection === 'history'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-purple-600/20'
+                  : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+              }`}
+              title="View Guessed Word History & Mastered List"
+            >
+              <History className="w-4 h-4 text-purple-600" />
+              <span>Word History ({guesses.length})</span>
+            </button>
+
+          </div>
+        </div>
+
+        {/* View Toggle Filters */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">View Layout:</span>
           <button
-            onClick={startNewGame}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition shadow-lg shadow-emerald-600/20"
+            onClick={() => setActiveViewSection('all')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              activeViewSection === 'all'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
-            <RotateCcw className="w-4 h-4" />
-            <span>New Word Challenge</span>
+            Show All
+          </button>
+          <button
+            onClick={() => setActiveViewSection('game')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              activeViewSection === 'game'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Game Board
+          </button>
+          <button
+            onClick={() => setActiveViewSection('meaning')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              activeViewSection === 'meaning'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Meaning Card
+          </button>
+          <button
+            onClick={() => setActiveViewSection('history')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              activeViewSection === 'history'
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Word History
           </button>
         </div>
+
       </div>
 
       {/* Main Grid & Dictionary Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: WORDLE BOARD & KEYBOARD */}
-        <div className="lg:col-span-7 bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-6 shadow-xl">
-          
-          {/* Error / Alert Message */}
-          {errorMessage && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center text-xs font-bold text-amber-300 animate-bounce">
-              <AlertCircle className="w-4 h-4 inline mr-1 text-amber-400" />
-              {errorMessage}
-            </div>
-          )}
+        {/* MAIN GAME COLUMN (boxes -> keyboard -> instructions) */}
+        {(activeViewSection === 'all' || activeViewSection === 'game') && (
+          <div className={`${activeViewSection === 'game' ? 'lg:col-span-12' : 'lg:col-span-7'} bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 space-y-6 shadow-sm`}>
+            
+            {/* Error / Alert Message */}
+            {errorMessage && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-center text-xs font-bold text-amber-900 animate-bounce">
+                <AlertCircle className="w-4 h-4 inline mr-1 text-amber-600" />
+                {errorMessage}
+              </div>
+            )}
 
-          {/* 6 Rows Grid */}
-          <div className="flex flex-col items-center gap-2 max-w-xs mx-auto">
-            {Array.from({ length: 6 }).map((_, rowIndex) => {
-              const isSubmitted = rowIndex < guesses.length;
-              const isCurrent = rowIndex === guesses.length && gameStatus === 'playing';
-              const guessResult = guesses[rowIndex];
-
-              let rowChars = Array(5).fill('');
-              if (isSubmitted) {
-                rowChars = guessResult.word.split('');
-              } else if (isCurrent) {
-                rowChars = currentGuess.padEnd(5, ' ').split('');
-              }
-
-              return (
-                <div key={rowIndex} className="flex gap-2 justify-center">
-                  {rowChars.map((char, colIndex) => {
-                    let tileClass = "w-11 h-11 sm:w-12 sm:h-12 border-2 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-300 ";
-
-                    if (isSubmitted && guessResult) {
-                      const status = guessResult.statuses[colIndex];
-                      if (status === 'correct') {
-                        tileClass += "bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-600/30";
-                      } else if (status === 'present') {
-                        tileClass += "bg-amber-500 border-amber-400 text-slate-950 shadow-md shadow-amber-500/30";
-                      } else {
-                        tileClass += "bg-slate-800 border-slate-700 text-slate-400";
-                      }
-                    } else if (isCurrent && char.trim()) {
-                      tileClass += "bg-slate-950 border-indigo-500 text-white scale-105 shadow-md shadow-indigo-500/20";
-                    } else {
-                      tileClass += "bg-slate-950/70 border-slate-800 text-slate-600";
-                    }
-
-                    return (
-                      <div
-                        key={colIndex}
-                        onClick={() => {
-                          if (isSubmitted && guessResult) {
-                            setSelectedWordMeaning(guessResult.meaning);
-                            setDeepDiveData(null);
-                          }
-                        }}
-                        className={`${tileClass} ${isSubmitted ? 'cursor-pointer hover:opacity-90' : ''}`}
-                        title={isSubmitted ? `Click to view meaning for ${guessResult.word}` : undefined}
-                      >
-                        {char.trim()}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* GAME OVER WIN / LOSE BANNER */}
-          {gameStatus !== 'playing' && (
-            <div className={`rounded-2xl p-4 text-center space-y-3 border ${
-              gameStatus === 'won'
-                ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-200'
-                : 'bg-rose-950/70 border-rose-500/50 text-rose-200'
-            }`}>
-              <div className="flex items-center justify-center space-x-2 font-bold text-lg">
-                {gameStatus === 'won' ? (
-                  <>
-                    <Trophy className="w-6 h-6 text-amber-400" />
-                    <span>Brilliant! You Guessed the Word! (+25 XP)</span>
-                  </>
-                ) : (
-                  <>
-                    <HelpCircle className="w-6 h-6 text-rose-400" />
-                    <span>Game Over! The Secret Word was: <strong className="text-white underline">{targetWord}</strong></span>
-                  </>
-                )}
+            {/* ------------------------------------------------------------- */}
+            {/* 1. WORDLE GRID BOXES (Centered, clear 6 rows)                 */}
+            {/* ------------------------------------------------------------- */}
+            <div className="space-y-2">
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Step 1: Word Guess Grid (6 Attempts)
+                </span>
               </div>
 
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedWordMeaning(targetWordObj);
-                    setDeepDiveData(null);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>View Secret Word Meaning</span>
-                </button>
+              <div className="flex flex-col items-center gap-2 max-w-xs mx-auto py-2">
+                {Array.from({ length: 6 }).map((_, rowIndex) => {
+                  const isSubmitted = rowIndex < guesses.length;
+                  const isCurrent = rowIndex === guesses.length && gameStatus === 'playing';
+                  const guessResult = guesses[rowIndex];
 
-                <button
-                  onClick={startNewGame}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Play Next Word</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* VIRTUAL KEYBOARD */}
-          <div className="space-y-1.5 max-w-md mx-auto pt-2">
-            {keyboardRows.map((row, rIdx) => (
-              <div key={rIdx} className="flex justify-center gap-1 sm:gap-1.5">
-                {row.map((key) => {
-                  if (key === 'ENTER') {
-                    return (
-                      <button
-                        key={key}
-                        onClick={submitGuess}
-                        className="px-2.5 sm:px-3 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] sm:text-xs transition active:scale-95 shadow-md"
-                      >
-                        ENTER
-                      </button>
-                    );
-                  }
-                  if (key === 'BACK') {
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setCurrentGuess(prev => prev.slice(0, -1))}
-                        className="px-2.5 sm:px-3 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] sm:text-xs transition active:scale-95"
-                      >
-                        ⌫
-                      </button>
-                    );
-                  }
-
-                  const status = getKeyboardLetterStatus(key);
-                  let keyClass = "w-8 h-10 sm:w-9 sm:h-11 rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center ";
-
-                  if (status === 'correct') {
-                    keyClass += "bg-emerald-600 text-white shadow-md shadow-emerald-600/30";
-                  } else if (status === 'present') {
-                    keyClass += "bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30";
-                  } else if (status === 'absent') {
-                    keyClass += "bg-slate-800 text-slate-600 line-through opacity-60";
-                  } else {
-                    keyClass += "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/50";
+                  let rowChars = Array(5).fill('');
+                  if (isSubmitted) {
+                    rowChars = guessResult.word.split('');
+                  } else if (isCurrent) {
+                    rowChars = currentGuess.padEnd(5, ' ').split('');
                   }
 
                   return (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        if (currentGuess.length < 5 && gameStatus === 'playing') {
-                          setCurrentGuess(prev => (prev + key).toUpperCase());
+                    <div key={rowIndex} className="flex gap-2 justify-center">
+                      {rowChars.map((char, colIndex) => {
+                        let tileClass = "w-11 h-11 sm:w-12 sm:h-12 border-2 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-300 ";
+
+                        if (isSubmitted && guessResult) {
+                          const status = guessResult.statuses[colIndex];
+                          if (status === 'correct') {
+                            tileClass += "bg-emerald-600 border-emerald-600 text-white shadow-xs";
+                          } else if (status === 'present') {
+                            tileClass += "bg-amber-400 border-amber-400 text-slate-950 font-black shadow-xs";
+                          } else {
+                            tileClass += "bg-slate-200 border-slate-300 text-slate-600 font-bold";
+                          }
+                        } else if (isCurrent && char.trim()) {
+                          tileClass += "bg-white border-indigo-600 text-slate-900 scale-105 shadow-md shadow-indigo-500/10";
+                        } else {
+                          tileClass += "bg-slate-50 border-slate-200 text-slate-400";
                         }
-                      }}
-                      className={keyClass}
-                    >
-                      {key}
-                    </button>
+
+                        return (
+                          <div
+                            key={colIndex}
+                            onClick={() => {
+                              if (isSubmitted && guessResult) {
+                                setSelectedWordMeaning(guessResult.meaning);
+                                setDeepDiveData(null);
+                                setActiveViewSection('meaning');
+                              }
+                            }}
+                            className={`${tileClass} ${isSubmitted ? 'cursor-pointer hover:opacity-90' : ''}`}
+                            title={isSubmitted ? `Click to view meaning for ${guessResult.word}` : undefined}
+                          >
+                            {char.trim()}
+                          </div>
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
-
-          {/* Color Legend */}
-          <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-slate-400 pt-2 border-t border-slate-800/80">
-            <span className="flex items-center space-x-1">
-              <span className="w-3 h-3 rounded-sm bg-emerald-600 inline-block" />
-              <span>Correct Spot</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <span className="w-3 h-3 rounded-sm bg-amber-500 inline-block" />
-              <span>Wrong Spot</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <span className="w-3 h-3 rounded-sm bg-slate-800 inline-block" />
-              <span>Not in Word</span>
-            </span>
-          </div>
-
-        </div>
-
-        {/* RIGHT COLUMN: GUESSED WORD MEANING & DICTIONARY EXPLORER */}
-        <div className="lg:col-span-5 space-y-5">
-          
-          {/* MEANING CARD FOR SELECTED / LAST GUESSED WORD */}
-          <div className="bg-slate-900 rounded-3xl p-6 border border-indigo-500/30 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-                <BookOpen className="w-4 h-4 text-indigo-400" />
-                <span>Word Meaning & Vocabulary</span>
-              </div>
-              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2.5 py-1 rounded-full border border-indigo-500/30">
-                Instant Explainer
-              </span>
             </div>
 
-            {selectedWordMeaning ? (
-              <div className="space-y-4 animate-fadeIn">
-                {/* Word Title & Audio */}
-                <div className="flex items-start justify-between gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                  <div>
-                    <div className="flex items-baseline space-x-2">
-                      <h3 className="text-2xl font-black text-white font-heading tracking-wide">
-                        {selectedWordMeaning.word}
-                      </h3>
-                      <span className="text-xs text-indigo-400 font-mono font-medium">
-                        {selectedWordMeaning.phonetic}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-emerald-400 italic capitalize mt-0.5">
-                      {selectedWordMeaning.partOfSpeech}
-                    </p>
-                  </div>
+            {/* GAME OVER WIN / LOSE BANNER */}
+            {gameStatus !== 'playing' && (
+              <div className={`rounded-2xl p-4 text-center space-y-3 border ${
+                gameStatus === 'won'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-sm'
+                  : 'bg-rose-50 border-rose-300 text-rose-950 shadow-sm'
+              }`}>
+                <div className="flex items-center justify-center space-x-2 font-bold text-lg">
+                  {gameStatus === 'won' ? (
+                    <>
+                      <Trophy className="w-6 h-6 text-amber-500" />
+                      <span className="text-emerald-900">Brilliant! You Guessed the Word! (+25 XP)</span>
+                    </>
+                  ) : (
+                    <>
+                      <HelpCircle className="w-6 h-6 text-rose-600" />
+                      <span className="text-rose-900">Game Over! Secret Word: <strong className="text-slate-900 underline">{targetWord}</strong></span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedWordMeaning(targetWordObj);
+                      setDeepDiveData(null);
+                      setActiveViewSection('meaning');
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>View Word Meaning & Vocabulary</span>
+                  </button>
 
                   <button
-                    onClick={() => speakText(selectedWordMeaning.word)}
-                    className="p-3 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-xl border border-indigo-500/30 transition shadow-md"
-                    title="Listen to pronunciation"
+                    onClick={startNewGame}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
                   >
-                    <Volume2 className="w-5 h-5" />
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Play Next Challenge</span>
                   </button>
                 </div>
-
-                {/* English Definition */}
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    English Definition:
-                  </span>
-                  <p className="text-sm text-slate-200 leading-relaxed font-medium bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                    {selectedWordMeaning.definition}
-                  </p>
-                </div>
-
-                {/* Hindi Translation */}
-                {selectedWordMeaning.hindiMeaning && (
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-                      Hindi Meaning (हिंदी अर्थ):
-                    </span>
-                    <p className="text-sm font-bold text-amber-200 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
-                      {selectedWordMeaning.hindiMeaning}
-                    </p>
-                  </div>
-                )}
-
-                {/* Example Sentence */}
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Example Usage in Sentence:
-                  </span>
-                  <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 italic flex items-start space-x-2">
-                    <span className="text-indigo-400 font-bold not-italic">“</span>
-                    <p className="flex-1 leading-relaxed">{selectedWordMeaning.exampleSentence}</p>
-                    <button
-                      onClick={() => speakText(selectedWordMeaning.exampleSentence)}
-                      className="p-1 text-slate-400 hover:text-indigo-300 transition"
-                      title="Listen to sentence"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* AI Gemini Deep Dive Trigger */}
-                <div className="pt-2 border-t border-slate-800">
-                  <button
-                    onClick={() => fetchDeepDive(selectedWordMeaning.word)}
-                    disabled={loadingDeepDive}
-                    className="w-full bg-slate-950 hover:bg-slate-800 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2"
-                  >
-                    {loadingDeepDive ? (
-                      <span className="animate-pulse">Analyzing with Gemini AI...</span>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 text-amber-400" />
-                        <span>Get Gemini AI Deep Dive (Collocations & Synonyms)</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Deep Dive Modal / Expanded Content */}
-                {deepDiveData && deepDiveData.word.toUpperCase() === selectedWordMeaning.word.toUpperCase() && (
-                  <div className="bg-indigo-950/40 p-4 rounded-2xl border border-indigo-500/40 space-y-3 animate-fadeIn text-xs">
-                    <h4 className="font-extrabold text-amber-300 flex items-center space-x-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>Gemini AI Vocabulary Insights for "{deepDiveData.word}"</span>
-                    </h4>
-
-                    {deepDiveData.synonyms && deepDiveData.synonyms.length > 0 && (
-                      <div>
-                        <span className="font-bold text-slate-300">Synonyms: </span>
-                        <span className="text-emerald-300 font-medium">{deepDiveData.synonyms.join(', ')}</span>
-                      </div>
-                    )}
-
-                    {deepDiveData.commonCollocations && deepDiveData.commonCollocations.length > 0 && (
-                      <div>
-                        <span className="font-bold text-slate-300">Common Word Pairings: </span>
-                        <span className="text-amber-200 italic">{deepDiveData.commonCollocations.join(', ')}</span>
-                      </div>
-                    )}
-
-                    {deepDiveData.etymologyReason && (
-                      <div className="text-slate-300 leading-relaxed bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
-                        <span className="font-bold text-indigo-300 block mb-1">Origin & Context:</span>
-                        {deepDiveData.etymologyReason}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-            ) : (
-              <div className="py-12 text-center text-slate-500 space-y-3">
-                <BookOpen className="w-12 h-12 mx-auto text-slate-700 animate-pulse" />
-                <p className="text-xs font-medium max-w-xs mx-auto">
-                  Type or click any word guess on the board to view its detailed definition, pronunciation, and Hindi meaning here!
-                </p>
               </div>
             )}
-          </div>
 
-          {/* GUESSED WORDS HISTORY LIST */}
-          {guesses.length > 0 && (
-            <div className="bg-slate-900 rounded-3xl p-5 border border-slate-800 space-y-3 shadow-xl">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Guessed Words History ({guesses.length})</span>
-                <span className="text-[10px] text-slate-500">Click word to view meaning</span>
-              </h4>
+            {/* ------------------------------------------------------------- */}
+            {/* 2. VIRTUAL ON-SCREEN KEYBOARD                                  */}
+            {/* ------------------------------------------------------------- */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Step 2: On-Screen Keyboard (Touch or Type)
+                </span>
+              </div>
 
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
-                {guesses.map((g, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setSelectedWordMeaning(g.meaning);
-                      setDeepDiveData(null);
-                    }}
-                    className={`p-3 rounded-2xl border transition flex items-center justify-between cursor-pointer ${
-                      selectedWordMeaning?.word === g.meaning.word
-                        ? 'bg-indigo-950/60 border-indigo-500/50 text-white shadow-md'
-                        : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-extrabold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <div>
-                        <span className="font-black font-heading text-sm text-white tracking-wider">
-                          {g.word}
-                        </span>
-                        <p className="text-[11px] text-slate-400 line-clamp-1">
-                          {g.meaning.definition}
-                        </p>
-                      </div>
-                    </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                {keyboardRows.map((row, rIdx) => (
+                  <div key={rIdx} className="flex justify-center gap-1 sm:gap-1.5">
+                    {row.map((key) => {
+                      if (key === 'ENTER') {
+                        return (
+                          <button
+                            key={key}
+                            onClick={submitGuess}
+                            className="px-2.5 sm:px-3 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] sm:text-xs transition active:scale-95 shadow-sm"
+                          >
+                            ENTER
+                          </button>
+                        );
+                      }
+                      if (key === 'BACK') {
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              soundEngine.playDeleteClick();
+                              setCurrentGuess(prev => prev.slice(0, -1));
+                            }}
+                            className="px-2.5 sm:px-3 py-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] sm:text-xs transition active:scale-95"
+                          >
+                            ⌫
+                          </button>
+                        );
+                      }
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          speakText(g.word);
-                        }}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                      <Eye className="w-4 h-4 text-indigo-400" />
-                    </div>
+                      const status = getKeyboardLetterStatus(key);
+                      let keyClass = "w-8 h-10 sm:w-9 sm:h-11 rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center ";
+
+                      if (status === 'correct') {
+                        keyClass += "bg-emerald-600 text-white shadow-xs";
+                      } else if (status === 'present') {
+                        keyClass += "bg-amber-400 text-slate-950 font-black shadow-xs";
+                      } else if (status === 'absent') {
+                        keyClass += "bg-slate-200 text-slate-400 line-through border border-slate-200 opacity-70";
+                      } else {
+                        keyClass += "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 shadow-2xs";
+                      }
+
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            if (currentGuess.length < 5 && gameStatus === 'playing') {
+                              soundEngine.playKeyClick();
+                              setCurrentGuess(prev => (prev + key).toUpperCase());
+                            }
+                          }}
+                          className={keyClass}
+                        >
+                          {key}
+                        </button>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-        </div>
+            {/* ------------------------------------------------------------- */}
+            {/* 3. GAME INSTRUCTIONS & COLOR LEGEND                            */}
+            {/* ------------------------------------------------------------- */}
+            <div className="space-y-3 pt-3 border-t border-slate-100 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block text-center">
+                Step 3: Instructions & Color Legend
+              </span>
+
+              {/* Color Legend */}
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-slate-700">
+                <span className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  <span className="w-3.5 h-3.5 rounded-sm bg-emerald-600 inline-block shadow-2xs" />
+                  <span>Green = Correct Spot</span>
+                </span>
+                <span className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  <span className="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-2xs" />
+                  <span>Yellow = Wrong Spot</span>
+                </span>
+                <span className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  <span className="w-3.5 h-3.5 rounded-sm bg-slate-200 inline-block border border-slate-300" />
+                  <span>Gray = Not in Word</span>
+                </span>
+              </div>
+
+              {/* Rules instructions */}
+              <p className="text-[11px] text-slate-600 text-center leading-relaxed max-w-md mx-auto font-medium">
+                Type any valid 5-letter English word and press <strong>ENTER</strong>. You have 6 attempts to guess the secret word. Click any tile or word in history to read its full definition and listen to pronunciation!
+              </p>
+            </div>
+
+          </div>
+        )}
+
+        {/* RIGHT COLUMN: GUESSED WORD MEANING & DICTIONARY EXPLORER */}
+        {(activeViewSection === 'all' || activeViewSection === 'meaning' || activeViewSection === 'history') && (
+          <div className={`${activeViewSection !== 'all' ? 'lg:col-span-12' : 'lg:col-span-5'} space-y-5`}>
+            
+            {/* WORD MEANING & VOCABULARY CARD */}
+            {(activeViewSection === 'all' || activeViewSection === 'meaning') && (
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center space-x-2 text-indigo-700 text-xs font-bold uppercase tracking-wider">
+                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                    <span>Word Meaning & Vocabulary</span>
+                  </div>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-full border border-indigo-200">
+                    Instant Explainer
+                  </span>
+                </div>
+
+                {selectedWordMeaning ? (
+                  <div className="space-y-4 animate-fadeIn">
+                    {/* Word Title & Audio */}
+                    <div className="flex items-start justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <div>
+                        <div className="flex items-baseline space-x-2">
+                          <h3 className="text-2xl font-black text-slate-900 font-heading tracking-wide">
+                            {selectedWordMeaning.word}
+                          </h3>
+                          <span className="text-xs text-indigo-600 font-mono font-medium">
+                            {selectedWordMeaning.phonetic}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-emerald-700 italic capitalize mt-0.5">
+                          {selectedWordMeaning.partOfSpeech}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => speakText(selectedWordMeaning.word)}
+                        className="p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200 transition shadow-2xs"
+                        title="Listen to pronunciation"
+                      >
+                        <Volume2 className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* English Definition */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        English Definition:
+                      </span>
+                      <p className="text-sm text-slate-800 leading-relaxed font-medium bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        {selectedWordMeaning.definition}
+                      </p>
+                    </div>
+
+                    {/* Hindi Translation */}
+                    {selectedWordMeaning.hindiMeaning && (
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
+                          Hindi Meaning (हिंदी अर्थ):
+                        </span>
+                        <p className="text-sm font-bold text-amber-900 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                          {selectedWordMeaning.hindiMeaning}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Example Sentence */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Example Usage in Sentence:
+                      </span>
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-700 italic flex items-start space-x-2">
+                        <span className="text-indigo-600 font-bold not-italic">“</span>
+                        <p className="flex-1 leading-relaxed">{selectedWordMeaning.exampleSentence}</p>
+                        <button
+                          onClick={() => speakText(selectedWordMeaning.exampleSentence)}
+                          className="p-1 text-slate-500 hover:text-indigo-600 transition"
+                          title="Listen to sentence"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* AI Gemini Deep Dive Trigger */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => fetchDeepDive(selectedWordMeaning.word)}
+                        disabled={loadingDeepDive}
+                        className="w-full bg-slate-50 hover:bg-slate-100 border border-indigo-200 text-indigo-700 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-2xs"
+                      >
+                        {loadingDeepDive ? (
+                          <span className="animate-pulse">Analyzing with Gemini AI...</span>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 text-amber-500" />
+                            <span>Get Gemini AI Deep Dive (Collocations & Synonyms)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Deep Dive Modal / Expanded Content */}
+                    {deepDiveData && deepDiveData.word.toUpperCase() === selectedWordMeaning.word.toUpperCase() && (
+                      <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200 space-y-3 animate-fadeIn text-xs">
+                        <h4 className="font-extrabold text-indigo-900 flex items-center space-x-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span>Gemini AI Vocabulary Insights for "{deepDiveData.word}"</span>
+                        </h4>
+
+                        {deepDiveData.synonyms && deepDiveData.synonyms.length > 0 && (
+                          <div>
+                            <span className="font-bold text-slate-700">Synonyms: </span>
+                            <span className="text-emerald-800 font-medium">{deepDiveData.synonyms.join(', ')}</span>
+                          </div>
+                        )}
+
+                        {deepDiveData.commonCollocations && deepDiveData.commonCollocations.length > 0 && (
+                          <div>
+                            <span className="font-bold text-slate-700">Common Word Pairings: </span>
+                            <span className="text-amber-900 italic">{deepDiveData.commonCollocations.join(', ')}</span>
+                          </div>
+                        )}
+
+                        {deepDiveData.etymologyReason && (
+                          <div className="text-slate-700 leading-relaxed bg-white p-2.5 rounded-xl border border-indigo-100">
+                            <span className="font-bold text-indigo-800 block mb-1">Origin & Context:</span>
+                            {deepDiveData.etymologyReason}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                  </div>
+                ) : (
+                  <div className="py-10 text-center text-slate-400 space-y-3">
+                    <BookOpen className="w-10 h-10 mx-auto text-slate-300 animate-pulse" />
+                    <p className="text-xs font-medium max-w-xs mx-auto text-slate-500">
+                      Type or click any word guess on the board to view its detailed definition, pronunciation, and Hindi meaning here!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* GUESSED WORDS HISTORY LIST */}
+            {(activeViewSection === 'all' || activeViewSection === 'history') && (
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                    <History className="w-4 h-4 text-purple-600" />
+                    <span>Guessed Words History ({guesses.length})</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400">Click word to view meaning</span>
+                </div>
+
+                {guesses.length > 0 ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+                    {guesses.map((g, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSelectedWordMeaning(g.meaning);
+                          setDeepDiveData(null);
+                          setActiveViewSection('meaning');
+                        }}
+                        className={`p-3 rounded-2xl border transition flex items-center justify-between cursor-pointer ${
+                          selectedWordMeaning?.word === g.meaning.word
+                            ? 'bg-indigo-50 border-indigo-300 text-slate-900 shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-xs font-extrabold flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <span className="font-black font-heading text-sm text-slate-900 tracking-wider">
+                              {g.word}
+                            </span>
+                            <p className="text-[11px] text-slate-500 line-clamp-1">
+                              {g.meaning.definition}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              speakText(g.word);
+                            }}
+                            className="p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                          <Eye className="w-4 h-4 text-indigo-600" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center py-6">
+                    No word guesses made yet in this round. Start guessing to build your vocabulary list!
+                  </p>
+                )}
+
+                {/* Mastered Words Count */}
+                {completedWords.length > 0 && (
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-600">Total Words Mastered:</span>
+                    <span className="font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      {completedWords.length} Words
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
 
       </div>
 

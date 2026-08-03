@@ -7,11 +7,12 @@ import { MonthTestView } from './components/MonthTestView';
 import { LinguisticExplainerView } from './components/LinguisticExplainerView';
 import { MiniGamesView } from './components/MiniGamesView';
 import { AITutorView } from './components/AITutorView';
+import { LearnSomethingNewView } from './components/LearnSomethingNewView';
 import { ProfileView } from './components/ProfileView';
 import { DayLesson, MonthExam } from './types';
 
 const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'roadmap' | 'explainer' | 'games' | 'tutor' | 'profile'>('roadmap');
+  const [activeTab, setActiveTab] = useState<'roadmap' | 'explainer' | 'games' | 'tutor' | 'learn' | 'profile'>('roadmap');
   const [selectedDay, setSelectedDay] = useState<DayLesson | null>(null);
   const [selectedMonthExam, setSelectedMonthExam] = useState<MonthExam | null>(null);
 
@@ -30,7 +31,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       
       {/* Navbar */}
       <Navbar
@@ -59,19 +60,20 @@ const AppContent: React.FC = () => {
             {activeTab === 'explainer' && <LinguisticExplainerView />}
             {activeTab === 'games' && <MiniGamesView />}
             {activeTab === 'tutor' && <AITutorView />}
+            {activeTab === 'learn' && <LearnSomethingNewView />}
             {activeTab === 'profile' && <ProfileView />}
           </>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-xs text-slate-500 font-medium">
+      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-600 font-medium">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <span className="font-heading font-extrabold text-indigo-400">LingoSprint</span>
+            <span className="font-heading font-extrabold text-indigo-600">LingoSprint</span>
             <span>• Interactive English Learning & Linguistic Explainer</span>
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             Learn English step-by-step from beginner to pro with daily tasks, games, and AI reasoning.
           </p>
         </div>
