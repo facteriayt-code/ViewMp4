@@ -403,6 +403,7 @@ export const WordleGame: React.FC = () => {
       setRevealedLetters(prev => ({ ...prev, [randomPos]: letter }));
       soundEngine.playEnterClick();
       setHintSuccessMessage(`💎 Spent 15 Diamonds: Letter '${letter}' revealed at Position ${randomPos + 1}!`);
+      setShowHintModal(false); // Automatically return to Wordle game page
       setTimeout(() => setHintSuccessMessage(null), 3500);
     }
   };
@@ -427,6 +428,7 @@ export const WordleGame: React.FC = () => {
       setMeaningHintUnlocked(true);
       soundEngine.playEnterClick();
       setHintSuccessMessage(`💎 Spent 10 Diamonds: Definition & Meaning hint unlocked!`);
+      setShowHintModal(false); // Automatically return to Wordle game page
       setTimeout(() => setHintSuccessMessage(null), 3500);
     }
   };
@@ -451,6 +453,7 @@ export const WordleGame: React.FC = () => {
       setSynonymHintUnlocked(true);
       soundEngine.playEnterClick();
       setHintSuccessMessage(`💎 Spent 10 Diamonds: Synonyms & sentence clue unlocked!`);
+      setShowHintModal(false); // Automatically return to Wordle game page
       setTimeout(() => setHintSuccessMessage(null), 3500);
     }
   };
@@ -1497,7 +1500,12 @@ export const WordleGame: React.FC = () => {
       {/* HINT SHOP MODAL DIALOG                                        */}
       {/* ------------------------------------------------------------- */}
       {showHintModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowHintModal(false);
+          }}
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+        >
           <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-5 relative">
             
             {/* Modal Close Button */}
