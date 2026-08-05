@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLearning } from '../src/context/LearningContext';
 import { DAYS_CURRICULUM, MONTH_EXAMS } from '../data/courseData';
 import { DayLesson, MonthExam, UserLevel } from '../types';
-import { Lock, CheckCircle2, Play, Star, BookOpen, Sparkles, Award, Zap, Trophy, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, CheckCircle2, Play, Star, BookOpen, Sparkles, Award, Zap, Trophy, ArrowRight, ShieldCheck, Flame, Gem, Gift } from 'lucide-react';
+import { DailyCheckInModal } from './DailyCheckInModal';
 
 interface RoadmapViewProps {
   onSelectDay: (day: DayLesson) => void;
@@ -10,11 +11,14 @@ interface RoadmapViewProps {
 }
 
 export const RoadmapView: React.FC<RoadmapViewProps> = ({ onSelectDay, onSelectMonthExam }) => {
-  const { progress, setUserLevel } = useLearning();
+  const { progress, setUserLevel, canClaimDailyCheckIn, language } = useLearning();
   const [selectedMonth, setSelectedMonth] = useState<number>(1);
+  const [showCheckInModal, setShowCheckInModal] = useState<boolean>(false);
 
-  // Filter lessons by Month
-  const currentMonthLessons = DAYS_CURRICULUM.filter(d => d.monthNumber === selectedMonth);
+  // Filter lessons by Month and sort systematically by day number
+  const currentMonthLessons = DAYS_CURRICULUM
+    .filter(d => d.monthNumber === selectedMonth)
+    .sort((a, b) => a.dayNumber - b.dayNumber);
   const currentMonthExam = MONTH_EXAMS.find(e => e.monthNumber === selectedMonth);
 
   const passedExamScores = progress.completedMonthExamScores || {};
@@ -93,6 +97,63 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ onSelectDay, onSelectM
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Daily Check-In Reward Banner */}
+      <div className={`rounded-3xl p-4 sm:p-5 text-white shadow-xl transition-all border ${
+        canClaimDailyCheckIn
+          ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 border-amber-300/40'
+          : 'bg-slate-900 border-slate-800'
+      }`}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              canClaimDailyCheckIn
+                ? 'bg-white/20 backdrop-blur-md text-amber-200'
+                : 'bg-slate-800 text-amber-400 border border-slate-700'
+            }`}>
+              <Flame className={`w-7 h-7 fill-current ${canClaimDailyCheckIn ? 'animate-bounce' : 'animate-pulse'}`} />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className={`font-extrabold text-[10px] px-2 py-0.5 rounded-md uppercase ${
+                  canClaimDailyCheckIn ? 'bg-black/20 text-white' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                }`}>
+                  {canClaimDailyCheckIn ? (language === 'hi' ? 'दैनिक इनाम तैयार है!' : 'Daily Bonus Ready!') : (language === 'hi' ? '✓ आज का चेक-इन पूरा' : '✓ Checked-in Today')}
+                </span>
+                <span className="text-amber-300 text-xs font-bold">
+                  🔥 {progress.streakDays} {language === 'hi' ? 'दिन की स्ट्रीक' : 'Day Streak'}
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white mt-1">
+                {canClaimDailyCheckIn
+                  ? (language === 'hi' ? 'आज का डेली चेक-इन बोनस पाएं (120 💎 डायमंड्स तक!)' : 'Claim Today\'s Daily Bonus (Earn Up to 💎120 Diamonds!)')
+                  : (language === 'hi' ? 'आपने आज का रिवार्ड क्लेम कर लिया है! कल फिर आएं!' : 'You\'ve claimed today\'s bonus! Come back tomorrow for bigger rewards.')}
+              </h3>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowCheckInModal(true)}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold shadow-md transition transform active:scale-95 shrink-0 flex items-center justify-center space-x-2 cursor-pointer ${
+              canClaimDailyCheckIn
+                ? 'bg-white hover:bg-amber-50 text-slate-900 shadow-amber-500/20'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+            }`}
+          >
+            {canClaimDailyCheckIn ? (
+              <>
+                <Gift className="w-4 h-4 text-amber-600 animate-spin" />
+                <span>{language === 'hi' ? 'अभी क्लेम करें' : 'Claim Daily Bonus'}</span>
+              </>
+            ) : (
+              <>
+                <Gem className="w-4 h-4 text-cyan-400" />
+                <span>{language === 'hi' ? 'रिवार्ड कैलेंडर देखें' : 'View Streak Calendar'}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -269,6 +330,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ onSelectDay, onSelectM
           );
         })}
       </div>
+
+      {/* Daily Check-in Modal */}
+      <DailyCheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+      />
 
     </div>
   );

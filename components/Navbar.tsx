@@ -1,7 +1,8 @@
-import React from 'react';
-import { Flame, Gem, Heart, Trophy, Compass, BookOpen, Sparkles, Gamepad2, Bot, Languages, Lightbulb } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, Gem, Heart, Trophy, Compass, BookOpen, Sparkles, Gamepad2, Bot, Languages, Lightbulb, Gift } from 'lucide-react';
 import { useLearning } from '../src/context/LearningContext';
 import { UserLevel } from '../types';
+import { DailyCheckInModal } from './DailyCheckInModal';
 
 interface NavbarProps {
   activeTab: 'roadmap' | 'explainer' | 'games' | 'tutor' | 'learn' | 'profile';
@@ -9,7 +10,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const { progress, setUserLevel, refillHearts, language, toggleLanguage } = useLearning();
+  const { progress, setUserLevel, refillHearts, language, toggleLanguage, canClaimDailyCheckIn } = useLearning();
+  const [showCheckInModal, setShowCheckInModal] = useState<boolean>(false);
 
   const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setUserLevel(e.target.value as UserLevel);
@@ -147,23 +149,34 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               </select>
             </div>
 
-            {/* Daily Streak */}
-            <div 
-              className="flex items-center space-x-0.5 sm:space-x-1 bg-amber-50 border border-amber-200 px-1.5 sm:px-2 py-1 rounded-xl text-amber-700 font-black text-[10px] sm:text-xs shrink-0"
-              title={`${progress.streakDays} Days Streak`}
+            {/* Daily Streak & Daily Check-in Button */}
+            <button
+              onClick={() => setShowCheckInModal(true)}
+              className={`flex items-center space-x-0.5 sm:space-x-1 px-1.5 sm:px-2 py-1 rounded-xl font-black text-[10px] sm:text-xs transition shrink-0 cursor-pointer ${
+                canClaimDailyCheckIn
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs shadow-amber-500/30 animate-pulse ring-2 ring-amber-300 hover:from-amber-600 hover:to-orange-600'
+                  : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'
+              }`}
+              title="Click to view Daily Check-in Rewards"
             >
-              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500 animate-pulse shrink-0" />
+              <Flame className={`w-3.5 h-3.5 shrink-0 ${canClaimDailyCheckIn ? 'fill-white text-white animate-bounce' : 'fill-amber-500 text-amber-500'}`} />
               <span>{progress.streakDays}d</span>
-            </div>
+              {canClaimDailyCheckIn && (
+                <span className="bg-white text-amber-900 text-[9px] font-black px-1 rounded-md uppercase tracking-tight">
+                  CLAIM
+                </span>
+              )}
+            </button>
 
-            {/* Gems / Diamonds */}
-            <div 
-              className="flex items-center space-x-0.5 sm:space-x-1 bg-cyan-50 border border-cyan-200 px-1.5 sm:px-2 py-1 rounded-xl text-cyan-700 font-black text-[10px] sm:text-xs shrink-0"
-              title={`${progress.gems} Diamonds`}
+            {/* Gems / Diamonds Button */}
+            <button
+              onClick={() => setShowCheckInModal(true)}
+              className="flex items-center space-x-0.5 sm:space-x-1 bg-cyan-50 border border-cyan-200 px-1.5 sm:px-2 py-1 rounded-xl text-cyan-700 font-black text-[10px] sm:text-xs hover:bg-cyan-100 transition shrink-0 cursor-pointer"
+              title="Click to view Diamonds & Check-in Shop"
             >
               <Gem className="w-3.5 h-3.5 fill-cyan-500 text-cyan-500 shrink-0" />
               <span>{progress.gems}</span>
-            </div>
+            </button>
 
             {/* Hearts / Life */}
             <button
@@ -236,6 +249,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           <span>Profile</span>
         </button>
       </div>
+
+      {/* Daily Check-in Modal */}
+      <DailyCheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+      />
     </header>
   );
 };

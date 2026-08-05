@@ -20,6 +20,8 @@ interface LearningContextType {
   triggerConfetti: () => void;
   language: 'en' | 'hi';
   toggleLanguage: () => void;
+  canClaimDailyCheckIn: boolean;
+  claimDailyCheckIn: () => { success: boolean; gemsGained: number; xpGained: number; dayNumber: number };
 }
 
 const DEFAULT_PROGRESS: UserProgress = {
@@ -230,6 +232,57 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     triggerConfetti();
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const canClaimDailyCheckIn = progress.lastCheckInDate !== todayStr;
+
+  const claimDailyCheckIn = () => {
+    const today = new Date().toISOString().split('T')[0];
+    if (progress.lastCheckInDate === today) {
+      return { success: false, gemsGained: 0, xpGained: 0, dayNumber: progress.consecutiveCheckInStreak || 1 };
+    }
+
+    let newStreak = 1;
+    if (progress.lastCheckInDate) {
+      const lastDate = new Date(progress.lastCheckInDate);
+      const currentDate = new Date(today);
+      const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        newStreak = (progress.consecutiveCheckInStreak || 0) + 1;
+      } else {
+        newStreak = 1;
+      }
+    } else {
+      newStreak = 1;
+    }
+
+    const REWARDS: Record<number, { gems: number; xp: number }> = {
+      1: { gems: 15, xp: 20 },
+      2: { gems: 25, xp: 30 },
+      3: { gems: 35, xp: 40 },
+      4: { gems: 50, xp: 50 },
+      5: { gems: 65, xp: 60 },
+      6: { gems: 80, xp: 75 },
+      7: { gems: 120, xp: 100 },
+    };
+
+    const dayKey = Math.min(newStreak, 7);
+    const reward = REWARDS[dayKey] || { gems: 120, xp: 100 };
+
+    setProgress(prev => ({
+      ...prev,
+      gems: prev.gems + reward.gems,
+      xp: prev.xp + reward.xp,
+      streakDays: Math.max(prev.streakDays, newStreak),
+      lastCheckInDate: today,
+      consecutiveCheckInStreak: newStreak,
+    }));
+
+    try { confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } }); } catch (e) {}
+
+    return { success: true, gemsGained: reward.gems, xpGained: reward.xp, dayNumber: newStreak };
+  };
+
   return (
     <LearningContext.Provider
       value={{
@@ -247,7 +300,9 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isLoading,
         triggerConfetti,
         language,
-        toggleLanguage
+        toggleLanguage,
+        canClaimDailyCheckIn,
+        claimDailyCheckIn
       }}
     >
       {children}

@@ -100,6 +100,8 @@ export interface UserProgress {
   unlockedBadges: string[];
   gems: number;
   hearts: number; // 1 to 5
+  lastCheckInDate?: string; // YYYY-MM-DD when daily check-in was last claimed
+  consecutiveCheckInStreak?: number; // current consecutive check-in streak length
 }
 
 export interface MonthExamQuestion {
