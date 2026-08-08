@@ -5,6 +5,7 @@ export interface GrammarRuleExplanation {
   why: string;
   example: string;
   wrongExample?: string;
+  hindiMeaning?: string;
 }
 
 export interface WordLinguisticBreakdown {
@@ -12,13 +13,23 @@ export interface WordLinguisticBreakdown {
   role: string;
   whyUsed: string;
   category?: string;
+  hindiMeaning?: string;
+}
+
+export interface DialogueLine {
+  speaker: string;
+  text: string;
+  hindiText?: string;
 }
 
 export interface LessonTheory {
   summary: string;
+  hindiSummary?: string;
   rules: GrammarRuleExplanation[];
   wordExplanations?: WordLinguisticBreakdown[];
+  dialogueExample?: DialogueLine[];
   proTip?: string;
+  commonMistakesToAvoid?: string[];
 }
 
 export interface QuizQuestion {
@@ -29,6 +40,7 @@ export interface QuizQuestion {
   correctAnswerIndex: number;
   explanationWhy: string; // Explains WHY this particular word/form/noun/tense is used
   grammaticalRole: string;
+  hindiExplanation?: string;
 }
 
 export interface SentenceBuilderGameData {

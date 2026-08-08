@@ -759,9 +759,12 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   const [scoreCount, setScoreCount] = useState<number>(0);
 
   // Mini-game state for Sentence Builder
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0);
+  const currentSentenceData = day.miniGame?.sentenceBuilder?.[currentSentenceIndex] || day.miniGame?.sentenceBuilder?.[0];
+
   const [userSentenceWords, setUserSentenceWords] = useState<string[]>([]);
   const [availableWords, setAvailableWords] = useState<string[]>(
-    day.miniGame?.sentenceBuilder?.[0]?.wordPool ? [...day.miniGame.sentenceBuilder[0].wordPool].sort(() => Math.random() - 0.5) : []
+    currentSentenceData?.wordPool ? [...currentSentenceData.wordPool].sort(() => Math.random() - 0.5) : []
   );
   const [gameSuccess, setGameSuccess] = useState<boolean>(false);
 
@@ -835,7 +838,7 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   };
 
   const checkSentenceBuilder = () => {
-    const target = day.miniGame?.sentenceBuilder?.[0]?.targetSentence.trim().replace(/\.$/, '');
+    const target = currentSentenceData?.targetSentence.trim().replace(/\.$/, '');
     const userBuilt = userSentenceWords.join(' ').trim().replace(/\.$/, '');
 
     if (target?.toLowerCase() === userBuilt.toLowerCase()) {
@@ -849,13 +852,28 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
   };
 
   const handleMinigameGiveUp = () => {
-    const target = day.miniGame?.sentenceBuilder?.[0]?.targetSentence;
+    const target = currentSentenceData?.targetSentence;
     if (target) {
       setUserSentenceWords(target.split(/\s+/));
       setAvailableWords([]);
       setGameSuccess(true);
       playClickSound();
       speakText(target);
+    }
+  };
+
+  const handleNextSentence = () => {
+    const total = day.miniGame?.sentenceBuilder?.length || 1;
+    if (currentSentenceIndex < total - 1) {
+      const nextIdx = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(nextIdx);
+      const nextData = day.miniGame?.sentenceBuilder?.[nextIdx];
+      setUserSentenceWords([]);
+      setAvailableWords(nextData?.wordPool ? [...nextData.wordPool].sort(() => Math.random() - 0.5) : []);
+      setGameSuccess(false);
+      playClickSound();
+    } else {
+      finishLesson();
     }
   };
 
@@ -1097,7 +1115,49 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
             </div>
             <h2 className="text-2xl font-black font-heading text-white">{day.title}</h2>
             <p className="text-slate-200 text-sm leading-relaxed">{day.theory.summary}</p>
+            {day.theory.hindiSummary && (
+              <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-xs text-amber-300">
+                <span className="font-bold block uppercase text-[10px] tracking-wider">🇮🇳 हिंदी सारांश:</span>
+                <p>{day.theory.hindiSummary}</p>
+              </div>
+            )}
           </div>
+
+          {/* Real-World Conversation Dialogue Example */}
+          {day.theory.dialogueExample && day.theory.dialogueExample.length > 0 && (
+            <div className="bg-slate-900/90 rounded-2xl p-5 border border-indigo-500/30 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-2">
+                  <Languages className="w-4 h-4 text-amber-400" />
+                  <span>Real-World Native Conversation Example</span>
+                </h3>
+                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                  Tap 🔊 to listen
+                </span>
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {day.theory.dialogueExample.map((line, dIdx) => (
+                  <div key={dIdx} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-300">{line.speaker}:</span>
+                      <button
+                        onClick={() => speakText(line.text)}
+                        className="p-1 rounded bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white transition"
+                        title="Listen line"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-white font-medium">"{line.text}"</p>
+                    {line.hindiText && (
+                      <p className="text-[11px] text-amber-300/80 italic">🇮🇳 {line.hindiText}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Download Offline Study Guide Banner */}
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
@@ -1174,6 +1234,12 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
                         ❌ Avoid: "{r.wrongExample}"
                       </p>
                     )}
+
+                    {r.hindiMeaning && (
+                      <p className="text-[11px] text-amber-300/90 font-medium">
+                        🇮🇳 हिंदी: {r.hindiMeaning}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1194,6 +1260,9 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
                       <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">{w.role}</span>
                     </div>
                     <p className="text-xs text-slate-300">{w.whyUsed}</p>
+                    {w.hindiMeaning && (
+                      <p className="text-[11px] text-amber-300/80 italic">🇮🇳 {w.hindiMeaning}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1291,6 +1360,11 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
                   <span>Linguistic "Why" Reason:</span>
                 </div>
                 <p className="leading-relaxed text-sm">{day.quiz[currentQuizIndex].explanationWhy}</p>
+                {day.quiz[currentQuizIndex].hindiExplanation && (
+                  <p className="text-xs text-amber-300/90 italic pt-1 border-t border-indigo-500/20">
+                    🇮🇳 हिंदी: {day.quiz[currentQuizIndex].hindiExplanation}
+                  </p>
+                )}
               </div>
             )}
 
@@ -1400,12 +1474,14 @@ export const LessonView: React.FC<LessonViewProps> = ({ day, onBack }) => {
                       <CheckCircle2 className="w-5 h-5" />
                       <span>Perfect Syntax!</span>
                     </div>
-                    <p className="text-xs">{day.miniGame.sentenceBuilder?.[0]?.grammarBreakdown}</p>
+                    <p className="text-xs">{currentSentenceData?.grammarBreakdown}</p>
                     <button
-                      onClick={finishLesson}
+                      onClick={handleNextSentence}
                       className="mt-2 bg-emerald-500 text-slate-950 font-bold px-5 py-2 rounded-xl text-xs hover:bg-emerald-400 transition"
                     >
-                      Complete Lesson 🎉
+                      {currentSentenceIndex < (day.miniGame.sentenceBuilder?.length || 1) - 1
+                        ? "Next Sentence Builder Round ➔"
+                        : "Complete Lesson 🎉"}
                     </button>
                   </div>
                 )}
