@@ -10,6 +10,9 @@ export interface WatchmodeSearchResult {
   type: string;
   year?: number;
   imageUrl?: string | null;
+  backdropUrl?: string | null;
+  overview?: string;
+  voteAverage?: number;
   imdb_id?: string;
   tmdb_id?: number;
 }
@@ -56,6 +59,16 @@ const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w780";
 const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
 const TMDB_IMG_THUMB = "https://image.tmdb.org/t/p/w342";
 
+const SAMPLE_STREAMS = [
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+];
+
 // Helper to format TMDb API raw items into standard WatchmodeSearchResult
 const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
   return rawResults
@@ -66,6 +79,7 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
       const releaseDate = item.release_date || item.first_air_date || "";
       const year = releaseDate ? parseInt(releaseDate.slice(0, 4), 10) : undefined;
       const poster = item.poster_path ? `${TMDB_IMG_THUMB}${item.poster_path}` : (item.backdrop_path ? `${TMDB_IMG_THUMB}${item.backdrop_path}` : null);
+      const backdrop = item.backdrop_path ? `${TMDB_IMG_BACKDROP}${item.backdrop_path}` : (item.poster_path ? `${TMDB_IMG_POSTER}${item.poster_path}` : null);
       
       return {
         id: item.id,
@@ -74,9 +88,48 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
         type: isTv ? 'tv_series' : 'movie',
         year: year,
         imageUrl: poster,
+        backdropUrl: backdrop,
+        overview: item.overview || "An acclaimed motion picture from The Movie Database.",
+        voteAverage: item.vote_average,
         tmdb_id: item.id
       };
     });
+};
+
+// Automatic conversion of ANY TMDb search result into a real Movie available in database
+export const convertSearchResultToMovie = (res: WatchmodeSearchResult): Movie => {
+  const existing = INITIAL_MOVIES.find(m => m.watchmodeId === res.id || m.title.toLowerCase() === (res.name || res.title || '').toLowerCase());
+  if (existing) return existing;
+
+  const streamIdx = Math.abs(res.id) % SAMPLE_STREAMS.length;
+  const rating = (res.voteAverage && res.voteAverage >= 8) ? "R" : (res.voteAverage && res.voteAverage >= 7 ? "PG-13" : "PG");
+  const views = Math.floor(Math.random() * 4500000) + 1200000;
+  const userRating = res.voteAverage ? Math.round(res.voteAverage * 10) / 10 : 7.9;
+  const criticScore = res.voteAverage ? Math.round(res.voteAverage * 10) : 81;
+  const title = res.name || res.title || "Untitled";
+
+  return {
+    id: `tmdb_${res.id}`,
+    title: title,
+    description: res.overview || `Official title from The Movie Database (TMDb) (${res.year || 'Featured'}).`,
+    thumbnail: res.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
+    backdrop: res.backdropUrl || res.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
+    videoUrl: SAMPLE_STREAMS[streamIdx],
+    genre: res.type === 'tv_series' ? 'TV Series' : 'Cinema',
+    year: res.year || new Date().getFullYear(),
+    rating: rating,
+    views: views,
+    watchmodeId: res.id,
+    userRating: userRating,
+    criticScore: criticScore,
+    isUserUploaded: false,
+    uploaderName: 'The Movie Database (TMDb)',
+    streamingSources: [
+      { source_id: 8, name: 'Netflix', type: 'sub', region: 'US', web_url: `https://www.netflix.com/search?q=${encodeURIComponent(title)}`, format: '4K/HDR' },
+      { source_id: 9, name: 'Prime Video', type: 'sub', region: 'US', web_url: `https://www.amazon.com/s?k=${encodeURIComponent(title)}`, format: '4K UHD' },
+      { source_id: 337, name: 'Disney+', type: 'sub', region: 'US', web_url: `https://www.disneyplus.com/search?q=${encodeURIComponent(title)}`, format: '4K' }
+    ]
+  };
 };
 
 // Client-side Direct TMDb Search Fallback (Fast direct client call from browser to TMDb CDN)
@@ -242,6 +295,9 @@ const getTmdbPopularDirect = async (): Promise<WatchmodeSearchResult[]> => {
       type: 'movie',
       year: m.year,
       imageUrl: m.thumbnail,
+      backdropUrl: m.backdrop || m.thumbnail,
+      overview: m.description,
+      voteAverage: m.userRating,
       tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
     }));
   }
@@ -268,7 +324,7 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
   if (!query || query.trim().length === 0) return [];
   const term = query.trim().toLowerCase();
 
-  // 1. Instant local matches from the 70 stored TMDb blockbuster movies
+  // 1. Instant local matches from the stored TMDb blockbuster movies
   const localMatches: WatchmodeSearchResult[] = INITIAL_MOVIES
     .filter(m => m.title.toLowerCase().includes(term) || (m.genre && m.genre.toLowerCase().includes(term)))
     .map(m => ({
@@ -278,6 +334,9 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
       type: 'movie',
       year: m.year,
       imageUrl: m.thumbnail,
+      backdropUrl: m.backdrop || m.thumbnail,
+      overview: m.description,
+      voteAverage: m.userRating,
       tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
     }));
 
@@ -325,13 +384,8 @@ export const importMovieFromWatchmode = async (
   const details = await getWatchmodeDetails(watchmodeId);
   if (!details) return null;
 
-  const SAMPLE_STREAMS = [
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
-  ];
-  const streamUrl = customVideoUrl || SAMPLE_STREAMS[Math.floor(Math.random() * SAMPLE_STREAMS.length)];
+  const streamIdx = Math.abs(watchmodeId) % SAMPLE_STREAMS.length;
+  const streamUrl = customVideoUrl || SAMPLE_STREAMS[streamIdx];
 
   const clientMovie: Movie = {
     id: `tmdb_${details.watchmodeId}_${Date.now()}`,
@@ -358,7 +412,7 @@ export const importMovieFromWatchmode = async (
 };
 
 export const syncBlockbustersFromWatchmode = async (): Promise<Movie[]> => {
-  return INITIAL_MOVIES.slice(0, 15);
+  return INITIAL_MOVIES.slice(0, 20);
 };
 
 // Aliases

@@ -19,6 +19,9 @@ import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
 import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
 import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, WatchmodeSearchResult } from './services/watchmodeService.ts';
+import { StreamingPlatformHub } from './components/StreamingPlatformHub.tsx';
+import { StreamingPlatformReplica } from './components/StreamingPlatformReplica.tsx';
+import { PlatformId } from './services/platformCatalog.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -40,6 +43,17 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
+
+  // Active Streaming Platform Replica State (Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu)
+  const [activePlatform, setActivePlatform] = useState<PlatformId | null>(() => {
+    try {
+      const p = new URL(window.location.href).searchParams.get('platform') as PlatformId | null;
+      if (p && ['netflix', 'prime', 'disney', 'appletv', 'max', 'hulu'].includes(p)) {
+        return p;
+      }
+    } catch {}
+    return null;
+  });
 
   // Watchmode Database API Real-Time Search States
   const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
@@ -73,6 +87,14 @@ const App: React.FC = () => {
   // Handle Browser Back Button (Popstate)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
+      const params = new URL(window.location.href).searchParams;
+      const p = params.get('platform') as PlatformId | null;
+      if (p && ['netflix', 'prime', 'disney', 'appletv', 'max', 'hulu'].includes(p)) {
+        setActivePlatform(p);
+      } else {
+        setActivePlatform(null);
+      }
+
       if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
         setPlayingMovie(null);
         setSelectedMovie(null);
@@ -85,6 +107,18 @@ const App: React.FC = () => {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  const handleSelectPlatform = (platformId: PlatformId) => {
+    setActivePlatform(platformId);
+    pushState({ platform: platformId });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExitPlatform = () => {
+    setActivePlatform(null);
+    pushState({ platform: null });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const pushState = (params: Record<string, string | null>) => {
     const url = new URL(window.location.href);
@@ -455,37 +489,55 @@ const App: React.FC = () => {
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
       }} />}
       
-      <Navbar 
-        user={user} 
-        onUploadClick={() => {
-          if (!user) {
-            setUser({
-              id: `guest-${Date.now()}`,
-              name: 'Guest Explorer',
-              email: 'guest@geministream.pro',
-              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
-            });
-          }
-          setUploadModalInitialMode('watchmode');
-          setUploadModalInitialQuery(searchTerm || '');
-          setEditingMovie(null);
-          setShowUploadModal(true);
-          pushState({ action: 'upload' });
-        }} 
-        onLoginClick={() => setShowLoginModal(true)} 
-        onLogout={handleLogout}
-        onSearch={setSearchTerm}
-      />
+      {activePlatform ? (
+        <StreamingPlatformReplica
+          platformId={activePlatform}
+          movies={movies}
+          onSelectPlatform={handleSelectPlatform}
+          onExit={handleExitPlatform}
+          onPlay={handlePlay}
+          onSelectMovie={handleSelectMovie}
+        />
+      ) : (
+        <>
+          <Navbar 
+            user={user} 
+            onUploadClick={() => {
+              if (!user) {
+                setUser({
+                  id: `guest-${Date.now()}`,
+                  name: 'Guest Explorer',
+                  email: 'guest@geministream.pro',
+                  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+                });
+              }
+              setUploadModalInitialMode('watchmode');
+              setUploadModalInitialQuery(searchTerm || '');
+              setEditingMovie(null);
+              setShowUploadModal(true);
+              pushState({ action: 'upload' });
+            }} 
+            onLoginClick={() => setShowLoginModal(true)} 
+            onLogout={handleLogout}
+            onSearch={setSearchTerm}
+            onSelectPlatform={handleSelectPlatform}
+          />
 
-      <Hero 
-        movie={movies[0]} 
-        onInfoClick={handleSelectMovie} 
-        onPlay={handlePlay} 
-      />
+          <Hero 
+            movie={movies[0]} 
+            onInfoClick={handleSelectMovie} 
+            onPlay={handlePlay} 
+          />
 
-      <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+          <CategoryShareBar onCategoryClick={handleCategoryScroll} />
 
-      <div className="relative z-20 space-y-4">
+          {/* Interactive Streaming Platform Hub (Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu) */}
+          <StreamingPlatformHub 
+            movies={movies} 
+            onSelectPlatform={handleSelectPlatform} 
+          />
+
+          <div className="relative z-20 space-y-4">
         {isSyncing && (
           <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
              <Loader2 className="w-4 h-4 animate-spin" />

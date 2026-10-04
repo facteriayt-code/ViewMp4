@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { Search, Bell, User as UserIcon, Plus, Film, LogOut, Crown, Database, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Bell, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown } from 'lucide-react';
 import { User } from '../types.ts';
+import { PlatformId } from '../services/platformCatalog.ts';
 
 interface NavbarProps {
   user: User | null;
@@ -9,12 +10,15 @@ interface NavbarProps {
   onLoginClick: () => void;
   onLogout: () => void;
   onSearch: (term: string) => void;
+  onSelectPlatform?: (platform: PlatformId) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLogout, onSearch }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLogout, onSearch, onSelectPlatform }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showHubsDropdown, setShowHubsDropdown] = useState(false);
+  const hubsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,6 +26,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLo
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (hubsRef.current && !hubsRef.current.contains(e.target as Node)) {
+        setShowHubsDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,8 +56,55 @@ const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLo
            <Film className="w-6 h-6 md:w-8 md:h-8 text-red-600 fill-red-600" />
            <h1 className="text-red-600 font-black text-lg md:text-2xl tracking-tighter uppercase hidden xs:block">GeminiStream</h1>
         </div>
-        <div className="hidden lg:flex space-x-6 text-sm font-medium text-gray-200">
+        <div className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-200">
           <button onClick={() => handleClearSearch()} className="hover:text-white transition">Home</button>
+          
+          {/* Streaming Hubs Dropdown */}
+          <div className="relative" ref={hubsRef}>
+            <button
+              onClick={() => setShowHubsDropdown(!showHubsDropdown)}
+              className="hover:text-white transition flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
+            >
+              <Tv className="w-3.5 h-3.5 text-red-500" />
+              <span className="font-semibold text-xs">Streaming Hubs</span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            </button>
+
+            {showHubsDropdown && (
+              <div className="absolute left-0 mt-2 w-56 bg-[#181818]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 space-y-1">
+                <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Launch Studio Replica</span>
+                </div>
+                {[
+                  { id: 'netflix' as PlatformId, name: 'Netflix', color: '#E50914', desc: 'Originals & Blockbusters' },
+                  { id: 'prime' as PlatformId, name: 'Prime Video', color: '#00A8E1', desc: 'Included with Prime' },
+                  { id: 'disney' as PlatformId, name: 'Disney+', color: '#113CCF', desc: 'Marvel, Star Wars & Pixar' },
+                  { id: 'appletv' as PlatformId, name: 'Apple TV+', color: '#FFFFFF', desc: 'Apple Originals & Award Hits' },
+                  { id: 'max' as PlatformId, name: 'Max (HBO)', color: '#7B2CBF', desc: 'Warner Bros. & DC Universe' },
+                  { id: 'hulu' as PlatformId, name: 'Hulu', color: '#1CE783', desc: 'Hit Movies & Exclusives' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowHubsDropdown(false);
+                      onSelectPlatform?.(item.id);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-white/10 transition flex items-center justify-between group"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      <div>
+                        <div className="font-bold text-white group-hover:text-red-400 transition">{item.name}</div>
+                        <div className="text-[10px] text-gray-400">{item.desc}</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-500 group-hover:text-white">Launch →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button onClick={() => onUploadClick()} className="hover:text-white transition flex items-center space-x-1">
             <span>Database API</span>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
