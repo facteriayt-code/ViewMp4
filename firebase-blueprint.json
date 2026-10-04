@@ -1,66 +1,30 @@
 {
   "entities": {
-    "Team": {
-      "title": "Team",
-      "description": "A local cricket team participating in matches.",
+    "Movie": {
+      "title": "Movie",
+      "description": "A streaming film or community video broadcast with metadata.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "video_url": { "type": "string" },
+        "genre": { "type": "string" },
+        "year": { "type": "number" },
+        "rating": { "type": "string" },
+        "views": { "type": "number" },
+        "is_user_uploaded": { "type": "boolean" },
+        "uploader_id": { "type": "string" },
+        "uploader_name": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "createdAt"]
-    },
-    "Player": {
-      "title": "Player",
-      "description": "A cricket player belonging to a team.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "teamId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "stats": { "type": "object" }
-      },
-      "required": ["name", "teamId", "createdAt"]
-    },
-    "Match": {
-      "title": "Match",
-      "description": "A cricket match between two teams.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "teamAId": { "type": "string" },
-        "teamBId": { "type": "string" },
-        "teamAName": { "type": "string" },
-        "teamBName": { "type": "string" },
-        "tossWinnerId": { "type": "string" },
-        "tossDecision": { "type": "string", "enum": ["bat", "bowl"] },
-        "oversLimit": { "type": "number" },
-        "status": { "type": "string", "enum": ["live", "completed", "abandoned"] },
-        "winnerId": { "type": "string" },
-        "margin": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "currentInnings": { "type": "number" },
-        "firstInnings": { "type": "object" },
-        "secondInnings": { "type": "object" }
-      },
-      "required": ["teamAId", "teamBId", "tossWinnerId", "tossDecision", "oversLimit", "status", "createdAt", "currentInnings", "firstInnings"]
+      "required": ["title", "thumbnail", "video_url"]
     }
   },
   "firestore": {
-    "/teams/{teamId}": {
-      "schema": "Team",
-      "description": "Collection of local teams."
-    },
-    "/players/{playerId}": {
-      "schema": "Player",
-      "description": "Collection of local players mapped to teams."
-    },
-    "/matches/{matchId}": {
-      "schema": "Match",
-      "description": "Collection of live or finished matches."
+    "/movies/{movieId}": {
+      "schema": "Movie",
+      "description": "Collection of public streaming movies and user broadcasts."
     }
   }
 }

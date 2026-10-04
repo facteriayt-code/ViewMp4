@@ -1,92 +1,425 @@
-import React, { useState } from 'react';
-import { LearningProvider, useLearning } from './src/context/LearningContext';
-import { Navbar } from './components/Navbar';
-import { RoadmapView } from './components/RoadmapView';
-import { LessonView } from './components/LessonView';
-import { MonthTestView } from './components/MonthTestView';
-import { LinguisticExplainerView } from './components/LinguisticExplainerView';
-import { MiniGamesView } from './components/MiniGamesView';
-import { AITutorView } from './components/AITutorView';
-import { LearnSomethingNewView } from './components/LearnSomethingNewView';
-import { ProfileView } from './components/ProfileView';
-import { DayLesson, MonthExam } from './types';
 
-const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'roadmap' | 'explainer' | 'games' | 'tutor' | 'learn' | 'profile'>('roadmap');
-  const [selectedDay, setSelectedDay] = useState<DayLesson | null>(null);
-  const [selectedMonthExam, setSelectedMonthExam] = useState<MonthExam | null>(null);
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Navbar from './components/Navbar.tsx';
+import Hero from './components/Hero.tsx';
+import MovieRow from './components/MovieRow.tsx';
+import MovieDetails from './components/MovieDetails.tsx';
+import UploadModal from './components/UploadModal.tsx';
+import VideoPlayer from './components/VideoPlayer.tsx';
+import LoginModal from './components/LoginModal.tsx';
+import AgeDisclaimer from './components/AgeDisclaimer.tsx';
+import NativeAd from './components/NativeAd.tsx';
+import AdBanner from './components/AdBanner.tsx';
+import IntermissionAd from './components/IntermissionAd.tsx';
+import CategoryShareBar from './components/CategoryShareBar.tsx';
+import { INITIAL_MOVIES } from './constants.ts';
+import { Movie, User } from './types.ts';
+import { getAllVideosFromCloud } from './services/storageService.ts';
+import { supabase } from './services/supabaseClient.ts';
+import { signOut } from './services/authService.ts';
+import { Database, Wifi, WifiOff, Loader2, X } from 'lucide-react';
 
-  const handleSelectDay = (day: DayLesson) => {
-    setSelectedDay(day);
-    setSelectedMonthExam(null);
+const STORAGE_KEYS = {
+  HISTORY: 'gemini_stream_history',
+  AGE_VERIFIED: 'geministream_age_verified'
+};
+
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSyncing, setIsSyncing] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
+
+  const selectedMovieRef = useRef<Movie | null>(null);
+  const playingMovieRef = useRef<Movie | null>(null);
+  const showUploadModalRef = useRef<boolean>(false);
+  const deepLinkProcessed = useRef(false);
+  
+  // 1. Global Click Listener for Pop-ups/Ads
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      // This empty listener encourages the browser to allow script-triggered popups 
+      // from the ad networks included in index.html
+      console.debug("User interaction captured for ad-sync");
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Update refs to avoid stale closures in event listeners
+  useEffect(() => {
+    selectedMovieRef.current = selectedMovie;
+    playingMovieRef.current = playingMovie;
+    showUploadModalRef.current = showUploadModal;
+  }, [selectedMovie, playingMovie, showUploadModal]);
+
+  // Handle Browser Back Button (Popstate)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (playingMovieRef.current || selectedMovieRef.current || showUploadModalRef.current) {
+        setPlayingMovie(null);
+        setSelectedMovie(null);
+        setShowUploadModal(false);
+        setEditingMovie(null);
+        setMovieToUnlock(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const pushState = (params: Record<string, string | null>) => {
+    const url = new URL(window.location.href);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    });
+    window.history.pushState({ modal: true }, '', url.toString());
   };
 
-  const handleSelectMonthExam = (exam: MonthExam) => {
-    setSelectedMonthExam(exam);
-    setSelectedDay(null);
+  const clearModalUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('v');
+    url.searchParams.delete('play');
+    url.searchParams.delete('autoplay');
+    window.history.replaceState({}, '', url.toString());
   };
 
-  const handleBackFromLesson = () => {
-    setSelectedDay(null);
+  useEffect(() => {
+    const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
+    setIsAgeVerified(verified === 'true');
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+        });
+      }
+    });
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    const syncCloudData = async () => {
+      setIsSyncing(true);
+      try {
+        const cloudVideos = await getAllVideosFromCloud();
+        const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
+        const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
+        setMovies(uniqueMovies);
+        setIsOnline(true);
+      } catch (err) {
+        console.error("Supabase Connection Failed:", err);
+        setIsOnline(false);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    syncCloudData();
+
+    const moviesChannel = supabase
+      .channel('movies-realtime-global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updatedMovie: Movie = {
+            id: payload.new.id,
+            title: payload.new.title,
+            description: payload.new.description,
+            thumbnail: payload.new.thumbnail,
+            videoUrl: payload.new.video_url,
+            genre: payload.new.genre,
+            year: payload.new.year,
+            rating: payload.new.rating,
+            views: Number(payload.new.views) || 0,
+            isUserUploaded: payload.new.is_user_uploaded,
+            uploaderId: payload.new.uploader_id,
+            uploaderName: payload.new.uploader_name
+          };
+          setMovies(prev => prev.map(m => m.id === updatedMovie.id ? updatedMovie : m));
+          if (selectedMovieRef.current?.id === updatedMovie.id) {
+            setSelectedMovie(updatedMovie);
+          }
+        } else if (payload.eventType === 'INSERT') {
+          const newMovie: Movie = {
+            id: payload.new.id,
+            title: payload.new.title,
+            description: payload.new.description,
+            thumbnail: payload.new.thumbnail,
+            videoUrl: payload.new.video_url,
+            genre: payload.new.genre,
+            year: payload.new.year,
+            rating: payload.new.rating,
+            views: payload.new.views || 0,
+            isUserUploaded: payload.new.is_user_uploaded,
+            uploaderId: payload.new.uploader_id,
+            uploaderName: payload.new.uploader_name
+          };
+          setMovies(prev => [newMovie, ...prev]);
+        } else if (payload.eventType === 'DELETE') {
+          setMovies(prev => prev.filter(m => m.id !== payload.old.id));
+          if (selectedMovieRef.current?.id === payload.old.id) {
+            setSelectedMovie(null);
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(moviesChannel);
+    };
+  }, []);
+
+  const handleCategoryScroll = (categoryName: string) => {
+    const targetId = `row-${categoryName.replace(/\s+/g, '-').toLowerCase()}`;
+    const element = document.getElementById(targetId);
+    if (element) {
+      const headerOffset = 150;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      element.classList.add('ring-1', 'ring-red-600/50', 'bg-red-600/5', 'rounded-xl', 'transition-all');
+      setTimeout(() => {
+        element.classList.remove('ring-1', 'ring-red-600/50', 'bg-red-600/5');
+      }, 3000);
+    }
   };
+
+  useEffect(() => {
+    if (movies.length > 0 && !deepLinkProcessed.current) {
+      const params = new URLSearchParams(window.location.search);
+      const videoId = params.get('v');
+      const category = params.get('cat');
+
+      if (videoId) {
+        const target = movies.find(m => m.id === videoId);
+        if (target) {
+          const autoplay = params.get('autoplay') !== 'false';
+          if (autoplay) {
+            setMovieToUnlock(target); // Force unlock for deep links
+          } else {
+            setSelectedMovie(target);
+          }
+          deepLinkProcessed.current = true;
+        }
+      } 
+      else if (category) {
+        const decodedCat = decodeURIComponent(category);
+        setTimeout(() => handleCategoryScroll(decodedCat), 1000);
+        deepLinkProcessed.current = true;
+      } else {
+        deepLinkProcessed.current = true;
+      }
+    }
+  }, [movies]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUser(null);
+    } catch (err) {
+      console.error("Logout error", err);
+    }
+  };
+
+  const handlePlay = (movie: Movie) => {
+    setSelectedMovie(null);
+    setMovieToUnlock(movie); // Trigger IntermissionAd
+  };
+
+  const handleSelectMovie = (movie: Movie) => {
+    setSelectedMovie(movie);
+    pushState({ v: movie.id, autoplay: 'false' });
+  };
+
+  const handleEdit = (movie: Movie) => {
+    setEditingMovie(movie);
+    setShowUploadModal(true);
+    pushState({ edit: movie.id });
+  };
+
+  const filteredMovies = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return movies;
+    return movies.filter(m => 
+      m.title.toLowerCase().includes(term) || 
+      m.genre.toLowerCase().includes(term) ||
+      (m.uploaderName && m.uploaderName.toLowerCase().includes(term))
+    );
+  }, [movies, searchTerm]);
+
+  const rows = useMemo(() => {
+    const userUploadsOnly = filteredMovies.filter(m => m.isUserUploaded === true);
+    
+    return [
+      { 
+        title: 'Trending Now', 
+        movies: [...userUploadsOnly].sort((a,b) => b.views - a.views) 
+      },
+      { title: 'New Community Uploads', movies: userUploadsOnly.slice(0, 10) },
+      { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
+      { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
+      { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
+      { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) }
+    ];
+  }, [filteredMovies]);
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen pb-20 overflow-x-hidden">
+      {!isAgeVerified && <AgeDisclaimer onVerify={() => {
+        setIsAgeVerified(true);
+        localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
+      }} />}
       
-      {/* Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setSelectedDay(null);
-          setSelectedMonthExam(null);
-          setActiveTab(tab);
-        }}
+      <Navbar 
+        user={user} 
+        onUploadClick={() => {
+          if (!user) setShowLoginModal(true);
+          else {
+            setEditingMovie(null);
+            setShowUploadModal(true);
+            pushState({ action: 'upload' });
+          }
+        }} 
+        onLoginClick={() => setShowLoginModal(true)} 
+        onLogout={handleLogout}
+        onSearch={setSearchTerm}
       />
 
-      {/* Main Container */}
-      <main className="flex-grow pb-16 w-full max-w-full overflow-x-hidden">
-        {selectedMonthExam ? (
-          <MonthTestView exam={selectedMonthExam} onClose={() => setSelectedMonthExam(null)} />
-        ) : selectedDay ? (
-          <LessonView day={selectedDay} onBack={handleBackFromLesson} />
-        ) : (
-          <>
-            {activeTab === 'roadmap' && (
-              <RoadmapView
-                onSelectDay={handleSelectDay}
-                onSelectMonthExam={handleSelectMonthExam}
-              />
-            )}
-            {activeTab === 'explainer' && <LinguisticExplainerView />}
-            {activeTab === 'games' && <MiniGamesView />}
-            {activeTab === 'tutor' && <AITutorView />}
-            {activeTab === 'learn' && <LearnSomethingNewView />}
-            {activeTab === 'profile' && <ProfileView />}
-          </>
-        )}
-      </main>
+      <Hero 
+        movie={movies[0]} 
+        onInfoClick={handleSelectMovie} 
+        onPlay={handlePlay} 
+      />
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-600 font-medium">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className="font-heading font-extrabold text-indigo-600">LingoSprint</span>
-            <span>• Interactive English Learning & Linguistic Explainer</span>
+      <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+
+      <div className="relative z-20 space-y-4">
+        {isSyncing && (
+          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
+             <Loader2 className="w-4 h-4 animate-spin" />
+             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
           </div>
-          <p className="text-[11px] text-slate-500">
-            Learn English step-by-step from beginner to pro with daily tasks, games, and AI reasoning.
-          </p>
-        </div>
-      </footer>
+        )}
 
+        {!isOnline && (
+          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
+             <WifiOff className="w-4 h-4" />
+             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {rows.map((row, idx) => (
+            <React.Fragment key={row.title}>
+              <MovieRow 
+                title={row.title} 
+                movies={row.movies} 
+                onMovieClick={handleSelectMovie} 
+                onPlay={handlePlay} 
+              />
+              {idx === 0 && <AdBanner />}
+              {idx === 2 && <NativeAd />}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {movieToUnlock && (
+        <IntermissionAd 
+          onClose={() => {
+            setPlayingMovie(movieToUnlock);
+            setMovieToUnlock(null);
+            pushState({ v: movieToUnlock.id, autoplay: 'true' });
+          }} 
+        />
+      )}
+
+      {selectedMovie && (
+        <MovieDetails 
+          movie={selectedMovie} 
+          allMovies={movies} 
+          user={user}
+          onClose={() => {
+            setSelectedMovie(null);
+            clearModalUrl();
+          }} 
+          onPlay={handlePlay}
+          onMovieSelect={handleSelectMovie}
+          onEdit={handleEdit}
+        />
+      )}
+
+      {playingMovie && (
+        <VideoPlayer 
+          movie={playingMovie} 
+          onClose={() => {
+            setPlayingMovie(null);
+            clearModalUrl();
+          }} 
+        />
+      )}
+
+      {showUploadModal && user && (
+        <UploadModal 
+          user={user} 
+          onClose={() => {
+            setShowUploadModal(false);
+            const url = new URL(window.location.href);
+            url.searchParams.delete('action');
+            url.searchParams.delete('edit');
+            window.history.replaceState({}, '', url.toString());
+          }} 
+          onUpload={(newMovie) => {
+            if (editingMovie) {
+              setMovies(prev => prev.map(m => m.id === newMovie.id ? newMovie : m));
+            } else {
+              setMovies(prev => [newMovie, ...prev]);
+            }
+          }}
+          movieToEdit={editingMovie}
+        />
+      )}
+
+      {showLoginModal && (
+        <LoginModal 
+          onLogin={(u) => {
+            setUser(u);
+            setShowLoginModal(false);
+          }}
+          onClose={() => setShowLoginModal(false)}
+        />
+      )}
     </div>
   );
 };
 
-export default function App() {
-  return (
-    <LearningProvider>
-      <AppContent />
-    </LearningProvider>
-  );
-}
+export default App;

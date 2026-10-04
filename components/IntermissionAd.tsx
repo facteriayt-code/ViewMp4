@@ -113,8 +113,14 @@ const IntermissionAd: React.FC<IntermissionAdProps> = ({ onClose }) => {
               <button onClick={onClose} className="w-full group relative bg-white text-black py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-xs hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-[0_40px_80px_rgba(0,0,0,0.5)]">Unlock Stream</button>
             </div>
           ) : (
-            <div className="flex flex-col items-center space-y-6 opacity-40 group text-center">
-               <div className="flex items-center space-x-5"><div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div><span className="text-[10px] font-black uppercase tracking-[0.6em] text-gray-500">Validation Required</span></div>
+            <div className="flex flex-col items-center space-y-6 group text-center">
+               <div className="flex items-center space-x-5"><div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div><span className="text-[10px] font-black uppercase tracking-[0.6em] text-gray-400">Click sponsor banner above to unlock</span></div>
+               <button 
+                 onClick={onClose}
+                 className="text-xs text-gray-500 hover:text-white uppercase tracking-widest underline decoration-gray-700 hover:decoration-white transition py-2"
+               >
+                 Skip & Watch Stream Directly →
+               </button>
             </div>
           )}
         </div>

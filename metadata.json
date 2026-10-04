@@ -1,7 +1,9 @@
+
 {
-  "name": "LingoSprint - Gamified English Master",
-  "description": "An interactive, gamified English learning platform with structured daily courses from beginner to pro, grammar deep dives, vocabulary games, streak tracking, and instant AI linguistic reasoning.",
+  "name": "GeminiStream",
+  "description": "A high-end movie streaming platform with AI-powered insights, community uploads, and video streaming.",
   "requestFramePermissions": [
+    "camera",
     "microphone"
   ],
   "majorCapabilities": [

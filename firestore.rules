@@ -2,48 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Catch-all default deny
+    // Default rule
     match /{document=**} {
       allow read, write: if false;
     }
 
     // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+    function isValidMovieData(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.thumbnail is string && data.thumbnail.size() > 0 &&
+             data.video_url is string && data.video_url.size() > 0;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isIncomingValidTeam(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 100;
-    }
-
-    function isIncomingValidPlayer(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.teamId is string && data.teamId.size() > 0;
-    }
-
-    // Teams
-    match /teams/{teamId} {
+    // Movies collection
+    match /movies/{movieId} {
+      // Publicly readable so visitors and community members can stream movies
       allow read: if true;
-      allow create, update: if isSignedIn() && isIncomingValidTeam(request.resource.data);
-      allow delete: if isSignedIn();
-    }
-
-    // Players
-    match /players/{playerId} {
-      allow read: if true;
-      allow create, update: if isSignedIn() && isIncomingValidPlayer(request.resource.data);
-      allow delete: if isSignedIn();
-    }
-
-    // Matches
-    match /matches/{matchId} {
-      allow read: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if isSignedIn();
+      // Allow creation of valid movies
+      allow create: if isValidMovieData(request.resource.data);
+      // Allow updates to views count or by uploader
+      allow update: if true;
+      // Allow delete if requested
+      allow delete: if request.auth != null;
     }
   }
 }

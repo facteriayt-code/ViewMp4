@@ -1,0 +1,1045 @@
+// @ts-nocheck
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Film, Image as ImageIcon, Loader2, Cloud, Terminal, Link as LinkIcon, FileUp, Save, Copy, CheckCircle2, ShieldAlert, Tag, Plus, Trash2, ListFilter, ExternalLink, Sparkles, RefreshCw, Layers, LayoutGrid, FileVideo, PlusCircle, ClipboardList, Camera, Upload, Database, Search, Play, Check, Globe } from 'lucide-react';
+import { Movie, User } from '../types.ts';
+import { saveVideoToCloud } from '../services/storageService.ts';
+import { 
+  getWatchmodeStatus, 
+  searchWatchmode, 
+  getWatchmodeDetails, 
+  importMovieFromWatchmode, 
+  syncBlockbustersFromWatchmode, 
+  WatchmodeSearchResult, 
+  WatchmodeDetailsResponse, 
+  WatchmodeStatus 
+} from '../services/watchmodeService.ts';
+
+interface UploadModalProps {
+  user: User;
+  onClose: () => void;
+  onUpload: (newMovie: Movie) => void;
+  movieToEdit?: Movie | null;
+}
+
+const CATEGORY_OPTIONS = [
+  'Viral',
+  'onlyfans',
+  'Insta post',
+  'Sci-Fi',
+  'Action',
+  'Adventure',
+  'Comedy',
+  'Horror'
+];
+
+interface BulkItem {
+  id: string;
+  file?: File;
+  url?: string;
+  thumbnailFile: File | null;
+  thumbnailPreview: string | null;
+  title: string;
+  genre: string;
+  status: 'pending' | 'extracting' | 'uploading' | 'success' | 'error';
+  progress: number;
+}
+
+const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
+  const isEditMode = !!movieToEdit;
+  const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'watchmode'>(isEditMode ? 'single' : 'single');
+  const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
+  const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
+  
+  // Single Upload States
+  const [title, setTitle] = useState(movieToEdit?.title || '');
+  const [description, setDescription] = useState(movieToEdit?.description || '');
+  const [genre, setGenre] = useState(movieToEdit?.genre || 'Viral');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState(movieToEdit?.videoUrl || '');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+
+  // Bulk Upload States
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Watchmode API States
+  const [wmStatus, setWmStatus] = useState<WatchmodeStatus | null>(null);
+  const [wmSearchQuery, setWmSearchQuery] = useState('');
+  const [wmSearchResults, setWmSearchResults] = useState<WatchmodeSearchResult[]>([]);
+  const [wmIsSearching, setWmIsSearching] = useState(false);
+  const [wmSelectedMovie, setWmSelectedMovie] = useState<WatchmodeDetailsResponse | null>(null);
+  const [wmIsLoadingDetails, setWmIsLoadingDetails] = useState(false);
+  const [wmCustomVideoUrl, setWmCustomVideoUrl] = useState('');
+  const [wmIsImporting, setWmIsImporting] = useState(false);
+  const [wmImportSuccess, setWmImportSuccess] = useState<string | null>(null);
+  const [wmIsSyncingBlockbusters, setWmIsSyncingBlockbusters] = useState(false);
+
+  useEffect(() => {
+    getWatchmodeStatus().then(status => {
+      if (status) setWmStatus(status);
+    });
+  }, []);
+
+  const handleWmSearch = async (term?: string) => {
+    const q = term !== undefined ? term : wmSearchQuery;
+    if (!q || !q.trim()) return;
+    setWmIsSearching(true);
+    setError(null);
+    setWmImportSuccess(null);
+    try {
+      const results = await searchWatchmode(q);
+      setWmSearchResults(results);
+      if (results.length > 0) {
+        handleSelectWmMovie(results[0].id);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to search Watchmode API');
+    } finally {
+      setWmIsSearching(false);
+    }
+  };
+
+  const handleSelectWmMovie = async (id: number) => {
+    setWmIsLoadingDetails(true);
+    setWmSelectedMovie(null);
+    setWmImportSuccess(null);
+    try {
+      const details = await getWatchmodeDetails(id);
+      setWmSelectedMovie(details);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setWmIsLoadingDetails(false);
+    }
+  };
+
+  const handleImportWmMovie = async () => {
+    if (!wmSelectedMovie) return;
+    setWmIsImporting(true);
+    setError(null);
+    setWmImportSuccess(null);
+    try {
+      const movie = await importMovieFromWatchmode(wmSelectedMovie.watchmodeId, wmCustomVideoUrl || undefined);
+      if (movie) {
+        onUpload(movie);
+        setWmImportSuccess(`Successfully imported "${movie.title}" into catalog!`);
+        getWatchmodeStatus().then(s => s && setWmStatus(s));
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to import movie from Watchmode');
+    } finally {
+      setWmIsImporting(false);
+    }
+  };
+
+  const handleSyncBlockbusters = async () => {
+    setWmIsSyncingBlockbusters(true);
+    setError(null);
+    setWmImportSuccess(null);
+    try {
+      const movies = await syncBlockbustersFromWatchmode();
+      if (movies && movies.length > 0) {
+        movies.forEach(m => onUpload(m));
+        setWmImportSuccess(`Successfully imported ${movies.length} blockbuster movies into catalog!`);
+        getWatchmodeStatus().then(s => s && setWmStatus(s));
+      }
+    } catch (err: any) {
+      setError('Failed to sync blockbuster movies');
+    } finally {
+      setWmIsSyncingBlockbusters(false);
+    }
+  };
+
+  const generateSingleThumbnail = async (file: File): Promise<{file: File, url: string}> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(file);
+      video.muted = true;
+      video.playsInline = true;
+      video.crossOrigin = "anonymous";
+      
+      video.onloadedmetadata = () => { video.currentTime = 0.2; }; // Capture slightly into the video
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const fileResult = new File([blob], 'thumb.jpg', { type: 'image/jpeg' });
+              resolve({ file: fileResult, url: URL.createObjectURL(blob) });
+            } else reject();
+          }, 'image/jpeg', 0.8);
+        } else reject();
+      };
+      video.onerror = reject;
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (uploadMode === 'single') {
+      const file = files[0];
+      setVideoFile(file);
+      if (!thumbnailFile) { // Only auto-generate if user hasn't uploaded one
+        setIsGeneratingThumbnail(true);
+        try {
+          const { file: tFile, url: tUrl } = await generateSingleThumbnail(file);
+          setThumbnailFile(tFile);
+          setThumbnailPreview(tUrl);
+        } catch (err) {
+          console.error("Auto thumbnail capture failed", err);
+        } finally {
+          setIsGeneratingThumbnail(false);
+        }
+      }
+    } else {
+      const newItems: BulkItem[] = files.map(file => ({
+        id: Math.random().toString(36).substr(2, 9),
+        file,
+        thumbnailFile: null,
+        thumbnailPreview: null,
+        title: file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
+        genre: 'Viral',
+        status: 'pending',
+        progress: 0
+      }));
+      setBulkItems(prev => [...prev, ...newItems]);
+      
+      for (const item of newItems) {
+        setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'extracting' } : i));
+        try {
+          const { file: tFile, url: tUrl } = await generateSingleThumbnail(item.file);
+          setBulkItems(prev => prev.map(i => i.id === item.id ? { 
+            ...i, 
+            thumbnailFile: tFile, 
+            thumbnailPreview: tUrl, 
+            status: 'pending' 
+          } : i));
+        } catch (err) {
+          setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'pending' } : i));
+        }
+      }
+    }
+    e.target.value = ''; // Reset input
+  };
+
+  const handleManualThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnailFile(file);
+      setThumbnailPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleBulkItemThumbnail = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const preview = URL.createObjectURL(file);
+      setBulkItems(prev => prev.map(item => 
+        item.id === id ? { ...item, thumbnailFile: file, thumbnailPreview: preview } : item
+      ));
+    }
+  };
+
+  const addBulkLinkRow = () => {
+    const newItem: BulkItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      url: '',
+      thumbnailFile: null,
+      thumbnailPreview: null,
+      title: '',
+      genre: 'Viral',
+      status: 'pending',
+      progress: 0
+    };
+    setBulkItems(prev => [...prev, newItem]);
+  };
+
+  const handleBulkUpload = async () => {
+    setIsUploading(true);
+    setError(null);
+
+    let completedCount = 0;
+    const itemsToProcess = bulkItems.filter(i => i.status !== 'success');
+    const totalItems = bulkItems.length;
+
+    for (const item of bulkItems) {
+      if (item.status === 'success') continue;
+      if (item.url === '' && !item.file) continue;
+      
+      setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' } : i));
+      
+      try {
+        const result = await saveVideoToCloud(
+          {
+            title: item.title || (item.url ? 'Remote Link' : 'File Broadcast'),
+            description: item.url ? `Bulk link deployment. Source: ${item.url}` : `Bulk file deployment. Filename: ${item.file?.name}`,
+            genre: item.genre,
+            uploaderId: user.id,
+            uploaderName: user.name,
+            videoUrl: item.url || undefined,
+            year: new Date().getFullYear(),
+            rating: 'NR'
+          },
+          item.file || null,
+          item.thumbnailFile,
+          (prog) => {
+            setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, progress: prog } : i));
+          }
+        );
+        
+        onUpload(result);
+        completedCount++;
+        setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success', progress: 100 } : i));
+        setUploadProgress(Math.round((completedCount / totalItems) * 100));
+      } catch (err) {
+        console.error(`Bulk upload failed for ${item.title}`, err);
+        setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error' } : i));
+      }
+    }
+
+    setIsUploading(false);
+    if (completedCount === totalItems) {
+      setTimeout(onClose, 1500);
+    }
+  };
+
+  const handleSingleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isGeneratingThumbnail) return;
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const result = await saveVideoToCloud(
+        {
+          id: movieToEdit?.id,
+          title,
+          description,
+          genre,
+          uploaderId: user.id,
+          uploaderName: user.name,
+          videoUrl: uploadType === 'link' ? videoUrl : undefined,
+          thumbnail: thumbnailUrl, 
+          year: movieToEdit?.year || new Date().getFullYear(),
+          rating: 'NR'
+        },
+        uploadType === 'file' ? videoFile : null,
+        thumbnailFile,
+        (p) => setUploadProgress(p)
+      );
+      onUpload(result);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Deployment failed.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+      <div className="relative bg-[#0a0a0a] w-full max-w-5xl min-h-screen md:min-h-0 md:rounded-[3rem] overflow-hidden shadow-[0_0_150px_rgba(229,9,20,0.1)] border border-white/5 animate-in fade-in zoom-in-95 duration-500">
+        
+        {/* Modern Premium Header */}
+        <div className="p-8 md:p-12 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-r from-red-600/[0.05] to-transparent gap-8">
+          <div className="flex items-center space-x-6">
+            <div className="bg-red-600 p-5 rounded-[2rem] shadow-[0_15px_30px_rgba(229,9,20,0.3)]">
+              {isEditMode ? <RefreshCw className="w-7 h-7 text-white" /> : <Upload className="w-7 h-7 text-white" />}
+            </div>
+            <div>
+              <h2 className="text-2xl md:text-5xl font-black text-white uppercase italic tracking-tighter leading-none">
+                {isEditMode ? 'Modify Signal' : 'Deployment'}
+              </h2>
+              <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.6em] mt-3">Auth Code: {user.name.toUpperCase()}</p>
+            </div>
+          </div>
+
+          {!isEditMode && (
+            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 self-start md:self-center flex-wrap gap-1">
+              <button 
+                onClick={() => setUploadMode('single')}
+                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'single' ? 'bg-white text-black shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Single</span>
+              </button>
+              <button 
+                onClick={() => setUploadMode('bulk')}
+                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'bulk' ? 'bg-white text-black shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Bulk</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setUploadMode('watchmode');
+                  if (wmSearchResults.length === 0 && !wmSearchQuery) {
+                    setWmSearchQuery('Inception');
+                    handleWmSearch('Inception');
+                  }
+                }}
+                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadMode === 'watchmode' ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-xl scale-105' : 'text-gray-400 hover:text-white'}`}
+              >
+                <Database className="w-3.5 h-3.5 text-amber-400" />
+                <span>Database API</span>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              </button>
+            </div>
+          )}
+
+          <button onClick={onClose} className="absolute top-8 right-8 p-4 hover:bg-white/5 rounded-full transition-all active:scale-90 border border-white/5 md:relative md:top-0 md:right-0">
+            <X className="w-8 h-8 text-gray-500 hover:text-white" />
+          </button>
+        </div>
+
+        <div className="p-8 md:p-12">
+          {error && (
+            <div className="mb-10 bg-red-600/10 border border-red-600/20 p-6 rounded-[2rem] text-red-500 text-xs font-black uppercase tracking-widest flex items-center animate-in slide-in-from-top-4">
+              <ShieldAlert className="w-6 h-6 mr-4" />
+              {error}
+            </div>
+          )}
+
+          {uploadMode === 'single' ? (
+            <form onSubmit={handleSingleUpload} className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+                <div className="lg:col-span-7 space-y-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Signal Meta Title</label>
+                    <div className="relative group">
+                      <Terminal className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-red-600 opacity-50 group-focus-within:opacity-100" />
+                      <input 
+                        type="text" 
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-3xl pl-16 pr-8 py-6 outline-none focus:border-red-600/50 focus:bg-white/[0.05] transition-all text-sm font-bold placeholder:text-gray-700"
+                        placeholder="SIGNAL_IDENTIFIER"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Classification</label>
+                      <div className="relative">
+                        <Tag className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <select 
+                          value={genre}
+                          onChange={(e) => setGenre(e.target.value)}
+                          className="w-full bg-[#121212] border border-white/10 rounded-3xl pl-16 pr-8 py-6 outline-none focus:border-red-600/50 transition text-sm font-bold appearance-none cursor-pointer"
+                        >
+                          {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Content Summary</label>
+                    <textarea 
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-3xl px-8 py-6 outline-none focus:border-red-600/50 focus:bg-white/[0.05] transition-all h-52 resize-none text-sm font-medium leading-relaxed"
+                      placeholder="Input encrypted data details..."
+                    />
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 space-y-10">
+                  <div className="flex bg-white/5 p-1 rounded-3xl border border-white/10">
+                    <button 
+                      type="button"
+                      onClick={() => setUploadType('file')}
+                      className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadType === 'file' ? 'bg-red-600 text-white shadow-lg scale-105' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      File Ingest
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setUploadType('link')}
+                      className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${uploadType === 'link' ? 'bg-red-600 text-white shadow-lg scale-105' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Remote Link
+                    </button>
+                  </div>
+
+                  {uploadType === 'file' ? (
+                    <div className="relative aspect-video rounded-[3rem] border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-10 text-center hover:border-red-600/40 transition-all group cursor-pointer bg-white/[0.02] hover:bg-white/[0.04] shadow-inner">
+                      <input 
+                        type="file" 
+                        accept="video/*"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      />
+                      <Cloud className={`w-16 h-16 mb-6 transition-all duration-700 ${videoFile ? 'text-red-600 scale-110' : 'text-gray-800 group-hover:text-red-600 group-hover:scale-110'}`} />
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-white truncate max-w-full px-8">
+                        {videoFile ? videoFile.name : 'Select Data Packet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Remote Link URL</label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                        <input 
+                          type="url" 
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-3xl pl-16 pr-8 py-6 outline-none focus:border-red-600/50 transition text-sm font-mono text-red-500"
+                          placeholder="https://cloud.server/stream.mp4"
+                          required={uploadType === 'link'}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-6">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Visual Poster (Manual Override)</label>
+                    <div className="relative aspect-video rounded-[3rem] overflow-hidden bg-black border border-white/10 group shadow-2xl transition-all hover:scale-[1.02]">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleManualThumbnail}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                      />
+                      {(thumbnailPreview || thumbnailUrl) ? (
+                        <div className="relative w-full h-full">
+                           <img src={thumbnailPreview || thumbnailUrl} alt="Signal Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
+                              <Camera className="w-10 h-10 text-white mb-3" />
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Replace Signal Image</span>
+                           </div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-800 p-8 text-center">
+                          <ImageIcon className="w-16 h-16 mb-4 opacity-10" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.6em] opacity-40">Drop Visual Overlay</span>
+                        </div>
+                      )}
+                      
+                      {isGeneratingThumbnail && (
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30">
+                          <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-6" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-[0.8em] animate-pulse">CAPTURING...</span>
+                        </div>
+                      )}
+                    </div>
+                    {uploadType === 'file' && !thumbnailFile && (
+                      <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest ml-1 animate-pulse">Auto-capturing first frame from stream...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-12 border-t border-white/5">
+                <button 
+                  type="submit"
+                  disabled={isUploading || isGeneratingThumbnail || (!videoFile && uploadType === 'file' && !isEditMode)}
+                  className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-8 rounded-[2.5rem] text-xs font-black uppercase tracking-[0.6em] transition-all shadow-[0_40px_80px_rgba(229,9,20,0.3)] active:scale-95"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] pointer-events-none" />
+                  {isUploading ? <Loader2 className="w-8 h-8 animate-spin mx-auto" /> : <span>Deploy Signal</span>}
+                </button>
+              </div>
+            </form>
+          ) : uploadMode === 'bulk' ? (
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              {/* Simple & Premium Bulk Toggle */}
+              <div className="flex bg-white/5 p-1 rounded-[2rem] border border-white/10 w-fit mx-auto backdrop-blur-md">
+                <button 
+                  onClick={() => { setBulkType('file'); setBulkItems([]); }}
+                  className={`flex items-center space-x-4 px-10 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${bulkType === 'file' ? 'bg-red-600 text-white shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+                >
+                  <FileVideo className="w-4 h-4" />
+                  <span>Mass Files</span>
+                </button>
+                <button 
+                  onClick={() => { setBulkType('link'); setBulkItems([{ id: 'init', url: '', title: '', genre: 'Viral', status: 'pending', progress: 0, thumbnailFile: null, thumbnailPreview: null }]); }}
+                  className={`flex items-center space-x-4 px-10 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${bulkType === 'link' ? 'bg-red-600 text-white shadow-xl scale-105' : 'text-gray-500 hover:text-white'}`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>Link Registry</span>
+                </button>
+              </div>
+
+              {bulkType === 'file' && bulkItems.length === 0 ? (
+                <div className="relative aspect-[21/9] rounded-[4rem] border-2 border-dashed border-white/10 flex flex-col items-center justify-center p-20 text-center hover:border-red-600/40 transition-all group cursor-pointer bg-white/[0.01] hover:bg-white/[0.02]">
+                  <input 
+                    type="file" 
+                    accept="video/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                  />
+                  <Layers className="w-24 h-24 mb-8 text-gray-800 group-hover:scale-110 group-hover:text-red-600 transition-all duration-700" />
+                  <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">Batch Signal Extraction</h3>
+                  <p className="text-[10px] text-gray-600 font-bold mt-4 uppercase tracking-[0.4em] opacity-60">Parallel transcode and deploy from local clusters</p>
+                </div>
+              ) : null}
+
+              {bulkItems.length > 0 && (
+                <div className="space-y-10">
+                  <div className="flex items-center justify-between px-4">
+                    <div className="flex items-center space-x-6">
+                      <div className="bg-red-600/10 px-8 py-4 rounded-full border border-red-600/20">
+                        <span className="text-[10px] font-black text-red-600 uppercase tracking-[0.4em]">Batch Count: {bulkItems.length}</span>
+                      </div>
+                      <button 
+                        onClick={() => setBulkItems([])}
+                        className="text-[10px] font-black text-gray-700 uppercase hover:text-white transition tracking-widest"
+                      >
+                        Purge Queue
+                      </button>
+                    </div>
+                    {bulkType === 'file' ? (
+                      <button 
+                        onClick={() => document.getElementById('bulk-add-file').click()}
+                        className="flex items-center space-x-4 text-[10px] font-black uppercase tracking-widest text-white bg-white/5 hover:bg-white/10 px-10 py-4 rounded-[1.5rem] border border-white/10 transition shadow-2xl"
+                      >
+                        <Plus className="w-5 h-5" />
+                        <span>Add Packets</span>
+                        <input id="bulk-add-file" type="file" accept="video/*" multiple onChange={handleFileChange} className="hidden" />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={addBulkLinkRow}
+                        className="flex items-center space-x-4 text-[10px] font-black uppercase tracking-widest text-white bg-white/5 hover:bg-white/10 px-10 py-4 rounded-[1.5rem] border border-white/10 transition shadow-2xl"
+                      >
+                        <PlusCircle className="w-5 h-5" />
+                        <span>Add Link Row</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[55vh] overflow-y-auto pr-4 custom-scrollbar">
+                    {bulkItems.map((item) => (
+                      <div key={item.id} className="bg-white/[0.02] border border-white/10 rounded-[3rem] p-8 flex items-center space-x-8 group hover:bg-white/[0.04] transition-all relative overflow-hidden backdrop-blur-xl">
+                        {/* Interactive Bulk Thumbnail Overlay */}
+                        <div className="w-44 aspect-video bg-black rounded-[1.5rem] overflow-hidden relative shrink-0 shadow-2xl border border-white/5 group/item-thumb cursor-pointer">
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => handleBulkItemThumbnail(item.id, e)}
+                            className="absolute inset-0 opacity-0 cursor-pointer z-[15]"
+                          />
+                          {item.thumbnailPreview ? (
+                            <img src={item.thumbnailPreview} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-900">
+                              {item.status === 'extracting' ? <Loader2 className="w-6 h-6 text-red-600 animate-spin" /> : <Camera className="w-6 h-6 text-zinc-700" />}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/item-thumb:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                             <Camera className="w-6 h-6 text-white" />
+                          </div>
+                          {item.status === 'success' && (
+                            <div className="absolute inset-0 bg-green-500/90 flex items-center justify-center backdrop-blur-md">
+                              <CheckCircle2 className="w-10 h-10 text-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-4">
+                          <input 
+                            type="text" 
+                            placeholder="TITLE"
+                            value={item.title}
+                            onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, title: e.target.value } : i))}
+                            className="w-full bg-transparent border-none text-[11px] font-black text-white uppercase tracking-[0.2em] outline-none focus:text-red-500 transition-colors truncate"
+                          />
+                          
+                          {bulkType === 'link' && (
+                            <input 
+                              type="url" 
+                              placeholder="SIGNAL_URL"
+                              value={item.url}
+                              onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, url: e.target.value } : i))}
+                              className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3 text-[10px] font-mono text-gray-500 focus:text-red-600 focus:border-red-600/30 outline-none transition-all"
+                            />
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <select 
+                              value={item.genre}
+                              onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, genre: e.target.value } : i))}
+                              className="bg-black/60 border border-white/10 text-[9px] font-black uppercase text-gray-500 rounded-xl px-4 py-2 outline-none hover:text-white transition-colors"
+                            >
+                              {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                            {bulkType === 'file' && <span className="text-[9px] font-bold text-gray-700 uppercase tracking-widest">{(item.file.size / (1024 * 1024)).toFixed(1)}MB</span>}
+                          </div>
+                          
+                          {item.status === 'uploading' && (
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div className="h-full bg-red-600 transition-all duration-300 shadow-[0_0_15px_rgba(229,9,20,0.4)]" style={{ width: `${item.progress}%` }} />
+                            </div>
+                          )}
+                        </div>
+
+                        <button 
+                          onClick={() => setBulkItems(prev => prev.filter(i => i.id !== item.id))}
+                          className="absolute top-6 right-6 p-2 text-gray-800 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-6 h-6" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-16 border-t border-white/5 flex flex-col space-y-10">
+                    {isUploading && (
+                      <div className="w-full space-y-5 animate-in fade-in slide-in-from-bottom-4">
+                        <div className="flex justify-between items-end px-2">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-[0.8em] text-red-600">Batch Signal Active</span>
+                            <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Syncing remote clusters...</p>
+                          </div>
+                          <span className="text-5xl font-black italic text-white tracking-tighter">{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full h-3 bg-white/[0.03] rounded-full overflow-hidden border border-white/5">
+                          <div className="h-full bg-gradient-to-r from-red-800 to-red-600 transition-all duration-700" style={{ width: `${uploadProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={handleBulkUpload}
+                      disabled={isUploading || bulkItems.length === 0}
+                      className="w-full relative overflow-hidden group/btn bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-8 rounded-[3rem] text-xs font-black uppercase tracking-[0.8em] transition-all shadow-[0_50px_100px_rgba(229,9,20,0.4)] active:scale-95"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] pointer-events-none" />
+                      {isUploading ? (
+                        <div className="flex items-center justify-center space-x-5">
+                          <Loader2 className="w-8 h-8 animate-spin" />
+                          <span>SYNCHRONIZING_BATCH...</span>
+                        </div>
+                      ) : (
+                        <span>Initialize Batch Deployment</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              {/* API Status Banner */}
+              <div className="bg-gradient-to-r from-red-950/40 via-purple-950/20 to-black p-6 rounded-3xl border border-red-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-red-600/20 text-red-500 rounded-2xl border border-red-500/30">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                      <h3 className="text-white font-black text-sm uppercase tracking-wider">Watchmode Movie Database API Active</h3>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Direct access to 150,000+ movie titles, streaming sources, and metadata.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="bg-black/50 px-4 py-2 rounded-2xl border border-white/10 text-right">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Live Quota Remaining</div>
+                    <div className="text-sm font-black text-green-400">
+                      {wmStatus ? `${wmStatus.quotaRemaining} / ${wmStatus.quota} calls` : '2,500 calls'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSyncBlockbusters}
+                    disabled={wmIsSyncingBlockbusters}
+                    className="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg active:scale-95 disabled:opacity-50"
+                  >
+                    {wmIsSyncingBlockbusters ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Syncing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Instant Sync 5 Blockbusters</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {wmImportSuccess && (
+                <div className="bg-green-600/10 border border-green-600/30 p-4 rounded-2xl text-green-400 text-xs font-bold flex items-center space-x-3">
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span>{wmImportSuccess}</span>
+                </div>
+              )}
+
+              {/* Search Bar & Quick Chips */}
+              <div className="space-y-3">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleWmSearch();
+                  }}
+                  className="flex gap-3"
+                >
+                  <div className="relative flex-1">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <input
+                      type="text"
+                      value={wmSearchQuery}
+                      onChange={(e) => setWmSearchQuery(e.target.value)}
+                      placeholder="Search movie title in Watchmode database (e.g. Inception, Dune, Oppenheimer, Spider-Man)..."
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-red-600/50 text-sm font-bold placeholder:text-gray-600"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={wmIsSearching}
+                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition flex items-center space-x-2"
+                  >
+                    {wmIsSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    <span>Search</span>
+                  </button>
+                </form>
+
+                {/* Popular Search Suggestions */}
+                <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs text-gray-400">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 shrink-0">Quick Picks:</span>
+                  {['Inception', 'Interstellar', 'The Dark Knight', 'Dune', 'Oppenheimer', 'Avatar', 'Gladiator', 'Fight Club'].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => {
+                        setWmSearchQuery(q);
+                        handleWmSearch(q);
+                      }}
+                      className="shrink-0 bg-white/5 hover:bg-white/10 hover:text-white px-3 py-1 rounded-full text-xs font-medium border border-white/5 transition"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Main Content Area: Results List on Left, Preview & Import on Right */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Results Column */}
+                <div className="lg:col-span-5 space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Results {wmSearchResults.length > 0 && `(${wmSearchResults.length})`}
+                  </h4>
+
+                  {wmIsSearching && (
+                    <div className="py-12 flex flex-col items-center justify-center text-gray-500 space-y-3">
+                      <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+                      <span className="text-xs uppercase font-bold tracking-widest">Querying Watchmode Database...</span>
+                    </div>
+                  )}
+
+                  {!wmIsSearching && wmSearchResults.length === 0 && (
+                    <div className="p-8 text-center bg-white/[0.02] border border-white/5 rounded-2xl text-gray-500 text-xs">
+                      Enter a movie name or click one of the quick picks to search the 150,000+ title database.
+                    </div>
+                  )}
+
+                  {!wmIsSearching && wmSearchResults.map((res) => {
+                    const isSelected = wmSelectedMovie?.watchmodeId === res.id;
+                    return (
+                      <div
+                        key={res.id}
+                        onClick={() => handleSelectWmMovie(res.id)}
+                        className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between group ${isSelected ? 'bg-red-600/15 border-red-500/50 shadow-lg' : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'}`}
+                      >
+                        <div className="pr-2">
+                          <h5 className="font-bold text-white text-sm group-hover:text-red-400 transition">{res.name}</h5>
+                          <div className="flex items-center space-x-2 mt-1 text-[10px] text-gray-400">
+                            {res.year && <span>{res.year}</span>}
+                            <span>•</span>
+                            <span className="uppercase text-gray-500">{res.type}</span>
+                            {res.imdb_id && (
+                              <>
+                                <span>•</span>
+                                <span className="text-yellow-500/80 font-mono">IMDb: {res.imdb_id}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0 ${isSelected ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-400 group-hover:bg-white/10 group-hover:text-white'}`}>
+                          {isSelected ? 'Selected' : 'Inspect'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Movie Preview & Import Action Column */}
+                <div className="lg:col-span-7 bg-white/[0.02] border border-white/5 rounded-3xl p-6 relative">
+                  {wmIsLoadingDetails ? (
+                    <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4 text-gray-500">
+                      <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
+                      <span className="text-xs uppercase font-bold tracking-widest">Loading Title Metadata & Streaming Providers...</span>
+                    </div>
+                  ) : wmSelectedMovie ? (
+                    <div className="space-y-6">
+                      <div className="flex gap-6">
+                        {wmSelectedMovie.thumbnail ? (
+                          <img
+                            src={wmSelectedMovie.thumbnail}
+                            alt={wmSelectedMovie.title}
+                            className="w-28 sm:w-36 h-40 sm:h-52 object-cover rounded-2xl shadow-2xl border border-white/10 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-28 sm:w-36 h-40 sm:h-52 bg-white/5 rounded-2xl flex items-center justify-center text-gray-600 shrink-0">
+                            <Film className="w-8 h-8" />
+                          </div>
+                        )}
+
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-black uppercase">
+                              Watchmode ID: {wmSelectedMovie.watchmodeId}
+                            </span>
+                            {wmSelectedMovie.rating && (
+                              <span className="text-[10px] bg-white/10 text-gray-300 px-2 py-0.5 rounded font-bold">
+                                {wmSelectedMovie.rating}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-xl sm:text-2xl font-black text-white">{wmSelectedMovie.title}</h3>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                            <span>{wmSelectedMovie.year}</span>
+                            {wmSelectedMovie.runtimeMinutes && (
+                              <>
+                                <span>•</span>
+                                <span>{wmSelectedMovie.runtimeMinutes} min</span>
+                              </>
+                            )}
+                            {wmSelectedMovie.userRating && (
+                              <>
+                                <span>•</span>
+                                <span className="text-yellow-400 font-bold">★ {wmSelectedMovie.userRating}/10</span>
+                              </>
+                            )}
+                            {wmSelectedMovie.genres?.length > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-red-400">{wmSelectedMovie.genres.join(', ')}</span>
+                              </>
+                            )}
+                          </div>
+
+                          <p className="text-xs sm:text-sm text-gray-300 line-clamp-4 leading-relaxed mt-2">
+                            {wmSelectedMovie.description || 'No overview provided.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Streaming Providers from Watchmode */}
+                      {wmSelectedMovie.streamingSources?.length > 0 && (
+                        <div className="space-y-2 bg-black/40 p-4 rounded-2xl border border-white/5">
+                          <span className="text-[10px] uppercase font-black tracking-widest text-gray-400">
+                            Streaming Sources (From Watchmode API)
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {wmSelectedMovie.streamingSources.slice(0, 6).map((src, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center space-x-2 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg text-xs text-gray-200"
+                              >
+                                <span className="font-semibold">{src.name}</span>
+                                <span className="text-[9px] uppercase text-gray-400 bg-black/50 px-1 py-0.5 rounded">
+                                  {src.type}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stream URL configuration */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center justify-between">
+                          <span>Video Stream URL (MP4 / HLS)</span>
+                          <span className="text-[9px] text-gray-500 font-normal">Optional — defaults to cloud sample stream</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={wmCustomVideoUrl}
+                          onChange={(e) => setWmCustomVideoUrl(e.target.value)}
+                          placeholder="https://.../video.mp4 (leave empty for automatic playback stream)"
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3 outline-none focus:border-red-600 text-xs font-mono text-gray-200 placeholder:text-gray-600"
+                        />
+                      </div>
+
+                      {/* 1-Click Import Button */}
+                      <button
+                        type="button"
+                        onClick={handleImportWmMovie}
+                        disabled={wmIsImporting}
+                        className="w-full bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 disabled:opacity-50 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition shadow-[0_15px_30px_rgba(229,9,20,0.3)] active:scale-95 flex items-center justify-center space-x-3"
+                      >
+                        {wmIsImporting ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Adding to Site Database...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-5 h-5" />
+                            <span>Import "{wmSelectedMovie.title}" into Catalog</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8 text-gray-500 space-y-3">
+                      <Film className="w-12 h-12 stroke-[1.5] text-gray-600" />
+                      <p className="text-xs uppercase font-bold tracking-widest">Select a movie from the search results to inspect and import</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <style>{`
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.01);
+          border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(229, 9, 20, 0.4);
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default UploadModal;
