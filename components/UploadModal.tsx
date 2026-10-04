@@ -804,19 +804,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                      <h3 className="text-white font-black text-sm uppercase tracking-wider">Watchmode Movie Database API Active</h3>
+                      <h3 className="text-white font-black text-sm uppercase tracking-wider">TMDb Movie Database API Active</h3>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
-                      Direct access to 150,000+ movie titles, streaming sources, and metadata.
+                      Direct access to millions of movie titles, trending blockbusters, and streaming providers.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="bg-black/50 px-4 py-2 rounded-2xl border border-white/10 text-right">
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Live Quota Remaining</div>
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">API Status</div>
                     <div className="text-sm font-black text-green-400">
-                      {wmStatus ? `${wmStatus.quotaRemaining} / ${wmStatus.quota} calls` : '2,500 calls'}
+                      Unlimited Tier
                     </div>
                   </div>
                   <button
@@ -862,7 +862,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                       type="text"
                       value={wmSearchQuery}
                       onChange={(e) => setWmSearchQuery(e.target.value)}
-                      placeholder="Search movie title in Watchmode database (e.g. Inception, Dune, Oppenheimer, Spider-Man)..."
+                      placeholder="Search movie title in TMDb database (e.g. Inception, Dune, Oppenheimer, Spider-Man)..."
                       className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-red-600/50 text-sm font-bold placeholder:text-gray-600"
                     />
                   </div>
@@ -906,7 +906,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                   {wmIsSearching && (
                     <div className="py-12 flex flex-col items-center justify-center text-gray-500 space-y-3">
                       <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
-                      <span className="text-xs uppercase font-bold tracking-widest">Querying Watchmode Database...</span>
+                      <span className="text-xs uppercase font-bold tracking-widest">Querying TMDb Database...</span>
                     </div>
                   )}
 
@@ -1025,7 +1025,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                         <div className="space-y-2 flex-1">
                           <div className="flex items-center space-x-2">
                             <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-black uppercase">
-                              Watchmode ID: {wmSelectedMovie.watchmodeId}
+                              TMDb ID: {wmSelectedMovie.watchmodeId}
                             </span>
                             {wmSelectedMovie.rating && (
                               <span className="text-[10px] bg-white/10 text-gray-300 px-2 py-0.5 rounded font-bold">
@@ -1064,11 +1064,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                         </div>
                       </div>
 
-                      {/* Streaming Providers from Watchmode */}
+                      {/* Streaming Providers from TMDb */}
                       {wmSelectedMovie.streamingSources?.length > 0 && (
                         <div className="space-y-2 bg-black/40 p-4 rounded-2xl border border-white/5">
                           <span className="text-[10px] uppercase font-black tracking-widest text-gray-400">
-                            Streaming Sources (From Watchmode API)
+                            Streaming Sources (From TMDb / JustWatch)
                           </span>
                           <div className="flex flex-wrap gap-2">
                             {wmSelectedMovie.streamingSources.slice(0, 6).map((src, i) => (

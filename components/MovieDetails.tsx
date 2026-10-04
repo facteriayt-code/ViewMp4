@@ -214,11 +214,11 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
             </div>
           </div>
 
-          {/* Official Streaming Platforms (Watchmode Integration) */}
+          {/* Official Streaming Platforms (TMDb Integration) */}
           {movie.streamingSources && movie.streamingSources.length > 0 && (
             <div className="space-y-3 bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Official Streaming Availability (Watchmode)</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Official Streaming Availability (TMDb Verified)</span>
                 <span className="text-[9px] bg-red-600/20 text-red-400 px-2 py-0.5 rounded-full font-bold">API Verified</span>
               </div>
               <div className="flex flex-wrap gap-2">

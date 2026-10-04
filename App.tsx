@@ -500,7 +500,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Live Search Section: Both Local Catalog & Watchmode Database API */}
+        {/* Live Search Section: Both Local Catalog & TMDb Database API */}
         {searchTerm.trim().length > 0 ? (
           <div className="space-y-8 px-4 md:px-12 pt-2">
             {/* Search Header Banner */}
@@ -508,14 +508,14 @@ const App: React.FC = () => {
               <div>
                 <div className="flex items-center space-x-2">
                   <Database className="w-4 h-4 text-red-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">Database API Live Search</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">TMDb Database API Live Search</span>
                 </div>
                 <h2 className="text-xl font-black text-white mt-1">
                   Results for "<span className="text-red-500">{searchTerm}</span>"
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-300">
                   <span className="bg-white/10 px-2.5 py-1 rounded-full font-bold">
-                    {apiSearchResults.length} from Watchmode Database
+                    {apiSearchResults.length} from TMDb Database
                   </span>
                   <span className="bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-full font-bold">
                     {filteredMovies.length} ready in Catalog
@@ -594,16 +594,16 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* 2. Watchmode Database API Results (150,000+ Movies) */}
+            {/* 2. TMDb Database API Results */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Database className="w-4 h-4 text-amber-500" />
                   <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                    Watchmode Database API Results {apiSearchResults.length > 0 && `(${apiSearchResults.length})`}
+                    TMDb Database API Results {apiSearchResults.length > 0 && `(${apiSearchResults.length})`}
                   </h3>
                   <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-black uppercase">
-                    150k+ Titles
+                    Millions of Titles
                   </span>
                 </div>
               </div>
@@ -613,10 +613,10 @@ const App: React.FC = () => {
                   <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
                   <div>
                     <p className="text-sm font-bold text-gray-200 uppercase tracking-widest">
-                      Querying Watchmode Movie Database...
+                      Querying TMDb Movie Database...
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Searching 150,000+ global cinema archives & official streaming providers for "{searchTerm}"
+                      Searching global cinema archives & official streaming providers for "{searchTerm}"
                     </p>
                   </div>
                 </div>

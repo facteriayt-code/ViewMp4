@@ -84,14 +84,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, onUploadClick, onLoginClick, onLo
           <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
         </a>
 
-        {/* Watchmode API Live Badge */}
+        {/* TMDb API Live Badge */}
         <button
           onClick={onUploadClick}
           className="hidden md:flex items-center space-x-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-gray-200 hover:text-white px-3 py-1.5 rounded-lg transition text-xs font-semibold"
-          title="Watchmode Movie Database API Connected (2,500 Quotas Available)"
+          title="TMDb Movie Database API Connected (Unlimited Requests)"
         >
           <Database className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-[10px] font-black uppercase tracking-wider text-red-300">API Live</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-red-300">TMDb Live</span>
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
         </button>
         

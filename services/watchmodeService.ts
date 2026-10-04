@@ -1,4 +1,4 @@
-// Watchmode Cinema API Service
+// TMDb (The Movie Database) Cinema API Service
 import { Movie, StreamingSource } from '../types.ts';
 
 export interface WatchmodeSearchResult {
@@ -11,6 +11,8 @@ export interface WatchmodeSearchResult {
   imdb_id?: string;
   tmdb_id?: number;
 }
+
+export type TmdbSearchResult = WatchmodeSearchResult;
 
 export interface WatchmodeDetailsResponse {
   watchmodeId: number;
@@ -32,43 +34,48 @@ export interface WatchmodeDetailsResponse {
   streamingSources: StreamingSource[];
 }
 
+export type TmdbDetailsResponse = WatchmodeDetailsResponse;
+
 export interface WatchmodeStatus {
   connected: boolean;
-  quota: number;
+  provider?: string;
+  quota: string | number;
   quotaUsed: number;
   quotaRemaining: number;
   apiKeyPreview: string;
 }
 
+export type TmdbStatus = WatchmodeStatus;
+
 export const getWatchmodePopular = async (): Promise<WatchmodeSearchResult[]> => {
   try {
-    const res = await fetch('/api/watchmode/popular');
+    const res = await fetch('/api/tmdb/popular');
     if (!res.ok) return [];
     const data = await res.json();
     return data.success ? (data.titles || []).map((t: any) => ({
       id: t.id,
-      name: t.title,
-      title: t.title,
+      name: t.title || t.name,
+      title: t.title || t.name,
       type: t.type || 'movie',
       year: t.year,
-      imageUrl: t.poster || null,
+      imageUrl: t.poster || t.imageUrl || null,
       imdb_id: t.imdb_id,
-      tmdb_id: t.tmdb_id
+      tmdb_id: t.id
     })) : [];
   } catch (err) {
-    console.error('Watchmode popular error:', err);
+    console.error('TMDb popular error:', err);
     return [];
   }
 };
 
 export const getWatchmodeStatus = async (): Promise<WatchmodeStatus | null> => {
   try {
-    const res = await fetch('/api/watchmode/status');
+    const res = await fetch('/api/tmdb/status');
     if (!res.ok) return null;
     const data = await res.json();
     return data.success ? data : null;
   } catch (err) {
-    console.error('Watchmode status error:', err);
+    console.error('TMDb status error:', err);
     return null;
   }
 };
@@ -76,24 +83,24 @@ export const getWatchmodeStatus = async (): Promise<WatchmodeStatus | null> => {
 export const searchWatchmode = async (query: string): Promise<WatchmodeSearchResult[]> => {
   if (!query || query.trim().length === 0) return [];
   try {
-    const res = await fetch(`/api/watchmode/search?query=${encodeURIComponent(query.trim())}`);
+    const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(query.trim())}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.success ? (data.results || []) : [];
   } catch (err) {
-    console.error('Watchmode search error:', err);
+    console.error('TMDb search error:', err);
     return [];
   }
 };
 
 export const getWatchmodeDetails = async (id: number): Promise<WatchmodeDetailsResponse | null> => {
   try {
-    const res = await fetch(`/api/watchmode/details/${id}`);
+    const res = await fetch(`/api/tmdb/details/${id}`);
     if (!res.ok) return null;
     const data = await res.json();
     return data.success ? data.movie : null;
   } catch (err) {
-    console.error('Watchmode details error:', err);
+    console.error('TMDb details error:', err);
     return null;
   }
 };
@@ -103,26 +110,26 @@ export const importMovieFromWatchmode = async (
   customVideoUrl?: string
 ): Promise<Movie | null> => {
   try {
-    const res = await fetch('/api/watchmode/import', {
+    const res = await fetch('/api/tmdb/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ watchmodeId, customVideoUrl }),
+      body: JSON.stringify({ tmdbId: watchmodeId, customVideoUrl }),
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to import movie from Watchmode');
+      throw new Error(errData.error || 'Failed to import movie from TMDb');
     }
     const data = await res.json();
     return data.movie || null;
   } catch (err: any) {
-    console.error('Watchmode import error:', err);
+    console.error('TMDb import error:', err);
     throw err;
   }
 };
 
 export const syncBlockbustersFromWatchmode = async (): Promise<Movie[]> => {
   try {
-    const res = await fetch('/api/watchmode/sync-blockbusters', {
+    const res = await fetch('/api/tmdb/sync-blockbusters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -130,7 +137,15 @@ export const syncBlockbustersFromWatchmode = async (): Promise<Movie[]> => {
     const data = await res.json();
     return data.movies || [];
   } catch (err) {
-    console.error('Watchmode sync blockbusters error:', err);
+    console.error('TMDb sync blockbusters error:', err);
     return [];
   }
 };
+
+// Clean aliases for TMDb
+export const searchTmdb = searchWatchmode;
+export const getTmdbDetails = getWatchmodeDetails;
+export const importMovieFromTmdb = importMovieFromWatchmode;
+export const syncBlockbustersFromTmdb = syncBlockbustersFromWatchmode;
+export const getTmdbStatus = getWatchmodeStatus;
+export const getTmdbPopular = getWatchmodePopular;
