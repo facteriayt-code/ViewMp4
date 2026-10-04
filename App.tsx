@@ -288,27 +288,27 @@ const App: React.FC = () => {
   const rows = useMemo(() => {
     return [
       { 
-        title: 'Trending Now', 
-        movies: [...filteredMovies].sort((a,b) => b.views - a.views) 
+        title: 'Trending Now (TMDb Global Picks)', 
+        movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 20) 
       },
       { 
-        title: 'New Releases & Database Uploads', 
-        movies: filteredMovies.slice(0, 15) 
+        title: 'Blockbuster Releases & TMDb Cinema Database', 
+        movies: filteredMovies.slice(0, 20) 
       },
       { 
         title: 'Sci-Fi & Cosmic Adventures', 
-        movies: filteredMovies.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune/i.test(`${m.genre} ${m.title}`)) 
+        movies: filteredMovies.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${m.genre} ${m.title}`)) 
       },
       { 
         title: 'Action & Adventure Hits', 
-        movies: filteredMovies.filter(m => /action|adventure|thriller|knight|rings|avatar/i.test(`${m.genre} ${m.title}`)) 
+        movies: filteredMovies.filter(m => /action|adventure|thriller|knight|rings|spider|deadpool|wick|gladiator|batman|avengers|fast/i.test(`${m.genre} ${m.title}`)) 
       },
       { 
-        title: 'Viral & Community Highlights', 
-        movies: filteredMovies.filter(m => /viral|onlyfans|insta|comedy/i.test(m.genre)) 
+        title: 'Top Rated Classics & Masterpieces', 
+        movies: [...filteredMovies].sort((a,b) => (b.criticScore || 80) - (a.criticScore || 80)).slice(0, 20) 
       },
       { 
-        title: 'Full Streaming Catalog', 
+        title: 'Full Streaming Library (70+ TMDb Stored Movies)', 
         movies: filteredMovies 
       }
     ];
@@ -317,7 +317,7 @@ const App: React.FC = () => {
   // Real-time Watchmode Database API search when user types in search bar
   useEffect(() => {
     const term = searchTerm.trim();
-    if (!term || term.length < 2) {
+    if (!term || term.length < 1) {
       setApiSearchResults([]);
       setIsSearchingApi(false);
       return;
@@ -329,12 +329,12 @@ const App: React.FC = () => {
         const results = await searchWatchmode(term);
         setApiSearchResults(results);
       } catch (err) {
-        console.error("Watchmode search error:", err);
+        console.error("TMDb search error:", err);
         setApiSearchResults([]);
       } finally {
         setIsSearchingApi(false);
       }
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
