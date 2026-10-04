@@ -17,7 +17,8 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
+import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, WatchmodeSearchResult } from './services/watchmodeService.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -39,6 +40,12 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
+
+  // Watchmode Database API Real-Time Search States
+  const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [importingApiId, setImportingApiId] = useState<number | null>(null);
+  const [addedMovieIds, setAddedMovieIds] = useState<Set<number>>(new Set());
 
   const selectedMovieRef = useRef<Movie | null>(null);
   const playingMovieRef = useRef<Movie | null>(null);
@@ -307,6 +314,125 @@ const App: React.FC = () => {
     ];
   }, [filteredMovies]);
 
+  // Real-time Watchmode Database API search when user types in search bar
+  useEffect(() => {
+    const term = searchTerm.trim();
+    if (!term || term.length < 2) {
+      setApiSearchResults([]);
+      setIsSearchingApi(false);
+      return;
+    }
+
+    setIsSearchingApi(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchWatchmode(term);
+        setApiSearchResults(results);
+      } catch (err) {
+        console.error("Watchmode search error:", err);
+        setApiSearchResults([]);
+      } finally {
+        setIsSearchingApi(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Handle direct streaming from an API result card
+  const handleStreamApiMovie = async (item: WatchmodeSearchResult) => {
+    const existing = movies.find(m => m.watchmodeId === item.id || m.title.toLowerCase() === item.name.toLowerCase());
+    if (existing) {
+      handlePlay(existing);
+      return;
+    }
+
+    setImportingApiId(item.id);
+    try {
+      const newMovie = await importMovieFromWatchmode(item.id);
+      if (newMovie) {
+        setMovies(prev => [newMovie, ...prev.filter(m => m.id !== newMovie.id)]);
+        setAddedMovieIds(prev => new Set(prev).add(item.id));
+        handlePlay(newMovie);
+      }
+    } catch (err) {
+      console.error("Failed to stream movie from API:", err);
+      // Fallback: create playable movie object and trigger intermission ad + stream
+      const tempMovie: Movie = {
+        id: `wm-${item.id}`,
+        title: item.name,
+        description: `Official title from Watchmode Cinema Database (${item.year || 'Featured'}).`,
+        thumbnail: item.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        genre: item.type === 'tv_series' ? 'TV Series' : 'Movie',
+        year: item.year || new Date().getFullYear(),
+        rating: 'PG-13',
+        views: 450000,
+        watchmodeId: item.id
+      };
+      handlePlay(tempMovie);
+    } finally {
+      setImportingApiId(null);
+    }
+  };
+
+  // Handle viewing full details and official streaming platforms from an API result card
+  const handleInfoApiMovie = async (item: WatchmodeSearchResult) => {
+    const existing = movies.find(m => m.watchmodeId === item.id || m.title.toLowerCase() === item.name.toLowerCase());
+    if (existing) {
+      handleSelectMovie(existing);
+      return;
+    }
+
+    setImportingApiId(item.id);
+    try {
+      const details = await getWatchmodeDetails(item.id);
+      if (details) {
+        const fullMovie: Movie = {
+          id: `wm-${details.watchmodeId}`,
+          title: details.title,
+          description: details.description || `Official title from Watchmode Cinema Database.`,
+          thumbnail: details.thumbnail || item.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+          genre: details.genre || 'Feature',
+          year: details.year || item.year || new Date().getFullYear(),
+          rating: details.rating || 'PG-13',
+          views: 620000,
+          watchmodeId: details.watchmodeId,
+          backdrop: details.backdrop,
+          trailer: details.trailer,
+          userRating: details.userRating,
+          criticScore: details.criticScore,
+          streamingSources: details.streamingSources
+        };
+        setSelectedMovie(fullMovie);
+      } else {
+        handleOpenDatabaseApiSearch(item.name);
+      }
+    } catch (err) {
+      console.error("Failed to load details for API movie:", err);
+      handleOpenDatabaseApiSearch(item.name);
+    } finally {
+      setImportingApiId(null);
+    }
+  };
+
+  // Handle 1-click Add to Catalog from an API result card
+  const handleAddApiMovie = async (item: WatchmodeSearchResult) => {
+    setImportingApiId(item.id);
+    try {
+      const newMovie = await importMovieFromWatchmode(item.id);
+      if (newMovie) {
+        setMovies(prev => [newMovie, ...prev.filter(m => m.id !== newMovie.id)]);
+        setAddedMovieIds(prev => new Set(prev).add(item.id));
+      }
+    } catch (err) {
+      console.error("Failed to import movie from API:", err);
+    } finally {
+      setImportingApiId(null);
+    }
+  };
+
   const handleOpenDatabaseApiSearch = (query?: string) => {
     if (!user) {
       setUser({
@@ -374,50 +500,272 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Dynamic Search Helper for Database API */}
-        {searchTerm.trim().length > 0 && (
-          <div className="max-w-5xl mx-auto px-4 pt-2">
-            <div className="bg-gradient-to-r from-red-950/60 via-[#181818] to-red-950/40 border border-red-500/30 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+        {/* Live Search Section: Both Local Catalog & Watchmode Database API */}
+        {searchTerm.trim().length > 0 ? (
+          <div className="space-y-8 px-4 md:px-12 pt-2">
+            {/* Search Header Banner */}
+            <div className="bg-gradient-to-r from-red-950/60 via-[#181818] to-red-950/40 border border-red-500/30 p-5 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xl">
               <div>
-                <p className="text-xs text-gray-200">
-                  {filteredMovies.length > 0 ? (
-                    <span>Found <strong className="text-white font-bold">{filteredMovies.length}</strong> catalog movie{filteredMovies.length > 1 ? 's' : ''} matching "<span className="text-red-400 font-bold">{searchTerm}</span>".</span>
-                  ) : (
-                    <span>No local catalog movies found for "<span className="text-red-400 font-bold">{searchTerm}</span>".</span>
-                  )}
-                </p>
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Want to find & stream it? Search Watchmode Database API across 150,000+ films with 1-click import.
-                </p>
+                <div className="flex items-center space-x-2">
+                  <Database className="w-4 h-4 text-red-500" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">Database API Live Search</span>
+                </div>
+                <h2 className="text-xl font-black text-white mt-1">
+                  Results for "<span className="text-red-500">{searchTerm}</span>"
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-300">
+                  <span className="bg-white/10 px-2.5 py-1 rounded-full font-bold">
+                    {apiSearchResults.length} from Watchmode Database
+                  </span>
+                  <span className="bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-full font-bold">
+                    {filteredMovies.length} ready in Catalog
+                  </span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleOpenDatabaseApiSearch(searchTerm)}
-                className="shrink-0 flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg active:scale-95"
-              >
-                <Search className="w-4 h-4" />
-                <span>Search in Database API</span>
-              </button>
+
+              <div className="flex items-center space-x-2 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handleOpenDatabaseApiSearch(searchTerm)}
+                  className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg active:scale-95"
+                >
+                  <Database className="w-4 h-4" />
+                  <span>Open in Database Studio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="p-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-2xl transition"
+                  title="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 1. Local Catalog Matches (if any) */}
+            {filteredMovies.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Film className="w-4 h-4 text-red-500" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-gray-300">
+                    Ready in Catalog ({filteredMovies.length})
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {filteredMovies.map(movie => (
+                    <div 
+                      key={movie.id}
+                      onClick={() => handleSelectMovie(movie)}
+                      className="group cursor-pointer bg-white/[0.02] border border-white/5 hover:border-red-600/50 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl relative"
+                    >
+                      <div className="aspect-[2/3] relative overflow-hidden bg-black/40">
+                        <img 
+                          src={movie.thumbnail} 
+                          alt={movie.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                        <div className="absolute top-2 left-2 flex gap-1">
+                          <span className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded">
+                            {movie.rating || 'HD'}
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlay(movie);
+                          }}
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                            <Play className="w-6 h-6 fill-white ml-0.5" />
+                          </div>
+                        </button>
+                      </div>
+                      <div className="p-3">
+                        <h4 className="font-bold text-white text-xs truncate group-hover:text-red-400 transition">{movie.title}</h4>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{movie.year} • {movie.genre}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Watchmode Database API Results (150,000+ Movies) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Database className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    Watchmode Database API Results {apiSearchResults.length > 0 && `(${apiSearchResults.length})`}
+                  </h3>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-black uppercase">
+                    150k+ Titles
+                  </span>
+                </div>
+              </div>
+
+              {isSearchingApi ? (
+                <div className="py-16 flex flex-col items-center justify-center space-y-4 bg-white/[0.02] border border-white/5 rounded-3xl text-center">
+                  <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-200 uppercase tracking-widest">
+                      Querying Watchmode Movie Database...
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Searching 150,000+ global cinema archives & official streaming providers for "{searchTerm}"
+                    </p>
+                  </div>
+                </div>
+              ) : apiSearchResults.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {apiSearchResults.map((res) => {
+                    const isImporting = importingApiId === res.id;
+                    const isAdded = addedMovieIds.has(res.id);
+
+                    return (
+                      <div 
+                        key={res.id}
+                        className="group bg-white/[0.02] border border-white/5 hover:border-red-500/40 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex flex-col justify-between"
+                      >
+                        <div className="aspect-[2/3] relative overflow-hidden bg-black/40">
+                          {res.imageUrl ? (
+                            <img 
+                              src={res.imageUrl} 
+                              alt={res.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-600 bg-white/5">
+                              <Film className="w-10 h-10 text-gray-500 mb-2" />
+                              <span className="text-[10px] uppercase font-bold text-gray-400">{res.name}</span>
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+
+                          {/* Year & Type Badges */}
+                          <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                            {res.year && (
+                              <span className="bg-black/60 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10">
+                                {res.year}
+                              </span>
+                            )}
+                            <span className="bg-red-600/80 backdrop-blur-md text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
+                              {res.type === 'tv_series' ? 'TV' : 'Movie'}
+                            </span>
+                          </div>
+
+                          {/* Quick Stream Overlay on Hover */}
+                          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 p-2">
+                            <button
+                              type="button"
+                              onClick={() => handleStreamApiMovie(res)}
+                              disabled={isImporting}
+                              className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-2xl transform active:scale-95 transition flex items-center justify-center"
+                              title="Stream Now"
+                            >
+                              {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleInfoApiMovie(res)}
+                              className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-md shadow-2xl transform active:scale-95 transition flex items-center justify-center"
+                              title="Details & Where to Watch"
+                            >
+                              <Info className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 space-y-2">
+                          <div>
+                            <h4 className="font-bold text-white text-xs truncate group-hover:text-red-400 transition" title={res.name}>
+                              {res.name}
+                            </h4>
+                            <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-gray-400">
+                              {res.year && <span>{res.year}</span>}
+                              <span>•</span>
+                              <span className="uppercase">{res.type}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStreamApiMovie(res)}
+                              disabled={isImporting}
+                              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-md active:scale-95"
+                            >
+                              {isImporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-white" />}
+                              <span>Stream</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddApiMovie(res)}
+                              disabled={isImporting || isAdded}
+                              className={`py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center ${isAdded ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'}`}
+                              title={isAdded ? "Added to catalog" : "Add to Library"}
+                            >
+                              {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : filteredMovies.length === 0 ? (
+                /* No Results Found: Friendly Helper with 1-Click Popular Picks */
+                <div className="py-12 px-6 bg-white/[0.02] border border-white/5 rounded-3xl text-center space-y-4 max-w-2xl mx-auto">
+                  <Film className="w-12 h-12 text-gray-600 mx-auto animate-pulse" />
+                  <h3 className="text-base font-bold text-gray-200">
+                    No results found for "<span className="text-red-400">{searchTerm}</span>"
+                  </h3>
+                  <p className="text-xs text-gray-400 max-w-md mx-auto">
+                    Try checking the spelling or click one of these verified blockbusters from the 150,000+ title database:
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2 pt-2">
+                    {['Avatar', 'Inception', 'Interstellar', 'The Dark Knight', 'Dune', 'Oppenheimer', 'Titanic', 'Deadpool', 'Gladiator', 'Spider-Man'].map((pop) => (
+                      <button
+                        key={pop}
+                        type="button"
+                        onClick={() => setSearchTerm(pop)}
+                        className="bg-white/5 hover:bg-red-600/20 hover:text-red-400 border border-white/10 hover:border-red-500/40 text-gray-300 px-3.5 py-1.5 rounded-full text-xs font-semibold transition shadow-sm active:scale-95"
+                      >
+                        {pop}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
+        ) : (
+          /* Normal Homepage Feed */
+          <div className="space-y-4">
+            {rows.map((row, idx) => (
+              row.movies.length > 0 && (
+                <React.Fragment key={row.title}>
+                  <MovieRow 
+                    title={row.title} 
+                    movies={row.movies} 
+                    onMovieClick={handleSelectMovie} 
+                    onPlay={handlePlay} 
+                  />
+                  {idx === 0 && <AdBanner />}
+                  {idx === 2 && <NativeAd />}
+                </React.Fragment>
+              )
+            ))}
+          </div>
         )}
-
-        <div className="space-y-4">
-          {rows.map((row, idx) => (
-            row.movies.length > 0 && (
-              <React.Fragment key={row.title}>
-                <MovieRow 
-                  title={row.title} 
-                  movies={row.movies} 
-                  onMovieClick={handleSelectMovie} 
-                  onPlay={handlePlay} 
-                />
-                {idx === 0 && <AdBanner />}
-                {idx === 2 && <NativeAd />}
-              </React.Fragment>
-            )
-          ))}
-        </div>
       </div>
 
       {movieToUnlock && (

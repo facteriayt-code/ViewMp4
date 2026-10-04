@@ -15,7 +15,7 @@ import {
 } from '../services/watchmodeService.ts';
 
 interface UploadModalProps {
-  user: User;
+  user?: User | null;
   onClose: () => void;
   onUpload: (newMovie: Movie) => void;
   movieToEdit?: Movie | null;
@@ -46,7 +46,15 @@ interface BulkItem {
   progress: number;
 }
 
+const DEFAULT_GUEST_USER: User = {
+  id: 'guest',
+  name: 'Guest Explorer',
+  email: 'guest@geministream.pro',
+  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+};
+
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit, initialMode, initialQuery }) => {
+  const activeUser = user || DEFAULT_GUEST_USER;
   const isEditMode = !!movieToEdit;
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'watchmode'>(
     isEditMode ? 'single' : (initialMode || 'single')
@@ -96,6 +104,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       handleWmSearch('Inception');
     }
   }, []);
+
+  // When switching to watchmode tab, auto-load titles if empty
+  useEffect(() => {
+    if (uploadMode === 'watchmode' && wmSearchResults.length === 0 && !wmIsSearching) {
+      const q = wmSearchQuery.trim() || initialQuery?.trim() || 'Inception';
+      handleWmSearch(q);
+    }
+  }, [uploadMode]);
 
   // Debounce search as user types
   useEffect(() => {
@@ -329,8 +345,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
             title: item.title || (item.url ? 'Remote Link' : 'File Broadcast'),
             description: item.url ? `Bulk link deployment. Source: ${item.url}` : `Bulk file deployment. Filename: ${item.file?.name}`,
             genre: item.genre,
-            uploaderId: user.id,
-            uploaderName: user.name,
+            uploaderId: activeUser.id,
+            uploaderName: activeUser.name,
             videoUrl: item.url || undefined,
             year: new Date().getFullYear(),
             rating: 'NR'
@@ -371,8 +387,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           title,
           description,
           genre,
-          uploaderId: user.id,
-          uploaderName: user.name,
+          uploaderId: activeUser.id,
+          uploaderName: activeUser.name,
           videoUrl: uploadType === 'link' ? videoUrl : undefined,
           thumbnail: thumbnailUrl, 
           year: movieToEdit?.year || new Date().getFullYear(),
@@ -405,7 +421,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
               <h2 className="text-2xl md:text-5xl font-black text-white uppercase italic tracking-tighter leading-none">
                 {isEditMode ? 'Modify Signal' : 'Deployment'}
               </h2>
-              <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.6em] mt-3">Auth Code: {user.name.toUpperCase()}</p>
+              <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.6em] mt-3">Auth Code: {activeUser.name.toUpperCase()}</p>
             </div>
           </div>
 
@@ -895,8 +911,28 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                   )}
 
                   {!wmIsSearching && wmSearchResults.length === 0 && (
-                    <div className="p-8 text-center bg-white/[0.02] border border-white/5 rounded-2xl text-gray-500 text-xs">
-                      Enter a movie name or click one of the quick picks to search the 150,000+ title database.
+                    <div className="p-8 text-center bg-white/[0.02] border border-white/5 rounded-2xl text-gray-400 text-xs space-y-3">
+                      <p className="font-semibold text-gray-300">
+                        {wmSearchQuery ? `No titles found for "${wmSearchQuery}".` : 'Enter a movie name to search the 150,000+ title database.'}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        Check the title spelling or tap one of these popular movies to instantly test the API:
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-1.5 pt-2">
+                        {['Avatar', 'Inception', 'Interstellar', 'The Dark Knight', 'Dune', 'Oppenheimer'].map(pop => (
+                          <button
+                            key={pop}
+                            type="button"
+                            onClick={() => {
+                              setWmSearchQuery(pop);
+                              handleWmSearch(pop);
+                            }}
+                            className="bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 px-2.5 py-1 rounded-full text-[11px] font-bold transition"
+                          >
+                            {pop}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 

@@ -546,59 +546,82 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   });
 
-  // Watchmode Live Movie Search (using autocomplete-search with rich posters & relevance)
+  // Watchmode Live Movie Search (parallel autocomplete + standard search for 100% accuracy)
   apiRouter.get("/watchmode/search", async (req, res) => {
     try {
-      const query = req.query.query as string;
-      if (!query || query.trim().length === 0) {
+      const query = (req.query.query as string || "").trim();
+      if (!query) {
         return res.status(400).json({ success: false, error: "Search query is required" });
       }
 
-      let results: any[] = [];
+      // Parallel search: both autocomplete (has rich TMDb posters) and standard title search (exact phrase match)
+      const [autoSettled, stdSettled] = await Promise.allSettled([
+        fetch(`${WATCHMODE_BASE_URL}/autocomplete-search/?apiKey=${WATCHMODE_API_KEY}&search_value=${encodeURIComponent(query)}&search_type=1`),
+        fetch(`${WATCHMODE_BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}`)
+      ]);
 
-      // 1. Primary: autocomplete-search (returns direct TMDb poster image_url, relevance score, year)
-      try {
-        const autoResp = await fetch(`${WATCHMODE_BASE_URL}/autocomplete-search/?apiKey=${WATCHMODE_API_KEY}&search_value=${encodeURIComponent(query.trim())}&search_type=1`);
-        if (autoResp.ok) {
-          const autoData: any = await autoResp.json();
-          if (Array.isArray(autoData.results) && autoData.results.length > 0) {
-            results = autoData.results.map((item: any) => ({
-              id: item.id,
-              name: item.name,
-              title: item.name,
-              type: item.type || 'movie',
-              year: item.year,
-              imageUrl: item.image_url,
-              imdb_id: item.imdb_id,
-              tmdb_id: item.tmdb_id
-            }));
-          }
-        }
-      } catch (autoErr) {
-        console.warn("Autocomplete search failed, falling back to standard search:", autoErr);
-      }
+      const resultMap = new Map<number, any>();
 
-      // 2. Secondary fallback: standard search/?search_field=name
-      if (results.length === 0) {
+      // 1. Process Autocomplete Results (prioritize high relevance & posters)
+      if (autoSettled.status === 'fulfilled' && autoSettled.value.ok) {
         try {
-          const resp = await fetch(`${WATCHMODE_BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query.trim())}`);
-          if (resp.ok) {
-            const data: any = await resp.json();
-            results = (data.title_results || []).map((item: any) => ({
-              id: item.id,
-              name: item.name,
-              title: item.name,
-              type: item.type || 'movie',
-              year: item.year,
-              imageUrl: null,
-              imdb_id: item.imdb_id,
-              tmdb_id: item.tmdb_id
-            }));
+          const autoData: any = await autoSettled.value.json();
+          if (Array.isArray(autoData.results)) {
+            for (const item of autoData.results) {
+              if (item && item.id && (item.result_type === 'title' || (item.type && !['person', 'Visual effects', 'crew', 'cast'].includes(item.type)))) {
+                resultMap.set(item.id, {
+                  id: item.id,
+                  name: item.name || item.title,
+                  title: item.name || item.title,
+                  type: item.type || 'movie',
+                  year: item.year,
+                  imageUrl: item.image_url || null,
+                  imdb_id: item.imdb_id,
+                  tmdb_id: item.tmdb_id,
+                  relevance: item.relevance || 100
+                });
+              }
+            }
           }
-        } catch (stdErr) {
-          console.warn("Standard search failed:", stdErr);
+        } catch (e) {
+          console.warn("Error parsing autocomplete response:", e);
         }
       }
+
+      // 2. Process Standard Search Results (adds exact title matches)
+      if (stdSettled.status === 'fulfilled' && stdSettled.value.ok) {
+        try {
+          const stdData: any = await stdSettled.value.json();
+          const titles = Array.isArray(stdData.title_results) ? stdData.title_results : [];
+          for (const item of titles) {
+            if (item && item.id) {
+              if (resultMap.has(item.id)) {
+                const existing = resultMap.get(item.id);
+                // Enrich existing with any missing info
+                if (!existing.year && item.year) existing.year = item.year;
+                if (!existing.imdb_id && item.imdb_id) existing.imdb_id = item.imdb_id;
+                if (!existing.tmdb_id && item.tmdb_id) existing.tmdb_id = item.tmdb_id;
+              } else {
+                resultMap.set(item.id, {
+                  id: item.id,
+                  name: item.name || item.title,
+                  title: item.name || item.title,
+                  type: item.type || 'movie',
+                  year: item.year,
+                  imageUrl: item.image_url || (item.tmdb_id ? `https://image.tmdb.org/t/p/w185/` : null),
+                  imdb_id: item.imdb_id,
+                  tmdb_id: item.tmdb_id,
+                  relevance: 50
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Error parsing standard search response:", e);
+        }
+      }
+
+      const results = Array.from(resultMap.values()).slice(0, 30);
 
       res.json({
         success: true,

@@ -40,6 +40,27 @@ export interface WatchmodeStatus {
   apiKeyPreview: string;
 }
 
+export const getWatchmodePopular = async (): Promise<WatchmodeSearchResult[]> => {
+  try {
+    const res = await fetch('/api/watchmode/popular');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.success ? (data.titles || []).map((t: any) => ({
+      id: t.id,
+      name: t.title,
+      title: t.title,
+      type: t.type || 'movie',
+      year: t.year,
+      imageUrl: t.poster || null,
+      imdb_id: t.imdb_id,
+      tmdb_id: t.tmdb_id
+    })) : [];
+  } catch (err) {
+    console.error('Watchmode popular error:', err);
+    return [];
+  }
+};
+
 export const getWatchmodeStatus = async (): Promise<WatchmodeStatus | null> => {
   try {
     const res = await fetch('/api/watchmode/status');
