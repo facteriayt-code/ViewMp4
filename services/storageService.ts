@@ -157,11 +157,46 @@ export const incrementMovieView = async (movieId: string) => {
 };
 
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
-  const { data, error } = await supabase
-    .from('movies')
-    .select('*')
-    .order('created_at', { ascending: false });
-  return (data || []).map(mapDbToMovie);
+  try {
+    const res = await fetch('/api/movies');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.movies) && data.movies.length > 0) {
+        return data.movies.map((item: any) => ({
+          id: item.id || `m_${Math.random().toString(36).substring(2, 9)}`,
+          title: item.title,
+          description: item.description,
+          thumbnail: item.thumbnail,
+          videoUrl: item.video_url || item.videoUrl,
+          genre: item.genre || 'Action',
+          year: item.year || new Date().getFullYear(),
+          rating: item.rating || 'PG-13',
+          views: Number(item.views) || 0,
+          isUserUploaded: item.is_user_uploaded ?? item.isUserUploaded ?? true,
+          uploaderId: item.uploader_id || item.uploaderId,
+          uploaderName: item.uploader_name || item.uploaderName,
+          watchmodeId: item.watchmode_id || item.watchmodeId,
+          backdrop: item.backdrop,
+          trailer: item.trailer,
+          userRating: item.user_rating || item.userRating,
+          criticScore: item.critic_score || item.criticScore,
+          streamingSources: item.streaming_sources || item.streamingSources
+        }));
+      }
+    }
+  } catch (err) {
+    console.warn("API movies fetch fallback to Supabase:", err);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return (data || []).map(mapDbToMovie);
+  } catch (supErr) {
+    return [];
+  }
 };
 
 const mapDbToMovie = (item: any): Movie => ({

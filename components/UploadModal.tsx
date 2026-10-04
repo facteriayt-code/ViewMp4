@@ -19,6 +19,8 @@ interface UploadModalProps {
   onClose: () => void;
   onUpload: (newMovie: Movie) => void;
   movieToEdit?: Movie | null;
+  initialMode?: 'single' | 'bulk' | 'watchmode';
+  initialQuery?: string;
 }
 
 const CATEGORY_OPTIONS = [
@@ -44,9 +46,11 @@ interface BulkItem {
   progress: number;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movieToEdit, initialMode, initialQuery }) => {
   const isEditMode = !!movieToEdit;
-  const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'watchmode'>(isEditMode ? 'single' : 'single');
+  const [uploadMode, setUploadMode] = useState<'single' | 'bulk' | 'watchmode'>(
+    isEditMode ? 'single' : (initialMode || 'single')
+  );
   const [bulkType, setBulkType] = useState<'file' | 'link'>('file');
   const [uploadType, setUploadType] = useState<'file' | 'link'>(movieToEdit?.videoUrl?.includes('supabase.co') ? 'file' : 'link');
   
@@ -69,7 +73,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
 
   // Watchmode API States
   const [wmStatus, setWmStatus] = useState<WatchmodeStatus | null>(null);
-  const [wmSearchQuery, setWmSearchQuery] = useState('');
+  const [wmSearchQuery, setWmSearchQuery] = useState(initialQuery || '');
   const [wmSearchResults, setWmSearchResults] = useState<WatchmodeSearchResult[]>([]);
   const [wmIsSearching, setWmIsSearching] = useState(false);
   const [wmSelectedMovie, setWmSelectedMovie] = useState<WatchmodeDetailsResponse | null>(null);
@@ -79,11 +83,30 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [wmImportSuccess, setWmImportSuccess] = useState<string | null>(null);
   const [wmIsSyncingBlockbusters, setWmIsSyncingBlockbusters] = useState(false);
 
+  const previewColumnRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     getWatchmodeStatus().then(status => {
       if (status) setWmStatus(status);
     });
+
+    if (initialQuery && initialQuery.trim()) {
+      handleWmSearch(initialQuery);
+    } else if (initialMode === 'watchmode') {
+      handleWmSearch('Inception');
+    }
   }, []);
+
+  // Debounce search as user types
+  useEffect(() => {
+    if (!wmSearchQuery || !wmSearchQuery.trim()) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      handleWmSearch(wmSearchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [wmSearchQuery]);
 
   const handleWmSearch = async (term?: string) => {
     const q = term !== undefined ? term : wmSearchQuery;
@@ -95,7 +118,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       const results = await searchWatchmode(q);
       setWmSearchResults(results);
       if (results.length > 0) {
-        handleSelectWmMovie(results[0].id);
+        handleSelectWmMovie(results[0].id, false);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to search Watchmode API');
@@ -104,17 +127,38 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
-  const handleSelectWmMovie = async (id: number) => {
+  const handleSelectWmMovie = async (id: number, autoScroll = true) => {
     setWmIsLoadingDetails(true);
     setWmSelectedMovie(null);
     setWmImportSuccess(null);
     try {
       const details = await getWatchmodeDetails(id);
       setWmSelectedMovie(details);
+      if (autoScroll && previewColumnRef.current) {
+        previewColumnRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     } catch (err: any) {
       console.error(err);
     } finally {
       setWmIsLoadingDetails(false);
+    }
+  };
+
+  const handleDirectImportFromCard = async (id: number, movieName: string) => {
+    setWmIsImporting(true);
+    setError(null);
+    setWmImportSuccess(null);
+    try {
+      const movie = await importMovieFromWatchmode(id);
+      if (movie) {
+        onUpload(movie);
+        setWmImportSuccess(`Successfully added "${movie.title}" to site catalog!`);
+        getWatchmodeStatus().then(s => s && setWmStatus(s));
+      }
+    } catch (err: any) {
+      setError(err.message || `Failed to add "${movieName}"`);
+    } finally {
+      setWmIsImporting(false);
     }
   };
 
@@ -861,25 +905,59 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     return (
                       <div
                         key={res.id}
-                        onClick={() => handleSelectWmMovie(res.id)}
-                        className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between group ${isSelected ? 'bg-red-600/15 border-red-500/50 shadow-lg' : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'}`}
+                        className={`p-3 sm:p-4 rounded-2xl border transition flex items-center justify-between gap-3 group ${isSelected ? 'bg-red-600/15 border-red-500/50 shadow-lg' : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'}`}
                       >
-                        <div className="pr-2">
-                          <h5 className="font-bold text-white text-sm group-hover:text-red-400 transition">{res.name}</h5>
-                          <div className="flex items-center space-x-2 mt-1 text-[10px] text-gray-400">
-                            {res.year && <span>{res.year}</span>}
-                            <span>•</span>
-                            <span className="uppercase text-gray-500">{res.type}</span>
-                            {res.imdb_id && (
-                              <>
-                                <span>•</span>
-                                <span className="text-yellow-500/80 font-mono">IMDb: {res.imdb_id}</span>
-                              </>
-                            )}
+                        <div 
+                          onClick={() => handleSelectWmMovie(res.id)}
+                          className="flex items-center space-x-3 overflow-hidden cursor-pointer flex-1"
+                        >
+                          {res.imageUrl ? (
+                            <img 
+                              src={res.imageUrl} 
+                              alt={res.name} 
+                              className="w-12 h-16 object-cover rounded-xl shrink-0 shadow-md border border-white/10" 
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-12 h-16 bg-white/5 rounded-xl shrink-0 flex items-center justify-center text-gray-500 border border-white/5">
+                              <Film className="w-5 h-5 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="truncate pr-1">
+                            <h5 className="font-bold text-white text-sm group-hover:text-red-400 transition truncate">{res.name}</h5>
+                            <div className="flex items-center space-x-2 mt-1 text-[10px] text-gray-400">
+                              {res.year && <span className="font-semibold text-gray-300">{res.year}</span>}
+                              <span>•</span>
+                              <span className="uppercase text-gray-500">{res.type}</span>
+                              {res.imdb_id && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-yellow-500/80 font-mono">IMDb</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0 ${isSelected ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-400 group-hover:bg-white/10 group-hover:text-white'}`}>
-                          {isSelected ? 'Selected' : 'Inspect'}
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectWmMovie(res.id)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${isSelected ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                          >
+                            {isSelected ? 'Viewing' : 'Inspect'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDirectImportFromCard(res.id, res.name)}
+                            disabled={wmIsImporting}
+                            className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center space-x-1 shadow-md active:scale-95"
+                            title="1-Click Add to Site Catalog"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Add</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -887,7 +965,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                 </div>
 
                 {/* Movie Preview & Import Action Column */}
-                <div className="lg:col-span-7 bg-white/[0.02] border border-white/5 rounded-3xl p-6 relative">
+                <div ref={previewColumnRef} className="lg:col-span-7 bg-white/[0.02] border border-white/5 rounded-3xl p-6 relative">
                   {wmIsLoadingDetails ? (
                     <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4 text-gray-500">
                       <Loader2 className="w-10 h-10 text-red-600 animate-spin" />

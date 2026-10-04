@@ -17,7 +17,7 @@ import { Movie, User } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2, X } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles } from 'lucide-react';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -30,6 +30,8 @@ const App: React.FC = () => {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalInitialMode, setUploadModalInitialMode] = useState<'single' | 'bulk' | 'watchmode'>('single');
+  const [uploadModalInitialQuery, setUploadModalInitialQuery] = useState<string | undefined>(undefined);
   const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); 
@@ -277,20 +279,48 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
-    const userUploadsOnly = filteredMovies.filter(m => m.isUserUploaded === true);
-    
     return [
       { 
         title: 'Trending Now', 
-        movies: [...userUploadsOnly].sort((a,b) => b.views - a.views) 
+        movies: [...filteredMovies].sort((a,b) => b.views - a.views) 
       },
-      { title: 'New Community Uploads', movies: userUploadsOnly.slice(0, 10) },
-      { title: 'onlyfans Content', movies: filteredMovies.filter(m => m.genre === 'onlyfans') },
-      { title: 'Insta post', movies: filteredMovies.filter(m => m.genre === 'Insta post') },
-      { title: 'Viral Highlights', movies: filteredMovies.filter(m => m.genre === 'Viral') },
-      { title: 'Premium Movies', movies: filteredMovies.filter(m => !m.isUserUploaded) }
+      { 
+        title: 'New Releases & Database Uploads', 
+        movies: filteredMovies.slice(0, 15) 
+      },
+      { 
+        title: 'Sci-Fi & Cosmic Adventures', 
+        movies: filteredMovies.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune/i.test(`${m.genre} ${m.title}`)) 
+      },
+      { 
+        title: 'Action & Adventure Hits', 
+        movies: filteredMovies.filter(m => /action|adventure|thriller|knight|rings|avatar/i.test(`${m.genre} ${m.title}`)) 
+      },
+      { 
+        title: 'Viral & Community Highlights', 
+        movies: filteredMovies.filter(m => /viral|onlyfans|insta|comedy/i.test(m.genre)) 
+      },
+      { 
+        title: 'Full Streaming Catalog', 
+        movies: filteredMovies 
+      }
     ];
   }, [filteredMovies]);
+
+  const handleOpenDatabaseApiSearch = (query?: string) => {
+    if (!user) {
+      setUser({
+        id: `guest-${Date.now()}`,
+        name: 'Guest Explorer',
+        email: 'guest@geministream.pro',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+      });
+    }
+    setUploadModalInitialMode('watchmode');
+    setUploadModalInitialQuery(query || searchTerm);
+    setEditingMovie(null);
+    setShowUploadModal(true);
+  };
 
   return (
     <div className="min-h-screen pb-20 overflow-x-hidden">
@@ -302,12 +332,19 @@ const App: React.FC = () => {
       <Navbar 
         user={user} 
         onUploadClick={() => {
-          if (!user) setShowLoginModal(true);
-          else {
-            setEditingMovie(null);
-            setShowUploadModal(true);
-            pushState({ action: 'upload' });
+          if (!user) {
+            setUser({
+              id: `guest-${Date.now()}`,
+              name: 'Guest Explorer',
+              email: 'guest@geministream.pro',
+              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150'
+            });
           }
+          setUploadModalInitialMode('watchmode');
+          setUploadModalInitialQuery(searchTerm || '');
+          setEditingMovie(null);
+          setShowUploadModal(true);
+          pushState({ action: 'upload' });
         }} 
         onLoginClick={() => setShowLoginModal(true)} 
         onLogout={handleLogout}
@@ -337,18 +374,48 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* Dynamic Search Helper for Database API */}
+        {searchTerm.trim().length > 0 && (
+          <div className="max-w-5xl mx-auto px-4 pt-2">
+            <div className="bg-gradient-to-r from-red-950/60 via-[#181818] to-red-950/40 border border-red-500/30 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+              <div>
+                <p className="text-xs text-gray-200">
+                  {filteredMovies.length > 0 ? (
+                    <span>Found <strong className="text-white font-bold">{filteredMovies.length}</strong> catalog movie{filteredMovies.length > 1 ? 's' : ''} matching "<span className="text-red-400 font-bold">{searchTerm}</span>".</span>
+                  ) : (
+                    <span>No local catalog movies found for "<span className="text-red-400 font-bold">{searchTerm}</span>".</span>
+                  )}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Want to find & stream it? Search Watchmode Database API across 150,000+ films with 1-click import.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenDatabaseApiSearch(searchTerm)}
+                className="shrink-0 flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg active:scale-95"
+              >
+                <Search className="w-4 h-4" />
+                <span>Search in Database API</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {rows.map((row, idx) => (
-            <React.Fragment key={row.title}>
-              <MovieRow 
-                title={row.title} 
-                movies={row.movies} 
-                onMovieClick={handleSelectMovie} 
-                onPlay={handlePlay} 
-              />
-              {idx === 0 && <AdBanner />}
-              {idx === 2 && <NativeAd />}
-            </React.Fragment>
+            row.movies.length > 0 && (
+              <React.Fragment key={row.title}>
+                <MovieRow 
+                  title={row.title} 
+                  movies={row.movies} 
+                  onMovieClick={handleSelectMovie} 
+                  onPlay={handlePlay} 
+                />
+                {idx === 0 && <AdBanner />}
+                {idx === 2 && <NativeAd />}
+              </React.Fragment>
+            )
           ))}
         </div>
       </div>
@@ -391,8 +458,11 @@ const App: React.FC = () => {
       {showUploadModal && user && (
         <UploadModal 
           user={user} 
+          initialMode={uploadModalInitialMode}
+          initialQuery={uploadModalInitialQuery}
           onClose={() => {
             setShowUploadModal(false);
+            setUploadModalInitialQuery(undefined);
             const url = new URL(window.location.href);
             url.searchParams.delete('action');
             url.searchParams.delete('edit');
@@ -402,7 +472,7 @@ const App: React.FC = () => {
             if (editingMovie) {
               setMovies(prev => prev.map(m => m.id === newMovie.id ? newMovie : m));
             } else {
-              setMovies(prev => [newMovie, ...prev]);
+              setMovies(prev => [newMovie, ...prev.filter(m => m.id !== newMovie.id)]);
             }
           }}
           movieToEdit={editingMovie}

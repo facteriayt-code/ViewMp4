@@ -4,8 +4,10 @@ import { Movie, StreamingSource } from '../types.ts';
 export interface WatchmodeSearchResult {
   id: number;
   name: string;
+  title?: string;
   type: string;
   year?: number;
+  imageUrl?: string | null;
   imdb_id?: string;
   tmdb_id?: number;
 }

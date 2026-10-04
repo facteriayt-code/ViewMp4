@@ -546,7 +546,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   });
 
-  // Watchmode Live Movie Search
+  // Watchmode Live Movie Search (using autocomplete-search with rich posters & relevance)
   apiRouter.get("/watchmode/search", async (req, res) => {
     try {
       const query = req.query.query as string;
@@ -554,12 +554,51 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         return res.status(400).json({ success: false, error: "Search query is required" });
       }
 
-      const resp = await fetch(`${WATCHMODE_BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query.trim())}`);
-      if (!resp.ok) {
-        return res.status(resp.status).json({ success: false, error: "Search failed on Watchmode" });
+      let results: any[] = [];
+
+      // 1. Primary: autocomplete-search (returns direct TMDb poster image_url, relevance score, year)
+      try {
+        const autoResp = await fetch(`${WATCHMODE_BASE_URL}/autocomplete-search/?apiKey=${WATCHMODE_API_KEY}&search_value=${encodeURIComponent(query.trim())}&search_type=1`);
+        if (autoResp.ok) {
+          const autoData: any = await autoResp.json();
+          if (Array.isArray(autoData.results) && autoData.results.length > 0) {
+            results = autoData.results.map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              title: item.name,
+              type: item.type || 'movie',
+              year: item.year,
+              imageUrl: item.image_url,
+              imdb_id: item.imdb_id,
+              tmdb_id: item.tmdb_id
+            }));
+          }
+        }
+      } catch (autoErr) {
+        console.warn("Autocomplete search failed, falling back to standard search:", autoErr);
       }
-      const data: any = await resp.json();
-      const results = (data.title_results || []).filter((item: any) => item.type === "movie" || item.resultType === "title");
+
+      // 2. Secondary fallback: standard search/?search_field=name
+      if (results.length === 0) {
+        try {
+          const resp = await fetch(`${WATCHMODE_BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query.trim())}`);
+          if (resp.ok) {
+            const data: any = await resp.json();
+            results = (data.title_results || []).map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              title: item.name,
+              type: item.type || 'movie',
+              year: item.year,
+              imageUrl: null,
+              imdb_id: item.imdb_id,
+              tmdb_id: item.tmdb_id
+            }));
+          }
+        } catch (stdErr) {
+          console.warn("Standard search failed:", stdErr);
+        }
+      }
 
       res.json({
         success: true,
@@ -702,7 +741,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         year: Number(details.year) || new Date().getFullYear(),
         rating: details.us_rating || 'PG-13',
         views: Math.floor(Math.random() * 850000) + 120000,
-        is_user_uploaded: false,
+        is_user_uploaded: true,
         uploader_id: 'watchmode-api',
         uploader_name: 'Watchmode Cinema Network',
         watchmode_id: details.id,
@@ -763,7 +802,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         year: savedDoc.year,
         rating: savedDoc.rating,
         views: savedDoc.views,
-        isUserUploaded: false,
+        isUserUploaded: true,
         uploaderId: savedDoc.uploader_id,
         uploaderName: savedDoc.uploader_name,
         watchmodeId: savedDoc.watchmode_id,
@@ -813,7 +852,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
             year: Number(details.year) || 2020,
             rating: details.us_rating || 'PG-13',
             views: Math.floor(Math.random() * 900000) + 250000,
-            is_user_uploaded: false,
+            is_user_uploaded: true,
             uploader_id: 'watchmode-api',
             uploader_name: 'Watchmode Cinema',
             watchmode_id: details.id,
@@ -864,7 +903,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
               year: savedItem.year,
               rating: savedItem.rating,
               views: savedItem.views,
-              isUserUploaded: false,
+              isUserUploaded: true,
               uploaderId: savedItem.uploader_id,
               uploaderName: savedItem.uploader_name,
               backdrop: savedItem.backdrop,
