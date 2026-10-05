@@ -10,7 +10,7 @@ export const CODESPECTERS_API_KEY =
  * Known TMDb ID dictionary for reliable resolution of popular movies & shows
  */
 const KNOWN_TMDB_MAP: Record<string, number> = {
-  // Movies from user prompts & popular blockbusters
+  // Movies & Shows from user prompts & popular blockbusters
   'iron man': 1726,
   'titanic': 597,
   'house of the dragon': 94997,
@@ -136,7 +136,6 @@ export function getAnimeAnilistId(movie: Movie): number | null {
   }
 
   if (genreLower.includes('anime')) {
-    // If it's anime but not in the map, try TMDb id as fallback
     return getMovieTmdbId(movie);
   }
 
@@ -211,13 +210,17 @@ export interface StreamServer {
   type: 'iframe' | 'video';
   quality: string;
   description: string;
+  isHindi?: boolean;
   isFilmu?: boolean;
+  isCineSrc?: boolean;
   isTv?: boolean;
   isAnime?: boolean;
 }
 
 /**
- * Generates stream servers for a movie or TV show, including Filmu and CodeSpecters
+ * Generates stream servers for a movie or TV show.
+ * NOTE: As requested by the user, Hindi / Multi-Audio servers are prioritized FIRST.
+ * If the Hindi server is unavailable or fails, auto-fallback connects to the next server.
  */
 export function getMovieStreamServers(movie: Movie, season: number = 1, episode: number = 1): StreamServer[] {
   const tmdbId = getMovieTmdbId(movie);
@@ -227,24 +230,55 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
 
   const servers: StreamServer[] = [];
 
-  // Server 1: Filmu Cinema All-in-One Player (Requested player - handles servers, quality, subtitles)
+  // ============================================================
+  // SERVER 1: CineSrc 4K (Primary Hindi & Multi-Audio - CONNECTED FIRST)
+  // URL Pattern:
+  //   Movies: https://cinesrc.st/embed/movie/${tmdbId}
+  //   TV:     https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}
+  // ============================================================
+  const cinesrcUrl = isSeries
+    ? `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`
+    : `https://cinesrc.st/embed/movie/${tmdbId}`;
+
+  servers.push({
+    id: 'cinesrc-hindi',
+    name: 'Hindi · CineSrc 4K',
+    badge: 'Hindi 1st Priority',
+    url: cinesrcUrl,
+    type: 'iframe',
+    quality: '4K Ultra HD',
+    description: 'Primary Hindi & Multi-Audio fast stream (connected first by default)',
+    isHindi: true,
+    isCineSrc: true,
+    isTv: isSeries
+  });
+
+  // ============================================================
+  // SERVER 2: Filmu Cinema Player (Secondary Hindi / Multi-Audio Fallback)
+  // URL Pattern:
+  //   Movies: https://embed.filmu.in/movie/${tmdbId}
+  //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
+  // ============================================================
   const filmuUrl = isSeries 
     ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
     : `https://embed.filmu.in/movie/${tmdbId}`;
 
   servers.push({
-    id: 'filmu-primary',
-    name: 'Filmu Player',
-    badge: 'Multi-Server & Subs',
+    id: 'filmu-hindi',
+    name: 'Hindi · Filmu Player',
+    badge: 'Hindi/Multi-Audio',
     url: filmuUrl,
     type: 'iframe',
-    quality: '4K Ultra HD',
-    description: 'All-in-one player with internal server switcher, subtitles & quality selection',
+    quality: '4K / 1080p',
+    description: 'Secondary Hindi server with built-in multi-audio switcher & subtitles',
+    isHindi: true,
     isFilmu: true,
     isTv: isSeries
   });
 
-  // Server 2: CodeSpecters NexStream (Your Official API Key)
+  // ============================================================
+  // SERVER 3: CodeSpecters NexStream (Your Official API Key)
+  // ============================================================
   servers.push({
     id: 'codespecters-primary',
     name: 'CodeSpecters (API Key)',
@@ -252,23 +286,55 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     url: `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`,
     type: 'iframe',
     quality: '4K Ultra HD',
-    description: 'Direct stream with your official nx_ API key'
+    description: 'Direct high-speed verified stream with your official API key'
   });
 
-  // Server 3: Filmu TV & Episodes (Direct season & episode player)
+  // ============================================================
+  // SERVER 4: CineSrc TV & Episodes (Direct Season/Episode streamer)
+  // ============================================================
+  if (isSeries) {
+    servers.push({
+      id: 'cinesrc-tv',
+      name: 'CineSrc TV & Episodes',
+      badge: `S${season}:E${episode}`,
+      url: `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`,
+      type: 'iframe',
+      quality: '1080p Full HD',
+      description: `CineSrc episodic player with season & episode navigator (S${season}:E${episode})`,
+      isCineSrc: true,
+      isTv: true
+    });
+  }
+
+  // ============================================================
+  // SERVER 5: AutoEmbed Fast Mirror (Ultra-fast backup)
+  // ============================================================
   servers.push({
-    id: 'filmu-tv',
-    name: 'Filmu TV & Episodes',
-    badge: `S${season}:E${episode}`,
-    url: `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`,
+    id: 'autoembed-server',
+    name: 'AutoEmbed 4K',
+    badge: 'High Speed',
+    url: `https://player.autoembed.cc/embed/movie/${tmdbId}`,
     type: 'iframe',
-    quality: '1080p Full HD',
-    description: `Full TV episodes player with multi-audio and subtitle tracks (Season ${season}, Ep ${episode})`,
-    isFilmu: true,
-    isTv: true
+    quality: '1080p / 4K',
+    description: 'Ultra fast streaming mirror with low ad density'
   });
 
-  // Server 4: Filmu Anime Player (if anime)
+  // ============================================================
+  // SERVER 6: CodeSpecters TV Embed (Series episodes with API key)
+  // ============================================================
+  servers.push({
+    id: 'codespecters-tv',
+    name: 'NexStream TV',
+    badge: 'Direct TV',
+    url: `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`,
+    type: 'iframe',
+    quality: 'HD 1080p',
+    description: 'Multi-episode TV & series streaming via CodeSpecters'
+  });
+
+  // ============================================================
+  // SERVER 7: Filmu Anime Player (if anime)
+  // ============================================================
   if (anilistId) {
     servers.push({
       id: 'filmu-anime',
@@ -283,29 +349,9 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     });
   }
 
-  // Server 5: AutoEmbed Fast Mirror (Ultra-fast backup)
-  servers.push({
-    id: 'autoembed-server',
-    name: 'AutoEmbed 4K',
-    badge: 'High Speed',
-    url: `https://player.autoembed.cc/embed/movie/${tmdbId}`,
-    type: 'iframe',
-    quality: '1080p / 4K',
-    description: 'Ultra fast streaming mirror with low ad density'
-  });
-
-  // Server 6: CodeSpecters TV Embed (Series episodes with API key)
-  servers.push({
-    id: 'codespecters-tv',
-    name: 'NexStream TV',
-    badge: 'Direct TV',
-    url: `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`,
-    type: 'iframe',
-    quality: 'HD 1080p',
-    description: 'Multi-episode TV & series streaming via CodeSpecters'
-  });
-
-  // Server 7: Direct User Upload / MP4 (if available)
+  // ============================================================
+  // SERVER 8: Direct User Upload / MP4 (if available)
+  // ============================================================
   if (movie.videoUrl && movie.videoUrl.startsWith('http')) {
     servers.push({
       id: 'direct-video',
@@ -318,7 +364,9 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     });
   }
 
-  // Server 8: Official Trailer Embed (if available)
+  // ============================================================
+  // SERVER 9: Official Trailer Embed (if available)
+  // ============================================================
   if (movie.trailer && movie.trailer.startsWith('http')) {
     let trailerEmbed = movie.trailer;
     if (trailerEmbed.includes('youtube.com/watch?v=')) {
