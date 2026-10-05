@@ -19,9 +19,9 @@ import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
 import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
 import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, WatchmodeSearchResult } from './services/watchmodeService.ts';
-import { StreamingPlatformHub } from './components/StreamingPlatformHub.tsx';
-import { StreamingServicesQuickBar } from './components/StreamingServicesQuickBar.tsx';
+import { StreamingPlatformLogosBar } from './components/StreamingPlatformLogosBar.tsx';
 import { StreamingPlatformReplica } from './components/StreamingPlatformReplica.tsx';
+import { SearchBoxResults } from './components/SearchBoxResults.tsx';
 import { PlatformId } from './services/platformCatalog.ts';
 
 const STORAGE_KEYS = {
@@ -522,313 +522,78 @@ const App: React.FC = () => {
             onLogout={handleLogout}
             onSearch={setSearchTerm}
             onSelectPlatform={handleSelectPlatform}
+            movies={movies}
+            searchTerm={searchTerm}
+            onSelectMovie={handleSelectMovie}
+            onPlay={handlePlay}
+            apiSearchResults={apiSearchResults}
+            isSearchingApi={isSearchingApi}
           />
 
-          <Hero 
-            movie={movies[0]} 
-            onInfoClick={handleSelectMovie} 
-            onPlay={handlePlay} 
-            onSelectPlatform={handleSelectPlatform}
-          />
-
-          {/* Dedicated Streaming Services Option Bar on Homepage (Netflix, Prime Video, etc.) */}
-          <StreamingServicesQuickBar 
-            movies={movies} 
-            onSelectPlatform={handleSelectPlatform} 
-          />
-
-          <CategoryShareBar onCategoryClick={handleCategoryScroll} />
-
-          {/* Interactive Streaming Platform Hub (Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu) */}
-          <StreamingPlatformHub 
-            movies={movies} 
-            onSelectPlatform={handleSelectPlatform} 
-          />
-
-          <div className="relative z-20 space-y-4">
-        {isSyncing && (
-          <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
-             <Loader2 className="w-4 h-4 animate-spin" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
-          </div>
-        )}
-
-        {!isOnline && (
-          <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
-             <WifiOff className="w-4 h-4" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
-          </div>
-        )}
-
-        {/* Live Search Section: Both Local Catalog & TMDb Database API */}
-        {searchTerm.trim().length > 0 ? (
-          <div className="space-y-8 px-4 md:px-12 pt-2">
-            {/* Search Header Banner */}
-            <div className="bg-gradient-to-r from-red-950/60 via-[#181818] to-red-950/40 border border-red-500/30 p-5 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xl">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <Database className="w-4 h-4 text-red-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">TMDb Database API Live Search</span>
-                </div>
-                <h2 className="text-xl font-black text-white mt-1">
-                  Results for "<span className="text-red-500">{searchTerm}</span>"
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-300">
-                  <span className="bg-white/10 px-2.5 py-1 rounded-full font-bold">
-                    {apiSearchResults.length} from TMDb Database
-                  </span>
-                  <span className="bg-red-600/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-full font-bold">
-                    {filteredMovies.length} ready in Catalog
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 w-full md:w-auto">
-                <button
-                  type="button"
-                  onClick={() => handleOpenDatabaseApiSearch(searchTerm)}
-                  className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg active:scale-95"
-                >
-                  <Database className="w-4 h-4" />
-                  <span>Open in Database Studio</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="p-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-2xl transition"
-                  title="Clear search"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          {searchTerm.trim().length > 0 ? (
+            /* Search Results: Appears JUST DOWN to the search box at the top of the page! */
+            <div className="pt-24 px-4 md:px-12 min-h-screen relative z-20">
+              <SearchBoxResults
+                searchTerm={searchTerm}
+                catalogMovies={movies}
+                apiSearchResults={apiSearchResults}
+                isSearchingApi={isSearchingApi}
+                onSelectMovie={handleSelectMovie}
+                onPlay={handlePlay}
+                onClose={() => setSearchTerm("")}
+                isDropdown={false}
+              />
             </div>
+          ) : (
+            <>
+              <Hero 
+                movie={movies[0]} 
+                onInfoClick={handleSelectMovie} 
+                onPlay={handlePlay} 
+              />
 
-            {/* 1. Local Catalog Matches (if any) */}
-            {filteredMovies.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Film className="w-4 h-4 text-red-500" />
-                  <h3 className="text-sm font-black uppercase tracking-wider text-gray-300">
-                    Ready in Catalog ({filteredMovies.length})
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {filteredMovies.map(movie => (
-                    <div 
-                      key={movie.id}
-                      onClick={() => handleSelectMovie(movie)}
-                      className="group cursor-pointer bg-white/[0.02] border border-white/5 hover:border-red-600/50 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl relative"
-                    >
-                      <div className="aspect-[2/3] relative overflow-hidden bg-black/40">
-                        <img 
-                          src={movie.thumbnail} 
-                          alt={movie.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
+              {/* Single clean Streaming Platform Logos Bar (only logos, only once on homepage, no instructions) */}
+              <StreamingPlatformLogosBar onSelectPlatform={handleSelectPlatform} />
+
+              <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+
+              <div className="relative z-20 space-y-4">
+                {isSyncing && (
+                  <div className="flex items-center justify-center space-x-2 text-red-600 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-red-600/20 shadow-lg mt-8">
+                     <Loader2 className="w-4 h-4 animate-spin" />
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing Broadcasts</span>
+                  </div>
+                )}
+
+                {!isOnline && (
+                  <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
+                     <WifiOff className="w-4 h-4" />
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
+                  </div>
+                )}
+
+                {/* Normal Homepage Feed */}
+                <div className="space-y-4">
+                  {rows.map((row, idx) => (
+                    row.movies.length > 0 && (
+                      <React.Fragment key={row.title}>
+                        <MovieRow 
+                          title={row.title} 
+                          movies={row.movies} 
+                          onMovieClick={handleSelectMovie} 
+                          onPlay={handlePlay} 
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-                        <div className="absolute top-2 left-2 flex gap-1">
-                          <span className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded">
-                            {movie.rating || 'HD'}
-                          </span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlay(movie);
-                          }}
-                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                            <Play className="w-6 h-6 fill-white ml-0.5" />
-                          </div>
-                        </button>
-                      </div>
-                      <div className="p-3">
-                        <h4 className="font-bold text-white text-xs truncate group-hover:text-red-400 transition">{movie.title}</h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{movie.year} • {movie.genre}</p>
-                      </div>
-                    </div>
+                        {idx === 0 && <AdBanner />}
+                        {idx === 2 && <NativeAd />}
+                      </React.Fragment>
+                    )
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* 2. TMDb Database API Results */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Database className="w-4 h-4 text-amber-500" />
-                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                    TMDb Database API Results {apiSearchResults.length > 0 && `(${apiSearchResults.length})`}
-                  </h3>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-black uppercase">
-                    Millions of Titles
-                  </span>
-                </div>
-              </div>
-
-              {isSearchingApi ? (
-                <div className="py-16 flex flex-col items-center justify-center space-y-4 bg-white/[0.02] border border-white/5 rounded-3xl text-center">
-                  <Loader2 className="w-10 h-10 text-red-600 animate-spin" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-200 uppercase tracking-widest">
-                      Querying TMDb Movie Database...
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Searching global cinema archives & official streaming providers for "{searchTerm}"
-                    </p>
-                  </div>
-                </div>
-              ) : apiSearchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {apiSearchResults.map((res) => {
-                    const isImporting = importingApiId === res.id;
-                    const isAdded = addedMovieIds.has(res.id);
-
-                    return (
-                      <div 
-                        key={res.id}
-                        className="group bg-white/[0.02] border border-white/5 hover:border-red-500/40 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl flex flex-col justify-between"
-                      >
-                        <div className="aspect-[2/3] relative overflow-hidden bg-black/40">
-                          {res.imageUrl ? (
-                            <img 
-                              src={res.imageUrl} 
-                              alt={res.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-gray-600 bg-white/5">
-                              <Film className="w-10 h-10 text-gray-500 mb-2" />
-                              <span className="text-[10px] uppercase font-bold text-gray-400">{res.name}</span>
-                            </div>
-                          )}
-
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-
-                          {/* Year & Type Badges */}
-                          <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                            {res.year && (
-                              <span className="bg-black/60 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10">
-                                {res.year}
-                              </span>
-                            )}
-                            <span className="bg-red-600/80 backdrop-blur-md text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
-                              {res.type === 'tv_series' ? 'TV' : 'Movie'}
-                            </span>
-                          </div>
-
-                          {/* Quick Stream Overlay on Hover */}
-                          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 p-2">
-                            <button
-                              type="button"
-                              onClick={() => handleStreamApiMovie(res)}
-                              disabled={isImporting}
-                              className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-2xl transform active:scale-95 transition flex items-center justify-center"
-                              title="Stream Now"
-                            >
-                              {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleInfoApiMovie(res)}
-                              className="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full backdrop-blur-md shadow-2xl transform active:scale-95 transition flex items-center justify-center"
-                              title="Details & Where to Watch"
-                            >
-                              <Info className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="p-3 space-y-2">
-                          <div>
-                            <h4 className="font-bold text-white text-xs truncate group-hover:text-red-400 transition" title={res.name}>
-                              {res.name}
-                            </h4>
-                            <div className="flex items-center space-x-2 mt-0.5 text-[10px] text-gray-400">
-                              {res.year && <span>{res.year}</span>}
-                              <span>•</span>
-                              <span className="uppercase">{res.type}</span>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-1.5 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => handleStreamApiMovie(res)}
-                              disabled={isImporting}
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 shadow-md active:scale-95"
-                            >
-                              {isImporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-white" />}
-                              <span>Stream</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleAddApiMovie(res)}
-                              disabled={isImporting || isAdded}
-                              className={`py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center ${isAdded ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'}`}
-                              title={isAdded ? "Added to catalog" : "Add to Library"}
-                            >
-                              {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : filteredMovies.length === 0 ? (
-                /* No Results Found: Friendly Helper with 1-Click Popular Picks */
-                <div className="py-12 px-6 bg-white/[0.02] border border-white/5 rounded-3xl text-center space-y-4 max-w-2xl mx-auto">
-                  <Film className="w-12 h-12 text-gray-600 mx-auto animate-pulse" />
-                  <h3 className="text-base font-bold text-gray-200">
-                    No results found for "<span className="text-red-400">{searchTerm}</span>"
-                  </h3>
-                  <p className="text-xs text-gray-400 max-w-md mx-auto">
-                    Try checking the spelling or click one of these verified blockbusters from the 150,000+ title database:
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-2 pt-2">
-                    {['Avatar', 'Inception', 'Interstellar', 'The Dark Knight', 'Dune', 'Oppenheimer', 'Titanic', 'Deadpool', 'Gladiator', 'Spider-Man'].map((pop) => (
-                      <button
-                        key={pop}
-                        type="button"
-                        onClick={() => setSearchTerm(pop)}
-                        className="bg-white/5 hover:bg-red-600/20 hover:text-red-400 border border-white/10 hover:border-red-500/40 text-gray-300 px-3.5 py-1.5 rounded-full text-xs font-semibold transition shadow-sm active:scale-95"
-                      >
-                        {pop}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          /* Normal Homepage Feed */
-          <div className="space-y-4">
-            {rows.map((row, idx) => (
-              row.movies.length > 0 && (
-                <React.Fragment key={row.title}>
-                  <MovieRow 
-                    title={row.title} 
-                    movies={row.movies} 
-                    onMovieClick={handleSelectMovie} 
-                    onPlay={handlePlay} 
-                  />
-                  {idx === 0 && <AdBanner />}
-                  {idx === 2 && <NativeAd />}
-                </React.Fragment>
-              )
-            ))}
-          </div>
-        )}
-      </div>
-      </>
-    )}
+            </>
+          )}
+        </>
+      )}
 
       {movieToUnlock && (
         <IntermissionAd 

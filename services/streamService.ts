@@ -174,6 +174,35 @@ export function isTvOrSeries(movie: Movie): boolean {
   return false;
 }
 
+/**
+ * Filter movies by media type: 'all' | 'movie' | 'tv'
+ */
+export function matchesMediaType(movie: Movie, type: 'all' | 'movie' | 'tv'): boolean {
+  if (type === 'all') return true;
+  const isTv = isTvOrSeries(movie);
+  if (type === 'tv') return isTv;
+  if (type === 'movie') return !isTv;
+  return true;
+}
+
+/**
+ * Filter movies by category / genre name
+ */
+export function matchesCategory(movie: Movie, category: string): boolean {
+  if (!category || category === 'all' || category === 'All' || category === 'All Categories') return true;
+  const target = category.toLowerCase().trim();
+  const genre = (movie.genre || '').toLowerCase();
+  const title = (movie.title || '').toLowerCase();
+  
+  if (target === 'animation' || target === 'anime') {
+    return genre.includes('anim') || /anime|animation|manga/i.test(`${genre} ${title}`);
+  }
+  if (target === 'sci-fi' || target === 'scifi') {
+    return genre.includes('sci-fi') || genre.includes('science fiction') || /space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${genre} ${title}`);
+  }
+  return genre.includes(target) || title.includes(target);
+}
+
 export interface StreamServer {
   id: string;
   name: string;
