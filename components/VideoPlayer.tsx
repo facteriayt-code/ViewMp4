@@ -33,10 +33,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to first server in list
+  // Default to first server in list (Filmy priority)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    return list[0]?.id || 'autoembed-app';
+    return list[0]?.id || 'filmu-primary';
   });
   
   const [iframeKey, setIframeKey] = useState<number>(0);
@@ -56,7 +56,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     // If active server is still in list, keep it; otherwise switch to first
     setActiveServerId(prev => {
       const exists = list.some(s => s.id === prev);
-      return exists ? prev : (list[0]?.id || 'autoembed-app');
+      return exists ? prev : (list[0]?.id || 'filmu-primary');
     });
     
     setIframeKey(k => k + 1);
@@ -290,14 +290,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 </div>
 
                 <div className="space-y-2 text-[11px] text-gray-300 leading-relaxed">
-                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed App (player.autoembed.app):</span>
-                    Endpoint for movies and TV shows supporting TMDb/IMDb parameters.
+                  <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/30 text-red-200">
+                    <span className="font-bold block mb-0.5 text-red-300">⭐ Filmy Server (1st Priority):</span>
+                    Multi-audio stream with Hindi audio, subtitles, and instant server switcher.
                   </div>
 
-                  <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/30 text-red-200">
-                    <span className="font-bold block mb-0.5 text-red-300">⭐ Filmy Server:</span>
-                    Multi-audio stream with Hindi audio, subtitles, and server switcher.
+                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed Mirror (autoembed.co):</span>
+                    High-speed verified 4K mirror with instant playback for movies and TV episodes.
                   </div>
 
                   <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">

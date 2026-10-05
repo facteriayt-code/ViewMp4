@@ -256,60 +256,8 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
 
   const servers: StreamServer[] = [];
 
-  // ID resolution for AutoEmbed (supports IMDb 'tt' prefix or numeric TMDb ID)
-  const idParam = (movie.id && typeof movie.id === 'string' && movie.id.startsWith('tt')) 
-    ? movie.id 
-    : tmdbId;
-
   // ============================================================
-  // SERVER 1: AutoEmbed App (User Requested Server: player.autoembed.app)
-  // Endpoints:
-  //   Movies: https://player.autoembed.app/embed/movie/{id}
-  //   TV:     https://player.autoembed.app/embed/tv/{id}/{season}/{episode}
-  // Valid parameters: {id} from imdb.com (tt prefix) or themoviedb.com
-  // ============================================================
-  const autoembedAppUrl = isSeries
-    ? `https://player.autoembed.app/embed/tv/${idParam}/${season}/${episode}`
-    : `https://player.autoembed.app/embed/movie/${idParam}`;
-
-  servers.push({
-    id: 'autoembed-app',
-    name: 'AutoEmbed App',
-    badge: isSeries ? `S${season}:E${episode}` : 'AutoEmbed 4K',
-    url: autoembedAppUrl,
-    type: 'iframe',
-    quality: '1080p / 4K',
-    description: isSeries
-      ? `AutoEmbed App TV endpoint: S${season} Ep${episode} (ID: ${idParam})`
-      : `AutoEmbed App Movie endpoint (ID: ${idParam})`,
-    isAutoEmbed: true,
-    isTv: isSeries
-  });
-
-  // ============================================================
-  // SERVER 2: AutoEmbed HD (High-Reliability Mirror: autoembed.co)
-  // Endpoints:
-  //   Movies: https://autoembed.co/movie/tmdb/{id}
-  //   TV:     https://autoembed.co/tv/tmdb/{id}-{season}-{episode}
-  // ============================================================
-  const autoembedCoUrl = isSeries
-    ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
-    : `https://autoembed.co/movie/tmdb/${tmdbId}`;
-
-  servers.push({
-    id: 'autoembed-co',
-    name: 'AutoEmbed Mirror',
-    badge: 'Fast Mirror',
-    url: autoembedCoUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'High-speed verified AutoEmbed mirror with instant server switching',
-    isAutoEmbed: true,
-    isTv: isSeries
-  });
-
-  // ============================================================
-  // SERVER 3: Filmy / Filmu Player (Hindi & Multi-Audio Priority)
+  // SERVER 1: Filmy / Filmu Player (Hindi & Multi-Audio Priority)
   // URL Pattern:
   //   Movies: https://embed.filmu.in/movie/${tmdbId}
   //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
@@ -321,7 +269,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   servers.push({
     id: 'filmu-primary',
     name: 'Filmy Server',
-    badge: 'Hindi / Multi',
+    badge: 'Filmy #1',
     url: filmuUrl,
     type: 'iframe',
     quality: '4K / 1080p',
@@ -332,7 +280,31 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   });
 
   // ============================================================
-  // SERVER 4: CineSrc 4K (Secondary Fast Backup Server)
+  // SERVER 2: AutoEmbed Mirror (Verified Fast Mirror: autoembed.co)
+  // Endpoints:
+  //   Movies: https://autoembed.co/movie/tmdb/{id}
+  //   TV:     https://autoembed.co/tv/tmdb/{id}-{season}-{episode}
+  // ============================================================
+  const autoembedMirrorUrl = isSeries
+    ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
+    : `https://autoembed.co/movie/tmdb/${tmdbId}`;
+
+  servers.push({
+    id: 'autoembed-mirror',
+    name: 'AutoEmbed Mirror',
+    badge: 'AutoEmbed 4K',
+    url: autoembedMirrorUrl,
+    type: 'iframe',
+    quality: '1080p / 4K',
+    description: isSeries 
+      ? `AutoEmbed Mirror TV (Season ${season} Episode ${episode})`
+      : 'AutoEmbed fast mirror with multi-source server switcher',
+    isAutoEmbed: true,
+    isTv: isSeries
+  });
+
+  // ============================================================
+  // SERVER 3: CineSrc 4K (Secondary Fast Backup Server)
   // URL Pattern:
   //   Movies: https://cinesrc.st/embed/movie/${tmdbId}
   //   TV:     https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}
@@ -385,30 +357,19 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   }
 
   // ============================================================
-  // SERVER 5: AutoEmbed Fast Mirror (Ultra-fast backup)
+  // SERVER 5: CodeSpecters TV Embed (Series episodes with API key)
   // ============================================================
-  servers.push({
-    id: 'autoembed-server',
-    name: 'AutoEmbed 4K',
-    badge: 'High Speed',
-    url: `https://player.autoembed.cc/embed/movie/${tmdbId}`,
-    type: 'iframe',
-    quality: '1080p / 4K',
-    description: 'Ultra fast streaming mirror with low ad density'
-  });
-
-  // ============================================================
-  // SERVER 6: CodeSpecters TV Embed (Series episodes with API key)
-  // ============================================================
-  servers.push({
-    id: 'codespecters-tv',
-    name: 'NexStream TV',
-    badge: 'Direct TV',
-    url: `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`,
-    type: 'iframe',
-    quality: 'HD 1080p',
-    description: 'Multi-episode TV & series streaming via CodeSpecters'
-  });
+  if (isSeries) {
+    servers.push({
+      id: 'codespecters-tv',
+      name: 'NexStream TV',
+      badge: 'Direct TV',
+      url: `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`,
+      type: 'iframe',
+      quality: 'HD 1080p',
+      description: 'Multi-episode TV & series streaming via CodeSpecters'
+    });
+  }
 
   // ============================================================
   // SERVER 7: Filmu Anime Player (if anime)
