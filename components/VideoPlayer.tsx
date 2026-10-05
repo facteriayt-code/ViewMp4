@@ -335,6 +335,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                     High-speed backup server with multi-audio and Hindi support.
                   </div>
 
+                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed App (player.autoembed.app):</span>
+                    Fast 4K movie & TV episodic streaming supporting both TMDb and IMDb IDs.
+                  </div>
+
                   <div className="p-2 bg-white/5 rounded-xl border border-white/10">
                     <span className="text-cyan-300 font-bold block mb-0.5">CodeSpecters (nx_ Key):</span>
                     Direct stream verified through official CodeSpecters API key.

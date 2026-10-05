@@ -238,6 +238,7 @@ export interface StreamServer {
   isHindi?: boolean;
   isFilmu?: boolean;
   isCineSrc?: boolean;
+  isAutoEmbed?: boolean;
   isTv?: boolean;
   isAnime?: boolean;
 }
@@ -298,6 +299,31 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     description: 'Secondary Hindi & Multi-Audio fast stream with multi-server failover',
     isHindi: true,
     isCineSrc: true,
+    isTv: isSeries
+  });
+
+  // ============================================================
+  // SERVER 3: AutoEmbed App (User Requested Server: player.autoembed.app)
+  // Endpoints:
+  //   Movies: https://player.autoembed.app/embed/movie/{id}
+  //   TV:     https://player.autoembed.app/embed/tv/{id}/{season}/{episode}
+  // Valid parameters: {id} from imdb (with tt) or themoviedb.com
+  // ============================================================
+  const autoembedAppUrl = isSeries
+    ? `https://player.autoembed.app/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://player.autoembed.app/embed/movie/${tmdbId}`;
+
+  servers.push({
+    id: 'autoembed-app',
+    name: 'AutoEmbed App',
+    badge: isSeries ? `S${season}:E${episode}` : 'AutoEmbed 4K',
+    url: autoembedAppUrl,
+    type: 'iframe',
+    quality: '1080p / 4K',
+    description: isSeries
+      ? `AutoEmbed App TV endpoint: S${season} Ep${episode} (TMDb: ${tmdbId})`
+      : `AutoEmbed App Movie endpoint (TMDb: ${tmdbId})`,
+    isAutoEmbed: true,
     isTv: isSeries
   });
 
