@@ -71,10 +71,11 @@ export interface StreamServer {
   url: string;
   type: 'iframe' | 'video';
   quality: string;
+  description: string;
 }
 
 /**
- * Generates stream servers for a movie using CodeSpecters NexStream API
+ * Generates stream servers for a movie
  */
 export function getMovieStreamServers(movie: Movie): StreamServer[] {
   const tmdbId = getMovieTmdbId(movie);
@@ -82,27 +83,40 @@ export function getMovieStreamServers(movie: Movie): StreamServer[] {
 
   const servers: StreamServer[] = [];
 
-  // Primary Server: CodeSpecters NexStream Movie Embed
+  // Server 1: CodeSpecters NexStream (Your Official API Key)
   servers.push({
     id: 'codespecters-primary',
-    name: 'CodeSpecters NexStream',
-    badge: '4K Ultra HD · Fast',
+    name: 'CodeSpecters (API Key)',
+    badge: '4K Ultra HD',
     url: `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`,
     type: 'iframe',
-    quality: '4K / 1080p'
+    quality: '4K Ultra HD',
+    description: 'Direct stream with your nx_ API key'
   });
 
-  // Server 2: CodeSpecters TV Embed (in case it is an episodic release)
+  // Server 2: AutoEmbed Fast Mirror (Clean backup server)
+  servers.push({
+    id: 'autoembed-server',
+    name: 'AutoEmbed 4K',
+    badge: 'High Speed',
+    url: `https://player.autoembed.cc/embed/movie/${tmdbId}`,
+    type: 'iframe',
+    quality: '1080p / 4K',
+    description: 'Ultra fast streaming mirror with low ad density'
+  });
+
+  // Server 3: CodeSpecters TV Embed (in case it is an episodic release)
   servers.push({
     id: 'codespecters-tv',
     name: 'NexStream TV & Episodes',
-    badge: 'Multi-Audio · Subtitles',
+    badge: 'Multi-Audio',
     url: `https://api.codespecters.com/embed/tv/${tmdbId}/1/1?apikey=${key}`,
     type: 'iframe',
-    quality: 'HD 1080p'
+    quality: 'HD 1080p',
+    description: 'Multi-episode TV & series streaming'
   });
 
-  // Server 3: Direct User Upload / MP4 (if available)
+  // Server 4: Direct User Upload / MP4 (if available)
   if (movie.videoUrl && movie.videoUrl.startsWith('http')) {
     servers.push({
       id: 'direct-video',
@@ -110,11 +124,12 @@ export function getMovieStreamServers(movie: Movie): StreamServer[] {
       badge: 'Original File',
       url: movie.videoUrl,
       type: 'video',
-      quality: 'Original MP4'
+      quality: 'Original MP4',
+      description: 'Zero ads, direct uploaded file'
     });
   }
 
-  // Server 4: Official Trailer Embed (if available)
+  // Server 5: Official Trailer Embed (if available)
   if (movie.trailer && movie.trailer.startsWith('http')) {
     let trailerEmbed = movie.trailer;
     if (trailerEmbed.includes('youtube.com/watch?v=')) {
@@ -131,7 +146,8 @@ export function getMovieStreamServers(movie: Movie): StreamServer[] {
       badge: 'Cinema Preview',
       url: trailerEmbed,
       type: 'iframe',
-      quality: '4K HDR'
+      quality: '4K HDR',
+      description: 'Official studio trailer in 4K'
     });
   }
 
