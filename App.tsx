@@ -268,7 +268,7 @@ const App: React.FC = () => {
         if (target) {
           const autoplay = params.get('autoplay') !== 'false';
           if (autoplay) {
-            setMovieToUnlock(target); // Force unlock for deep links
+            setPlayingMovie(target);
           } else {
             setSelectedMovie(target);
           }
@@ -296,7 +296,9 @@ const App: React.FC = () => {
 
   const handlePlay = (movie: Movie) => {
     setSelectedMovie(null);
-    setMovieToUnlock(movie); // Trigger IntermissionAd
+    setMovieToUnlock(null);
+    setPlayingMovie(movie);
+    pushState({ v: movie.id, autoplay: 'true' });
   };
 
   const handleSelectMovie = (movie: Movie) => {

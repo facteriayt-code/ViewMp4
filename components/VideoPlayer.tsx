@@ -33,11 +33,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Filmy server is prioritized FIRST by default ('filmu-primary')
+  // Default to first server in list
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    const filmy = list.find(s => s.id === 'filmu-primary');
-    return filmy ? filmy.id : (list[0]?.id || 'filmu-primary');
+    return list[0]?.id || 'autoembed-app';
   });
   
   const [iframeKey, setIframeKey] = useState<number>(0);
@@ -48,69 +47,60 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
   const tmdbId = getMovieTmdbId(movie);
   const isSeries = detectedIsSeries || forceSeriesMode;
-  const failoverTimeoutRef = useRef<number | null>(null);
 
   // Update servers when movie, season or episode changes
   useEffect(() => {
     const list = getMovieStreamServers(movie, season, episode);
     setServers(list);
     
-    // Always prioritize Filmy server
-    const preferredFilmy = list.find(s => s.id === 'filmu-primary');
-    setActiveServerId(preferredFilmy ? preferredFilmy.id : (list[0]?.id || 'filmu-primary'));
+    // If active server is still in list, keep it; otherwise switch to first
+    setActiveServerId(prev => {
+      const exists = list.some(s => s.id === prev);
+      return exists ? prev : (list[0]?.id || 'autoembed-app');
+    });
     
-    setIframeKey(prev => prev + 1);
+    setIframeKey(k => k + 1);
     setIsLoading(true);
-    setFailoverNotice(null);
 
     if (movie.id) {
       incrementMovieView(movie.id);
     }
   }, [movie, season, episode]);
 
+  // Fast auto-clear for loading state so the iframe is never obscured
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [activeServerId, iframeKey]);
+
   const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
   const activeServerIndex = servers.findIndex(s => s.id === activeServer.id);
   const nextServer = servers[(activeServerIndex + 1) % servers.length];
 
-  // Smart Auto-Failover: If current server fails or is unavailable, try next server
-  const handleAutoFailover = (reason?: string) => {
+  const handleSelectServer = (serverId: string) => {
+    if (serverId !== activeServerId) {
+      setActiveServerId(serverId);
+      setIframeKey(k => k + 1);
+      setIsLoading(true);
+      setFailoverNotice(null);
+    }
+  };
+
+  const handleNextServer = () => {
     if (servers.length <= 1) return;
     const nextIdx = (activeServerIndex + 1) % servers.length;
     const target = servers[nextIdx];
-    
-    const message = reason || `${activeServer.name} did not connect. Trying ${target.name}...`;
-    setFailoverNotice(message);
-    setActiveServerId(target.id);
-    setIsLoading(true);
-    setIframeKey(prev => prev + 1);
-
-    setTimeout(() => {
-      setFailoverNotice(null);
-    }, 5000);
+    handleSelectServer(target.id);
+    setFailoverNotice(`Switched to ${target.name}`);
+    setTimeout(() => setFailoverNotice(null), 4000);
   };
-
-  // 10-Second Watchdog Timer for automatic server failover
-  useEffect(() => {
-    if (failoverTimeoutRef.current) {
-      window.clearTimeout(failoverTimeoutRef.current);
-    }
-
-    if (isLoading) {
-      failoverTimeoutRef.current = window.setTimeout(() => {
-        handleAutoFailover(`${activeServer.name} connection timed out. Automatically trying ${nextServer.name}...`);
-      }, 10000);
-    }
-
-    return () => {
-      if (failoverTimeoutRef.current) {
-        window.clearTimeout(failoverTimeoutRef.current);
-      }
-    };
-  }, [isLoading, activeServerId]);
 
   const handleReload = () => {
     setIsLoading(true);
-    setIframeKey(prev => prev + 1);
+    setIframeKey(k => k + 1);
   };
 
   const toggleFullscreen = () => {
@@ -138,31 +128,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Prevent unwanted tab hijacking / redirect attempts
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      return (e.returnValue = '');
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
   const handlePrevEpisode = () => {
     if (episode > 1) {
       setEpisode(prev => prev - 1);
-      setIsLoading(true);
     } else if (season > 1) {
       setSeason(prev => prev - 1);
       setEpisode(1);
-      setIsLoading(true);
     }
   };
 
   const handleNextEpisode = () => {
     setEpisode(prev => prev + 1);
-    setIsLoading(true);
   };
 
   return (
@@ -170,16 +146,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       ref={containerRef}
       className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-between select-none overflow-hidden animate-in fade-in duration-300"
     >
-      {/* Failover Toast Alert */}
+      {/* Toast Alert for server switches */}
       {failoverNotice && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[80] bg-amber-500/90 text-black px-4 py-2 rounded-full font-black text-xs shadow-2xl flex items-center space-x-2 animate-in fade-in slide-in-from-top-2 border border-amber-400">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-black fill-black" />
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[80] bg-amber-500 text-black px-4 py-1.5 rounded-full font-black text-xs shadow-2xl flex items-center space-x-2 animate-in fade-in slide-in-from-top-2 border border-amber-400">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-black fill-black" />
           <span>{failoverNotice}</span>
         </div>
       )}
 
       {/* 1. Sleek Top Bar with Back, Title, Server Selectors, and Controls */}
-      <header className="w-full bg-gradient-to-b from-black via-zinc-950/95 to-transparent px-2.5 sm:px-6 py-2 sm:py-3 z-50 flex flex-wrap items-center justify-between gap-1.5 sm:gap-3 border-b border-white/10 backdrop-blur-md">
+      <header className="w-full bg-zinc-950/95 px-2.5 sm:px-6 py-2 sm:py-2.5 z-50 flex flex-wrap items-center justify-between gap-1.5 sm:gap-3 border-b border-white/10 backdrop-blur-md">
         {/* Left: Back Button & Movie Metadata */}
         <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <button 
@@ -198,7 +174,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 {movie.title}
               </h1>
               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/40 hidden md:inline">
-                TMDb {tmdbId}
+                ID: {tmdbId}
               </span>
             </div>
             <div className="flex items-center space-x-1.5 text-[10px] sm:text-xs text-gray-400 font-medium truncate">
@@ -211,59 +187,38 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </div>
         </div>
 
-        {/* Center: Server Switcher (Prioritizes Filmy Server First) */}
+        {/* Center: Server Switcher Chips */}
         <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1 max-w-full">
           {servers.map((s) => {
             const isActive = s.id === activeServer.id;
-            const isFilmy = s.id === 'filmu-primary' || s.isFilmu;
             return (
               <button
                 key={s.id}
                 type="button"
-                onClick={() => {
-                  if (s.id !== activeServer.id) {
-                    setActiveServerId(s.id);
-                    setIsLoading(true);
-                    setFailoverNotice(null);
-                  }
-                }}
+                onClick={() => handleSelectServer(s.id)}
                 className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black transition-all flex items-center space-x-1.5 shadow-sm whitespace-nowrap active:scale-95 shrink-0 ${
                   isActive 
-                    ? isFilmy
-                      ? 'bg-gradient-to-r from-red-600 to-amber-500 text-white border border-amber-300 ring-2 ring-red-500/50 scale-105 shadow-lg'
-                      : s.isHindi 
-                        ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-black border border-amber-300 ring-2 ring-amber-400/40 scale-105' 
-                        : 'bg-red-600 text-white shadow-red-600/40 border border-red-500 ring-2 ring-red-500/30 scale-105' 
-                    : isFilmy
-                      ? 'bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 font-bold'
-                      : s.isHindi 
-                        ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                        : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/10'
+                    ? 'bg-red-600 text-white shadow-red-600/40 border border-red-400 ring-2 ring-red-500/40 scale-105' 
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/10'
                 }`}
                 title={s.description}
               >
-                {isFilmy ? (
-                  <span className="text-[9px] font-black bg-black/40 text-amber-200 px-1 py-0.2 rounded uppercase">
-                    ⭐ Filmy #1
-                  </span>
-                ) : s.isHindi ? (
-                  <span className="text-[9px] font-black bg-black/40 text-amber-200 px-1 py-0.2 rounded uppercase">
-                    🇮🇳 Hindi 4K
-                  </span>
-                ) : s.id.includes('codespecters') ? (
-                  <ShieldCheck className="w-3 h-3 text-cyan-300" />
-                ) : s.id.includes('trailer') ? (
-                  <Film className="w-3 h-3 text-blue-400" />
-                ) : s.id.includes('autoembed') ? (
+                {s.id.includes('autoembed') ? (
                   <Layers className="w-3 h-3 text-emerald-400" />
-                ) : s.id.includes('tv') ? (
-                  <Tv className="w-3 h-3 text-purple-400" />
+                ) : s.id.includes('filmu') ? (
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                ) : s.id.includes('cinesrc') ? (
+                  <Play className="w-3 h-3 text-cyan-400" />
+                ) : s.id.includes('codespecters') ? (
+                  <ShieldCheck className="w-3 h-3 text-blue-400" />
                 ) : (
-                  <Play className="w-3 h-3 text-green-400" />
+                  <Film className="w-3 h-3 text-gray-300" />
                 )}
                 <span>{s.name}</span>
-                {isActive && s.badge && (
-                  <span className="text-[8px] sm:text-[9px] bg-black/30 px-1.5 py-0.2 rounded uppercase font-bold hidden sm:inline">
+                {s.badge && (
+                  <span className={`text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded uppercase font-bold hidden sm:inline ${
+                    isActive ? 'bg-black/40 text-white' : 'bg-black/30 text-gray-400'
+                  }`}>
                     {s.badge}
                   </span>
                 )}
@@ -272,13 +227,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           })}
         </div>
 
-        {/* Right: Episodes Toggle, Server Guide, Reload, Fullscreen, Close */}
-        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
-          {/* Option to toggle TV Episodes bar for any show */}
+        {/* Right: Next Server, Episodes, Guide, Fullscreen, Close */}
+        <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
+          {/* Quick Switch Server Button */}
+          <button
+            type="button"
+            onClick={handleNextServer}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition shadow-sm active:scale-95"
+            title="Try next stream server if current is slow or buffering"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span className="hidden xs:inline">Next Server</span>
+          </button>
+
+          {/* TV Episodes Toggle */}
           <button
             type="button"
             onClick={() => {
-              setForceSeriesMode(!forceSeriesMode);
+              setForceSeriesMode(true);
               setShowEpisodesModal(true);
             }}
             className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold border transition ${
@@ -302,11 +268,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             <button
               type="button"
               onClick={() => setShowGuidePopover(!showGuidePopover)}
-              className="flex items-center space-x-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/15 transition shadow-sm"
-              title="Player servers & Hindi audio guide"
+              className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
+              title="Stream server info"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Servers</span>
+              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
             </button>
 
             {showGuidePopover && (
@@ -314,7 +279,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                   <div className="flex items-center space-x-1.5 font-black text-white">
                     <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>Prioritized Servers Guide</span>
+                    <span>Stream Servers Available</span>
                   </div>
                   <button 
                     onClick={() => setShowGuidePopover(false)} 
@@ -325,39 +290,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 </div>
 
                 <div className="space-y-2 text-[11px] text-gray-300 leading-relaxed">
+                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed App (player.autoembed.app):</span>
+                    Endpoint for movies and TV shows supporting TMDb/IMDb parameters.
+                  </div>
+
                   <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/30 text-red-200">
-                    <span className="font-bold block mb-0.5 text-red-300">⭐ Filmy Server (1st Priority Active):</span>
-                    Automatically connects to Filmy server (`embed.filmu.in`) first with multi-audio, Hindi audio, and instant subtitle selection.
+                    <span className="font-bold block mb-0.5 text-red-300">⭐ Filmy Server:</span>
+                    Multi-audio stream with Hindi audio, subtitles, and server switcher.
                   </div>
 
                   <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
-                    <span className="text-amber-300 font-bold block mb-0.5">🇮🇳 CineSrc 4K (2nd Priority):</span>
-                    High-speed backup server with multi-audio and Hindi support.
-                  </div>
-
-                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed App (player.autoembed.app):</span>
-                    Fast 4K movie & TV episodic streaming supporting both TMDb and IMDb IDs.
-                  </div>
-
-                  <div className="p-2 bg-white/5 rounded-xl border border-white/10">
-                    <span className="text-cyan-300 font-bold block mb-0.5">CodeSpecters (nx_ Key):</span>
-                    Direct stream verified through official CodeSpecters API key.
+                    <span className="text-amber-300 font-bold block mb-0.5">🇮🇳 CineSrc 4K:</span>
+                    Fast 4K playback mirror with multi-audio support.
                   </div>
                 </div>
               </div>
             )}
           </div>
 
+          {/* Reload Stream */}
           <button
             type="button"
             onClick={handleReload}
             className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
-            title="Reload video stream"
+            title="Reload stream"
           >
             <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
+          {/* Fullscreen */}
           <button
             type="button"
             onClick={toggleFullscreen}
@@ -367,6 +329,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             {isFullscreen ? <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
+          {/* Close Player */}
           <button 
             type="button"
             onClick={onClose} 
@@ -378,9 +341,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </div>
       </header>
 
-      {/* TV Series Season & Episode Bar */}
+      {/* TV Series Season & Episode Sub-bar */}
       {isSeries && (
-        <div className="w-full bg-zinc-950/95 border-b border-white/10 px-2.5 sm:px-6 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2 z-40 text-xs shadow-md">
+        <div className="w-full bg-zinc-950/95 border-b border-white/10 px-2.5 sm:px-6 py-1.5 flex flex-wrap items-center justify-between gap-2 z-40 text-xs shadow-md">
           {/* Left: Season & Episode dropdowns directly on bar */}
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-x-auto no-scrollbar py-0.5">
             <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px] hidden xs:inline">
@@ -395,7 +358,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 onChange={(e) => {
                   setSeason(Number(e.target.value));
                   setEpisode(1);
-                  setIsLoading(true);
                 }}
                 className="bg-zinc-800 border border-white/20 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none focus:border-red-500 cursor-pointer"
               >
@@ -405,18 +367,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
               </select>
             </div>
 
-            {/* Episode Selector Dropdown (Accessible on all devices including smartphones) */}
+            {/* Episode Selector Dropdown */}
             <div className="flex items-center space-x-1 shrink-0">
               <span className="text-gray-400 text-[11px] font-semibold">Episode</span>
               <select
                 value={episode}
                 onChange={(e) => {
                   setEpisode(Number(e.target.value));
-                  setIsLoading(true);
                 }}
                 className="bg-zinc-800 border border-white/20 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none focus:border-red-500 cursor-pointer"
               >
-                {Array.from({ length: 30 }, (_, i) => i + 1).map(epNum => (
+                {Array.from({ length: 35 }, (_, i) => i + 1).map(epNum => (
                   <option key={epNum} value={epNum}>Episode {epNum}</option>
                 ))}
               </select>
@@ -461,7 +422,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </div>
       )}
 
-      {/* Episode Selection Modal / Drawer */}
+      {/* Episode Selection Modal */}
       {showEpisodesModal && (
         <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[#181818] border border-white/15 w-full sm:max-w-2xl max-h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
@@ -497,7 +458,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                     onClick={() => {
                       setSeason(sNum);
                       setEpisode(1);
-                      setIsLoading(true);
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                       season === sNum 
@@ -530,7 +490,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                       key={epNum}
                       onClick={() => {
                         setEpisode(epNum);
-                        setIsLoading(true);
                         setShowEpisodesModal(false);
                       }}
                       className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1 active:scale-95 group ${
@@ -576,47 +535,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
       {/* 2. Main Streaming Canvas Area */}
       <main className="w-full flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-        {/* Loading Spinner with Auto-Failover Information */}
+        {/* Subtle, Non-blocking Loading Banner (Never blocks user interactions or clicks) */}
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm pointer-events-auto p-4 space-y-3.5">
-            <div className="relative">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 border-4 border-red-500 border-t-amber-400 rounded-full animate-spin shadow-lg shadow-red-500/30" />
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-amber-300">
-                ⭐
-              </span>
-            </div>
-
-            <div className="text-center space-y-1 max-w-sm">
-              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.15em] text-white block">
-                Connecting to {activeServer.name}...
-              </span>
-              <p className="text-[11px] text-gray-400">
-                {activeServer.id === 'filmu-primary' 
-                  ? 'Priority Filmy Server active • Auto-detecting multi-audio & subtitles' 
-                  : 'Fast streaming mirror active • Auto failover enabled'}
-              </p>
-              {isSeries && (
-                <span className="inline-block bg-purple-600/30 text-purple-200 border border-purple-500/40 text-[10px] font-mono px-2 py-0.5 rounded-full mt-1">
-                  Season {season} • Episode {episode}
-                </span>
-              )}
-            </div>
-
-            {/* Quick Skip Server button if buffering */}
-            <div className="flex items-center space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => handleAutoFailover(`User skipped ${activeServer.name}`)}
-                className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white text-xs font-bold flex items-center space-x-1.5 transition active:scale-95 border border-white/10"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Try Next Server ({nextServer.name})</span>
-              </button>
-            </div>
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/15 flex items-center space-x-2 text-xs font-bold text-gray-200 animate-in fade-in duration-200 shadow-xl">
+            <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            <span>Loading {activeServer.name}...</span>
           </div>
         )}
 
-        {/* Video Player Render - Standard Iframe (No sandbox blocker) */}
+        {/* Video Player Render - Standard Iframe with full permissions */}
         {activeServer.type === 'video' ? (
           <video 
             key={`${activeServer.url}-${iframeKey}`}
@@ -625,7 +552,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             autoPlay
             playsInline
             onLoadedData={() => setIsLoading(false)}
-            onError={() => handleAutoFailover("Video file failed to play")}
             className="w-full h-full object-contain"
           />
         ) : (
@@ -633,19 +559,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             key={`${activeServer.url}-${iframeKey}`}
             src={activeServer.url}
             title={activeServer.name}
-            className="w-full h-full border-0 absolute inset-0"
+            className="w-full h-full border-0 absolute inset-0 z-10"
             allowFullScreen
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-            onLoad={() => {
-              // Mark ready after embed loaded
-              setTimeout(() => setIsLoading(false), 1200);
-            }}
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"
+            onLoad={() => setIsLoading(false)}
           />
         )}
       </main>
 
       {/* 3. Bottom Information Bar */}
-      <footer className="w-full bg-gradient-to-t from-black via-zinc-950/95 to-transparent px-3 sm:px-6 py-2 z-40 flex flex-wrap items-center justify-between text-[10px] sm:text-xs text-gray-400 border-t border-white/5">
+      <footer className="w-full bg-zinc-950/95 px-3 sm:px-6 py-2 z-40 flex flex-wrap items-center justify-between text-[10px] sm:text-xs text-gray-400 border-t border-white/5">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="font-bold text-gray-200">
@@ -664,18 +587,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Ad-Blocker Suggestion */}
-          <span className="hidden md:inline text-gray-500">
-            Tip: Use Brave or uBlock to block external ad popups seamlessly
-          </span>
+          <button
+            type="button"
+            onClick={handleNextServer}
+            className="text-amber-400 hover:text-amber-300 font-bold underline flex items-center space-x-1"
+          >
+            <span>Not playing? Switch server</span>
+          </button>
 
           <a 
             href={activeServer.url} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="hover:text-white flex items-center space-x-1 text-gray-400 underline underline-offset-2"
+            className="hover:text-white flex items-center space-x-1 text-gray-300 underline underline-offset-2"
+            title="Open direct embed in a new browser tab"
           >
-            <span>Direct Server Link</span>
+            <span>Open in Tab</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
