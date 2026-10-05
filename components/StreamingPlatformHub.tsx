@@ -1,8 +1,8 @@
 import React from 'react';
 import { Movie } from '../types.ts';
 import { PLATFORMS, PlatformId } from '../services/platformCatalog.ts';
-import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
-import { Tv, Sparkles, ChevronRight, Play } from 'lucide-react';
+import { NetflixLogo, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
+import { Tv, Sparkles, ChevronRight, Play, ExternalLink } from 'lucide-react';
 
 interface StreamingPlatformHubProps {
   movies: Movie[];
@@ -37,23 +37,23 @@ export const StreamingPlatformHub: React.FC<StreamingPlatformHubProps> = ({ movi
           <div className="flex items-center space-x-2 text-red-500 mb-1">
             <Tv className="w-4 h-4 animate-pulse" />
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-red-400">
-              Interactive Streaming Hubs
+              Interactive Streaming Studios
             </span>
           </div>
           <h2 className="text-xl md:text-3xl font-black text-white tracking-tight flex items-center gap-2">
             <span>Browse by Streaming Platform</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-semibold uppercase tracking-wider hidden sm:inline-block">
-              Full Replicas
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 font-bold uppercase tracking-wider hidden sm:inline-block">
+              Dedicated Studio Replicas
             </span>
           </h2>
-          <p className="text-xs md:text-sm text-gray-400 mt-1 max-w-2xl">
-            Launch authentic studio replicas of Netflix, Prime Video, Disney+, Apple TV+, Max, and Hulu to explore blockbusters stored in our database.
+          <p className="text-xs md:text-sm text-gray-400 mt-1 max-w-2xl leading-relaxed">
+            Click any platform to open an authentic replica page (Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu) featuring all matching movies available in our catalog.
           </p>
         </div>
 
         <div className="flex items-center space-x-2 text-xs text-gray-400 font-medium">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Interactive Themes & Real Streams</span>
+          <span>Real UI Themes · Direct Streaming</span>
         </div>
       </div>
 
@@ -63,6 +63,7 @@ export const StreamingPlatformHub: React.FC<StreamingPlatformHubProps> = ({ movi
           const config = PLATFORMS[pId];
           const availableMovies = config.filterMovies(movies);
           const previewPosters = availableMovies.slice(0, 4);
+          const newTabUrl = `${window.location.origin}${window.location.pathname}?platform=${pId}`;
 
           return (
             <div
@@ -80,12 +81,12 @@ export const StreamingPlatformHub: React.FC<StreamingPlatformHubProps> = ({ movi
               />
 
               <div>
-                {/* Header row: Logo & Available Count */}
+                {/* Header row: Logo & Available Count & New Tab Link */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2 bg-black/60 rounded-2xl border border-white/10 backdrop-blur-md">
                     {renderLogo(pId)}
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center space-x-2">
                     <span 
                       className="text-[11px] font-black uppercase px-2.5 py-1 rounded-full border tracking-wider"
                       style={{ 
@@ -96,6 +97,16 @@ export const StreamingPlatformHub: React.FC<StreamingPlatformHubProps> = ({ movi
                     >
                       {availableMovies.length} Titles
                     </span>
+                    <a
+                      href={newTabUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Open ${config.name} in a new tab`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-xl bg-white/5 hover:bg-white/20 text-gray-400 hover:text-white transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </div>
                 </div>
 
@@ -124,11 +135,11 @@ export const StreamingPlatformHub: React.FC<StreamingPlatformHubProps> = ({ movi
 
               {/* Action Button */}
               <div 
-                className="w-full py-2.5 px-4 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all duration-300"
+                className="w-full py-2.5 px-4 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all duration-300 shadow-md group-hover:shadow-lg"
                 style={{
-                  backgroundColor: config.brandColor === '#FFFFFF' ? '#FFFFFF' : `${config.brandColor}20`,
+                  backgroundColor: config.brandColor === '#FFFFFF' ? '#FFFFFF' : `${config.brandColor}25`,
                   color: config.brandColor === '#FFFFFF' ? '#000000' : '#FFFFFF',
-                  border: `1px solid ${config.brandColor}50`
+                  border: `1px solid ${config.brandColor}60`
                 }}
               >
                 <div className="flex items-center space-x-2">

@@ -20,6 +20,7 @@ import { signOut } from './services/authService.ts';
 import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
 import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, WatchmodeSearchResult } from './services/watchmodeService.ts';
 import { StreamingPlatformHub } from './components/StreamingPlatformHub.tsx';
+import { StreamingServicesQuickBar } from './components/StreamingServicesQuickBar.tsx';
 import { StreamingPlatformReplica } from './components/StreamingPlatformReplica.tsx';
 import { PlatformId } from './services/platformCatalog.ts';
 
@@ -527,6 +528,13 @@ const App: React.FC = () => {
             movie={movies[0]} 
             onInfoClick={handleSelectMovie} 
             onPlay={handlePlay} 
+            onSelectPlatform={handleSelectPlatform}
+          />
+
+          {/* Dedicated Streaming Services Option Bar on Homepage (Netflix, Prime Video, etc.) */}
+          <StreamingServicesQuickBar 
+            movies={movies} 
+            onSelectPlatform={handleSelectPlatform} 
           />
 
           <CategoryShareBar onCategoryClick={handleCategoryScroll} />
@@ -819,6 +827,8 @@ const App: React.FC = () => {
           </div>
         )}
       </div>
+      </>
+    )}
 
       {movieToUnlock && (
         <IntermissionAd 
