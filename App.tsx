@@ -532,7 +532,7 @@ const App: React.FC = () => {
 
           {searchTerm.trim().length > 0 ? (
             /* Search Results: Appears JUST DOWN to the search box at the top of the page! */
-            <div className="pt-24 px-4 md:px-12 min-h-screen relative z-20">
+            <div className="pt-16 sm:pt-24 px-2 sm:px-4 md:px-12 min-h-screen relative z-20">
               <SearchBoxResults
                 searchTerm={searchTerm}
                 catalogMovies={movies}

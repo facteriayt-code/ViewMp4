@@ -99,12 +99,14 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-4 md:px-12 py-3 md:py-4 flex items-center justify-between ${isScrolled || isSearchOpen ? 'bg-[#141414] shadow-lg' : 'bg-transparent'}`}>
-      <div className="flex items-center space-x-4 md:space-x-8">
-        <div className="flex items-center space-x-2 shrink-0 cursor-pointer" onClick={() => handleClearSearch()}>
-           <Film className="w-6 h-6 md:w-8 md:h-8 text-red-600 fill-red-600" />
-           <h1 className="text-red-600 font-black text-lg md:text-2xl tracking-tighter uppercase hidden xs:block">GeminiStream</h1>
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-3 sm:px-6 md:px-12 py-2 sm:py-3 md:py-4 flex items-center justify-between ${isScrolled || isSearchOpen ? 'bg-[#141414] shadow-lg' : 'bg-transparent'}`}>
+      <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-8 shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 cursor-pointer" onClick={() => handleClearSearch()}>
+           <Film className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-red-600 fill-red-600 shrink-0" />
+           <h1 className="text-red-600 font-black text-sm sm:text-lg md:text-2xl tracking-tighter uppercase hidden xs:inline sm:block">GeminiStream</h1>
         </div>
+        
+        {/* Desktop Links */}
         <div className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-200">
           <button onClick={() => handleClearSearch()} className="hover:text-white transition">Home</button>
           
@@ -156,15 +158,15 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center space-x-3 md:space-x-6">
-        {/* Search Container with Instant Dropdown Just Down to the Search Box */}
+      <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-6 min-w-0">
+        {/* Search Container with Fully Smartphone-Safe Dropdown */}
         <div ref={searchContainerRef} className="relative">
-          <div className="flex items-center bg-black/50 border border-white/10 rounded-full px-3 py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/60 focus-within:bg-black/90">
-            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+          <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/70 focus-within:bg-black/95 shadow-inner">
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
             <input 
               type="text" 
-              placeholder="Search movies & TV shows..."
-              className="bg-transparent border-none focus:outline-none text-xs md:text-sm ml-2 w-32 md:w-56 lg:w-72 placeholder:text-gray-500 text-white font-medium"
+              placeholder="Search..."
+              className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-1.5 sm:ml-2 w-24 xs:w-32 sm:w-48 md:w-56 lg:w-72 placeholder:text-gray-500 text-white font-medium truncate"
               value={searchTerm}
               onChange={handleSearchChange}
               onFocus={() => {
@@ -174,17 +176,17 @@ const Navbar: React.FC<NavbarProps> = ({
             {searchTerm && (
               <button 
                 onClick={handleClearSearch}
-                className="p-0.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition ml-1"
+                className="p-0.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition ml-1 shrink-0"
                 title="Clear search"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Results appear JUST DOWN TO THE SEARCH BOX */}
+          {/* Results appear JUST DOWN TO THE SEARCH BOX - Fully Mobile Safe (Never cut off or overflows) */}
           {isSearchOpen && searchTerm.trim().length > 0 && (
-            <div className="absolute top-full right-0 mt-2 w-[92vw] sm:w-[500px] md:w-[580px] bg-zinc-950/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="fixed inset-x-2 top-13 xs:top-14 bottom-2 z-[70] sm:absolute sm:inset-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[520px] md:w-[600px] sm:max-h-[82vh] sm:bottom-auto bg-zinc-950/98 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2">
               <SearchBoxResults
                 searchTerm={searchTerm}
                 catalogMovies={movies}
@@ -210,47 +212,46 @@ const Navbar: React.FC<NavbarProps> = ({
           href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-lg transition shadow-lg active:scale-95 group"
+          className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-lg transition shadow-lg active:scale-95 group shrink-0"
         >
-          <Crown className="w-4 h-4 fill-black group-hover:animate-bounce" />
+          <Crown className="w-3.5 h-3.5 fill-black group-hover:animate-bounce" />
           <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
         </a>
 
-        {/* TMDb API Live Badge */}
+        {/* TMDb API Live Badge (Desktop) */}
         <button
           onClick={onUploadClick}
-          className="hidden md:flex items-center space-x-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-gray-200 hover:text-white px-3 py-1.5 rounded-lg transition text-xs font-semibold"
+          className="hidden md:flex items-center space-x-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-gray-200 hover:text-white px-2.5 py-1.5 rounded-lg transition text-xs font-semibold shrink-0"
           title="TMDb Movie Database API Connected (Unlimited Requests)"
         >
           <Database className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-[10px] font-black uppercase tracking-wider text-red-300">TMDb Live</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-red-300">TMDb</span>
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
         </button>
         
+        {/* Upload Button */}
         <button 
           onClick={onUploadClick}
-          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full md:rounded-lg transition flex items-center space-x-2 px-3 md:px-4 shadow-lg active:scale-95"
+          className="bg-red-600 hover:bg-red-700 text-white p-1.5 sm:p-2 rounded-full sm:rounded-lg transition flex items-center space-x-1.5 sm:px-3 shadow-lg active:scale-95 shrink-0"
           aria-label="Upload Video"
+          title="Upload or Import Movie"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 sm:w-4 sm:h-4" />
           <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Upload</span>
         </button>
 
-        <div className="hidden md:block">
-          <Bell className="w-6 h-6 text-gray-300 cursor-pointer hover:text-white transition" />
-        </div>
-
+        {/* User Profile / Sign In */}
         {user ? (
-          <div className="relative">
+          <div className="relative shrink-0">
             <button 
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center space-x-2 group focus:outline-none"
+              className="flex items-center space-x-1 group focus:outline-none"
             >
-              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full border border-white/20 group-hover:border-white transition" />
+              <img src={user.avatar} alt={user.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/20 group-hover:border-white transition object-cover" />
             </button>
             
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#181818] border border-white/10 rounded-lg shadow-2xl py-2 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 mt-2 w-48 bg-[#181818] border border-white/10 rounded-lg shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="px-4 py-2 border-b border-white/10 mb-2">
                   <p className="text-sm font-bold truncate">{user.name}</p>
                   <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
@@ -269,7 +270,7 @@ const Navbar: React.FC<NavbarProps> = ({
         ) : (
           <button 
             onClick={onLoginClick}
-            className="bg-white text-black text-xs md:text-sm font-bold px-4 py-2 rounded transition hover:bg-gray-200 active:scale-95"
+            className="bg-white text-black text-[11px] sm:text-xs md:text-sm font-bold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded transition hover:bg-gray-200 active:scale-95 shrink-0"
           >
             Sign In
           </button>
