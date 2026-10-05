@@ -323,30 +323,36 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
+    // Ensure primary homepage rows feature verified playable movies and shows
+    const playableMovies = filteredMovies.filter(m => m.year && m.year <= 2024);
+    const pool = playableMovies.length > 0 ? playableMovies : filteredMovies;
+    const tvShows = pool.filter(m => m.isTv || /tv|series/i.test(m.genre || ''));
+    const moviesOnly = pool.filter(m => !m.isTv && !/tv|series/i.test(m.genre || ''));
+
     return [
       { 
-        title: 'Trending Now (TMDb Global Picks)', 
-        movies: [...filteredMovies].sort((a,b) => b.views - a.views).slice(0, 20) 
+        title: 'Trending Now (Blockbusters & Hits)', 
+        movies: pool.slice(0, 20) 
       },
       { 
-        title: 'Blockbuster Releases & TMDb Cinema Database', 
-        movies: filteredMovies.slice(0, 20) 
+        title: 'Top TV Series & Binge Shows', 
+        movies: tvShows.slice(0, 20) 
+      },
+      { 
+        title: 'Top Rated Movies & Masterpieces', 
+        movies: [...moviesOnly].sort((a,b) => (b.userRating || 0) - (a.userRating || 0)).slice(0, 20) 
       },
       { 
         title: 'Sci-Fi & Cosmic Adventures', 
-        movies: filteredMovies.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${m.genre} ${m.title}`)) 
+        movies: pool.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${m.genre} ${m.title}`)) 
       },
       { 
         title: 'Action & Adventure Hits', 
-        movies: filteredMovies.filter(m => /action|adventure|thriller|knight|rings|spider|deadpool|wick|gladiator|batman|avengers|fast/i.test(`${m.genre} ${m.title}`)) 
+        movies: pool.filter(m => /action|adventure|thriller|knight|rings|spider|deadpool|wick|gladiator|batman|avengers|fast/i.test(`${m.genre} ${m.title}`)) 
       },
       { 
-        title: 'Top Rated Classics & Masterpieces', 
-        movies: [...filteredMovies].sort((a,b) => (b.criticScore || 80) - (a.criticScore || 80)).slice(0, 20) 
-      },
-      { 
-        title: 'Full Streaming Library (70+ TMDb Stored Movies)', 
-        movies: filteredMovies 
+        title: 'Popular Streaming Catalog', 
+        movies: pool 
       }
     ];
   }, [filteredMovies]);

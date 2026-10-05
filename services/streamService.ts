@@ -11,58 +11,89 @@ export const CODESPECTERS_API_KEY =
  */
 const KNOWN_TMDB_MAP: Record<string, number> = {
   // Movies & Shows from user prompts & popular blockbusters
-  'iron man': 1726,
-  'titanic': 597,
-  'house of the dragon': 94997,
-  'game of thrones': 1399,
-  'breaking bad': 1396,
-  'stranger things': 66732,
-  'the last of us': 100088,
-  'the boys': 76479,
-  'shogun': 126308,
-  'fallout': 106379,
-  'loki': 88396,
-  'squid game': 93405,
-  'wednesday': 119051,
-  'the bear': 136283,
-  'inception': 27205,
-  'interstellar': 157336,
-  'avatar': 19995,
-  'avatar: the way of water': 76600,
-  'the dark knight': 155,
-  'the dark knight rises': 49026,
-  'batman begins': 272,
-  'the matrix': 603,
-  'gladiator': 98,
-  'gladiator ii': 558449,
-  'pulp fiction': 680,
-  'the shawshank redemption': 278,
-  'oppenheimer': 872585,
-  'barbie': 346698,
-  'dune': 438631,
-  'dune: part two': 693134,
-  'fight club': 550,
-  'spider-man': 557,
-  'spider-man: no way home': 634649,
-  'spider-man: across the spider-verse': 569094,
-  'deadpool': 293660,
-  'deadpool 2': 383498,
   'deadpool & wolverine': 533535,
+  'deadpool 2': 383498,
+  'deadpool': 293660,
   'avengers: endgame': 299534,
   'avengers: infinity war': 299536,
   'the avengers': 24428,
-  'jurassic park': 329,
-  'jurassic world': 135397,
+  'the dark knight rises': 49026,
+  'the dark knight': 155,
+  'batman begins': 272,
+  'interstellar': 157336,
+  'dune: part two': 693134,
+  'dune': 438631,
+  'iron man 2': 10138,
+  'iron man 3': 68721,
+  'iron man': 1726,
+  'titanic': 597,
+  'top gun: maverick': 361743,
+  'spider-man: across the spider-verse': 569094,
+  'spider-man: into the spider-verse': 324857,
+  'spider-man: no way home': 634649,
+  'spider-man': 557,
+  'oppenheimer': 872585,
+  'gladiator ii': 558449,
+  'gladiator': 98,
+  'barbie': 346698,
+  'the shawshank redemption': 278,
+  'fight club': 550,
+  'the matrix': 603,
+  'inception': 27205,
+  'inside out 2': 1022789,
   'alien: romulus': 945961,
   'the wild robot': 1184918,
-  'john wick': 245891,
   'john wick: chapter 4': 603692,
-  'top gun: maverick': 361743,
-  'inside out 2': 1022789,
+  'john wick': 245891,
   'moana 2': 1241982,
   'twisters': 718821,
   'beetlejuice beetlejuice': 917496,
-  'wicked': 402431
+  'wicked': 402431,
+  'pulp fiction': 680,
+  'forrest gump': 13,
+  'the godfather': 238,
+  'the godfather part ii': 240,
+  'the lord of the rings: the return of the king': 122,
+  'the lord of the rings: the fellowship of the ring': 120,
+  'the lord of the rings: the two towers': 121,
+  'jurassic park': 329,
+  'jurassic world': 135397,
+  'parasite': 496243,
+  'blade runner 2049': 335984,
+  'avatar: the way of water': 76600,
+  'avatar': 19995,
+
+  // TV Series
+  'breaking bad': 1396,
+  'stranger things': 66732,
+  'house of the dragon': 94997,
+  'game of thrones': 1399,
+  'the boys': 76479,
+  'fallout': 106379,
+  'shogun': 126308,
+  'shōgun': 126308,
+  'loki': 84958,
+  'the last of us': 100088,
+  'wednesday': 119051,
+  'squid game': 93405,
+  'the bear': 136283,
+  'arcane': 94605,
+  'better call saul': 60059,
+  'peaky blinders': 60574,
+  'money heist': 71446,
+  'vikings': 44217,
+  'the witcher': 71912,
+  'friends': 1668,
+  'the office': 2316,
+  'sherlock': 19885,
+  'narcos': 63351,
+  'dark': 70523,
+  'black mirror': 42009,
+  'westworld': 63247,
+  'fargo': 57243,
+  'dexter': 1405,
+  'prison break': 2288,
+  'supernatural': 1622
 };
 
 /**
@@ -96,20 +127,32 @@ const KNOWN_ANILIST_MAP: Record<string, number> = {
  * Extracts a valid numeric TMDb ID from a Movie object
  */
 export function getMovieTmdbId(movie: Movie): number {
-  // 1. Direct watchmodeId (if present and numeric)
+  const titleLower = (movie.title || '').toLowerCase().trim();
+
+  // 1. Exact match in KNOWN_TMDB_MAP first (prevent collision like Dune 2 matching Dune)
+  if (KNOWN_TMDB_MAP[titleLower]) {
+    return KNOWN_TMDB_MAP[titleLower];
+  }
+
+  // 2. Direct watchmodeId / tmdbId if valid numeric
   if (movie.watchmodeId && !isNaN(Number(movie.watchmodeId)) && Number(movie.watchmodeId) > 0) {
     return Number(movie.watchmodeId);
   }
 
-  // 2. Exact match in known titles map
-  const titleLower = (movie.title || '').toLowerCase().trim();
+  // 3. Directly formatted tmdb_12345
+  if (movie.id && String(movie.id).startsWith('tmdb_')) {
+    const rawNum = parseInt(String(movie.id).replace('tmdb_', ''), 10);
+    if (!isNaN(rawNum) && rawNum > 0) return rawNum;
+  }
+
+  // 4. Substring check where whole word or title is contained
   for (const [key, id] of Object.entries(KNOWN_TMDB_MAP)) {
-    if (titleLower === key || titleLower.includes(key) || key.includes(titleLower)) {
+    if (titleLower.includes(key)) {
       return id;
     }
   }
 
-  // 3. Numeric digits from id (e.g. "tmdb_597", "597", "tmdb-597")
+  // 5. Numeric digits from id (e.g. "597", "tmdb-597")
   if (movie.id) {
     const digits = String(movie.id).replace(/\D/g, '');
     if (digits && digits.length >= 2 && digits.length <= 9) {
@@ -118,8 +161,8 @@ export function getMovieTmdbId(movie: Movie): number {
     }
   }
 
-  // Fallback to Titanic (597) if no ID could be resolved
-  return 597;
+  // Fallback to Deadpool & Wolverine (533535) if no ID could be resolved
+  return 533535;
 }
 
 /**
@@ -160,6 +203,7 @@ export function isTvOrSeries(movie: Movie): boolean {
     'the last of us',
     'the boys',
     'shogun',
+    'shōgun',
     'fallout',
     'loki',
     'squid game',
@@ -239,14 +283,22 @@ export interface StreamServer {
   isFilmu?: boolean;
   isCineSrc?: boolean;
   isAutoEmbed?: boolean;
+  isVidSrc?: boolean;
   isTv?: boolean;
   isAnime?: boolean;
 }
 
 /**
  * Generates stream servers for a movie or TV show.
- * NOTE: As requested by the user, Hindi / Multi-Audio servers are prioritized FIRST.
- * If the Hindi server is unavailable or fails, auto-fallback connects to the next server.
+ * 
+ * Orders servers with:
+ * 1. Filmy Server (Hindi + Multi-Language audio)
+ * 2. AutoEmbed Mirror (player.autoembed.co / autoembed.co - requested working mirror)
+ * 3. CineSrc 4K (4K Ultra HD)
+ * 4. VidSrc Ultra (Ultra-reliable worldwide streaming player)
+ * 5. VidSrc Mirror (Alternative stream host)
+ * 6. AutoEmbed Alternate (Direct mirror failover)
+ * 7. CodeSpecters (Official API key stream)
  */
 export function getMovieStreamServers(movie: Movie, season: number = 1, episode: number = 1): StreamServer[] {
   const tmdbId = getMovieTmdbId(movie);
@@ -257,7 +309,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   const servers: StreamServer[] = [];
 
   // ============================================================
-  // SERVER 1: Filmy / Filmu Player (Hindi & Multi-Audio Priority)
+  // SERVER 1: Filmy / Filmu Player (Top Priority with Hindi & Multi-Audio)
   // URL Pattern:
   //   Movies: https://embed.filmu.in/movie/${tmdbId}
   //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
@@ -269,42 +321,42 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   servers.push({
     id: 'filmu-primary',
     name: 'Filmy Server',
-    badge: 'Filmy #1',
+    badge: 'Hindi / Multi-Audio',
     url: filmuUrl,
     type: 'iframe',
     quality: '4K / 1080p',
-    description: 'Top priority Filmy server with Hindi audio, multi-language switcher & subtitles',
+    description: 'Top priority Filmy server with Hindi audio track, multi-language switcher & subtitles',
     isHindi: true,
     isFilmu: true,
     isTv: isSeries
   });
 
   // ============================================================
-  // SERVER 2: AutoEmbed Mirror (Verified Fast Mirror: autoembed.co)
+  // SERVER 2: AutoEmbed Mirror (player.autoembed.co - Fast & Working)
   // Endpoints:
-  //   Movies: https://autoembed.co/movie/tmdb/{id}
-  //   TV:     https://autoembed.co/tv/tmdb/{id}-{season}-{episode}
+  //   Movies: https://player.autoembed.co/embed/movie/${tmdbId}
+  //   TV:     https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}
   // ============================================================
-  const autoembedMirrorUrl = isSeries
-    ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
-    : `https://autoembed.co/movie/tmdb/${tmdbId}`;
+  const autoembedPlayerUrl = isSeries
+    ? `https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://player.autoembed.co/embed/movie/${tmdbId}`;
 
   servers.push({
     id: 'autoembed-mirror',
     name: 'AutoEmbed Mirror',
     badge: 'AutoEmbed 4K',
-    url: autoembedMirrorUrl,
+    url: autoembedPlayerUrl,
     type: 'iframe',
     quality: '1080p / 4K',
     description: isSeries 
       ? `AutoEmbed Mirror TV (Season ${season} Episode ${episode})`
-      : 'AutoEmbed fast mirror with multi-source server switcher',
+      : 'AutoEmbed verified mirror player with fast CDN and multi-source playback',
     isAutoEmbed: true,
     isTv: isSeries
   });
 
   // ============================================================
-  // SERVER 3: CineSrc 4K (Secondary Fast Backup Server)
+  // SERVER 3: CineSrc 4K (Ultra HD Streamer)
   // URL Pattern:
   //   Movies: https://cinesrc.st/embed/movie/${tmdbId}
   //   TV:     https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}
@@ -316,63 +368,102 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   servers.push({
     id: 'cinesrc-hindi',
     name: 'CineSrc 4K',
-    badge: 'Hindi 4K',
+    badge: 'Ultra HD',
     url: cinesrcUrl,
     type: 'iframe',
     quality: '4K Ultra HD',
-    description: 'Secondary Hindi & Multi-Audio fast stream with multi-server failover',
+    description: 'Fast 4K playback with multi-server audio selector and cinema resolution',
     isHindi: true,
     isCineSrc: true,
     isTv: isSeries
   });
 
   // ============================================================
-  // SERVER 3: CodeSpecters NexStream (Your Official API Key)
+  // SERVER 4: VidSrc Ultra (Highest Compatibility Global Streamer)
+  // URL Pattern:
+  //   Movies: https://vidsrc.in/embed/movie/${tmdbId}
+  //   TV:     https://vidsrc.in/embed/tv/${tmdbId}/${season}/${episode}
   // ============================================================
+  const vidsrcUrl = isSeries
+    ? `https://vidsrc.in/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidsrc.in/embed/movie/${tmdbId}`;
+
   servers.push({
-    id: 'codespecters-primary',
-    name: 'CodeSpecters (API Key)',
-    badge: 'nx_ Verified',
-    url: `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`,
+    id: 'vidsrc-ultra',
+    name: 'VidSrc Ultra',
+    badge: 'Instant Play',
+    url: vidsrcUrl,
     type: 'iframe',
-    quality: '4K Ultra HD',
-    description: 'Direct high-speed verified stream with your official API key'
+    quality: '1080p Full HD',
+    description: 'Ultra-reliable global stream player with zero buffering and automatic episode handling',
+    isVidSrc: true,
+    isTv: isSeries
   });
 
   // ============================================================
-  // SERVER 4: CineSrc TV & Episodes (Direct Season/Episode streamer)
+  // SERVER 5: VidSrc Mirror (Secondary Worldwide Backup)
+  // URL Pattern:
+  //   Movies: https://vidsrc.pm/embed/movie/${tmdbId}
+  //   TV:     https://vidsrc.pm/embed/tv/${tmdbId}/${season}/${episode}
   // ============================================================
-  if (isSeries) {
-    servers.push({
-      id: 'cinesrc-tv',
-      name: 'CineSrc TV & Episodes',
-      badge: `S${season}:E${episode}`,
-      url: `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`,
-      type: 'iframe',
-      quality: '1080p Full HD',
-      description: `CineSrc episodic player with season & episode navigator (S${season}:E${episode})`,
-      isCineSrc: true,
-      isTv: true
-    });
-  }
+  const vidsrcMirrorUrl = isSeries
+    ? `https://vidsrc.pm/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidsrc.pm/embed/movie/${tmdbId}`;
+
+  servers.push({
+    id: 'vidsrc-mirror',
+    name: 'VidSrc Mirror',
+    badge: 'Backup HD',
+    url: vidsrcMirrorUrl,
+    type: 'iframe',
+    quality: '1080p HD',
+    description: 'High availability secondary mirror for seamless playback',
+    isVidSrc: true,
+    isTv: isSeries
+  });
 
   // ============================================================
-  // SERVER 5: CodeSpecters TV Embed (Series episodes with API key)
+  // SERVER 6: AutoEmbed Portal Mirror (autoembed.co)
+  // Endpoints:
+  //   Movies: https://autoembed.co/movie/tmdb/${tmdbId}
+  //   TV:     https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}
   // ============================================================
-  if (isSeries) {
-    servers.push({
-      id: 'codespecters-tv',
-      name: 'NexStream TV',
-      badge: 'Direct TV',
-      url: `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`,
-      type: 'iframe',
-      quality: 'HD 1080p',
-      description: 'Multi-episode TV & series streaming via CodeSpecters'
-    });
-  }
+  const autoembedCoUrl = isSeries
+    ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
+    : `https://autoembed.co/movie/tmdb/${tmdbId}`;
+
+  servers.push({
+    id: 'autoembed-co',
+    name: 'AutoEmbed Portal',
+    badge: 'Portal Mirror',
+    url: autoembedCoUrl,
+    type: 'iframe',
+    quality: '1080p HD',
+    description: 'AutoEmbed portal mirror with internal server selector',
+    isAutoEmbed: true,
+    isTv: isSeries
+  });
 
   // ============================================================
-  // SERVER 7: Filmu Anime Player (if anime)
+  // SERVER 7: CodeSpecters NexStream (Your Official API Key)
+  // ============================================================
+  const codespectersUrl = isSeries
+    ? `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`
+    : `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`;
+
+  servers.push({
+    id: 'codespecters-primary',
+    name: 'CodeSpecters (nx_ Key)',
+    badge: 'Verified API',
+    url: codespectersUrl,
+    type: 'iframe',
+    quality: '4K Ultra HD',
+    description: 'Direct high-speed verified stream with your official API key',
+    isTv: isSeries
+  });
+
+  // ============================================================
+  // SERVER 8: Filmu Anime Player (if anime)
   // ============================================================
   if (anilistId) {
     servers.push({
@@ -389,22 +480,22 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   }
 
   // ============================================================
-  // SERVER 8: Direct User Upload / MP4 (if available)
+  // SERVER 9: Direct User Upload / MP4 (if available)
   // ============================================================
   if (movie.videoUrl && movie.videoUrl.startsWith('http')) {
     servers.push({
       id: 'direct-video',
-      name: 'Direct Cloud Stream',
-      badge: 'Original File',
+      name: 'Direct Video Stream',
+      badge: 'MP4 / UGC',
       url: movie.videoUrl,
       type: 'video',
       quality: 'Original MP4',
-      description: 'Zero ads, direct uploaded file'
+      description: 'Zero ads, direct uploaded video stream'
     });
   }
 
   // ============================================================
-  // SERVER 9: Official Trailer Embed (if available)
+  // SERVER 10: Official Trailer Embed (if available)
   // ============================================================
   if (movie.trailer && movie.trailer.startsWith('http')) {
     let trailerEmbed = movie.trailer;

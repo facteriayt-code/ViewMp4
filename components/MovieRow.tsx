@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play } from 'lucide-react';
 import { Movie } from '../types.ts';
 
 interface MovieRowProps {
@@ -126,6 +126,21 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
               <div className="absolute top-3 left-3 z-30 flex items-center bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-black text-white border border-white/5">
                 <Eye className="w-3.5 h-3.5 mr-1 text-red-500 fill-red-500" />
                 <span>{formatViews(movie.views)}</span>
+              </div>
+
+              {/* Direct Play Button on Card Hover */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-300 z-30 pointer-events-none">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlay(movie);
+                  }}
+                  className="pointer-events-auto bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(229,9,20,0.7)] hover:scale-110 active:scale-95 transition border-2 border-white/30"
+                  title={`Watch ${movie.title} now`}
+                >
+                  <Play className="w-5 h-5 fill-white ml-0.5" />
+                </button>
               </div>
 
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/90 to-transparent p-4 md:p-6 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 transform translate-y-4 group-hover/card:translate-y-0">

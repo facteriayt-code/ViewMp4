@@ -205,6 +205,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
               >
                 {s.id.includes('autoembed') ? (
                   <Layers className="w-3 h-3 text-emerald-400" />
+                ) : s.id.includes('vidsrc') ? (
+                  <Film className="w-3 h-3 text-indigo-400" />
                 ) : s.id.includes('filmu') ? (
                   <Sparkles className="w-3 h-3 text-amber-400" />
                 ) : s.id.includes('cinesrc') ? (
@@ -296,13 +298,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                   </div>
 
                   <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed Mirror (autoembed.co):</span>
-                    High-speed verified 4K mirror with instant playback for movies and TV episodes.
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed Mirror (player.autoembed.co):</span>
+                    Fast verified 4K mirror with instant playback for movies and TV episodes.
                   </div>
 
                   <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
                     <span className="text-amber-300 font-bold block mb-0.5">🇮🇳 CineSrc 4K:</span>
-                    Fast 4K playback mirror with multi-audio support.
+                    Fast 4K playback mirror with multi-audio and episodic TV support.
+                  </div>
+
+                  <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-200">
+                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Ultra:</span>
+                    Ultra-reliable global backup player with zero buffering.
                   </div>
                 </div>
               </div>
@@ -561,7 +568,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
             allowFullScreen
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"
+            referrerPolicy="origin"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; display-capture; clipboard-write;"
             onLoad={() => setIsLoading(false)}
           />
         )}
