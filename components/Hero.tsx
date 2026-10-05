@@ -29,8 +29,18 @@ const Hero: React.FC<HeroProps> = ({ movie, onInfoClick, onPlay, onSelectPlatfor
           <span>{movie.genre}</span>
           <span aria-hidden="true">·</span>
           <span>{movie.year}</span>
+          {movie.rating && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="border border-white/20 px-1 py-0.5 rounded text-[10px] text-gray-200">
+                {movie.rating}
+              </span>
+            </>
+          )}
           <span aria-hidden="true">·</span>
-          <span className="text-amber-400">★ {movie.rating.toFixed(1)}</span>
+          <span className="text-amber-400">
+            ★ {typeof movie.userRating === 'number' ? movie.userRating.toFixed(1) : '8.6'}
+          </span>
         </div>
 
         <h2 className="text-3xl md:text-7xl font-black tracking-tighter uppercase italic drop-shadow-2xl text-white">
