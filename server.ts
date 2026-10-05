@@ -532,12 +532,25 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   });
 
-  // --- The Movie Database (TMDb) API Integration ---
+  // --- The Movie Database (TMDb) & CodeSpecters Streaming API Integration ---
   const TMDB_API_KEY = process.env.TMDB_API_KEY || "f4a9807fa5f35bc12030eaa91320e625";
+  const CODESPECTERS_API_KEY = process.env.CODESPECTERS_API_KEY || process.env.STREAMING_API_KEY || "nx_f3ccddc8595f92a260f141adc7a7ec50";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
   const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w780";
   const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
   const TMDB_IMG_THUMB = "https://image.tmdb.org/t/p/w342";
+
+  // CodeSpecters NexStream Embed URL Generator
+  apiRouter.get("/stream/embed/:tmdbId", (req: express.Request, res: express.Response) => {
+    const tmdbId = req.params.tmdbId;
+    const embedUrl = `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${CODESPECTERS_API_KEY}`;
+    res.json({
+      success: true,
+      tmdbId,
+      embedUrl,
+      iframeCode: `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`
+    });
+  });
 
   // TMDb Status & Connectivity Check
   const handleTmdbStatus = async (req: express.Request, res: express.Response) => {

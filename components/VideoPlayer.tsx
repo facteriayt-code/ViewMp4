@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowLeft, Volume2, VolumeX, PlayCircle, RotateCcw, RotateCw, Maximize, Minimize, Settings, Play, Pause } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, ArrowLeft, Maximize, Minimize, RotateCw, ExternalLink, ShieldCheck, Film, Sparkles, Tv, Play } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
-
-declare var videojs: any;
+import { getMovieStreamServers, getMovieTmdbId, StreamServer, CODESPECTERS_API_KEY } from '../services/streamService.ts';
 
 interface VideoPlayerProps {
   movie: Movie;
@@ -11,322 +10,232 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<any>(null);
-  const controlsTimeoutRef = useRef<number | null>(null);
-  const lastTapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null });
-  
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const [volume, setVolume] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [needsClickToStart, setNeedsClickToStart] = useState(true);
-  const [showControls, setShowControls] = useState(true);
-  const [isHoveringProgressBar, setIsHoveringProgressBar] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [seekFeedback, setSeekFeedback] = useState<'forward' | 'backward' | null>(null);
+  const [servers, setServers] = useState<StreamServer[]>(() => getMovieStreamServers(movie));
+  const [activeServerId, setActiveServerId] = useState<string>('codespecters-primary');
+  const [iframeKey, setIframeKey] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const resetControlsTimeout = useCallback(() => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
-    if (isPlaying && !isHoveringProgressBar) {
-      controlsTimeoutRef.current = window.setTimeout(() => {
-        setShowControls(false);
-      }, 3500);
-    }
-  }, [isPlaying, isHoveringProgressBar]);
+  const tmdbId = getMovieTmdbId(movie);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    const list = getMovieStreamServers(movie);
+    setServers(list);
+    setActiveServerId(list[0]?.id || 'codespecters-primary');
+    setIframeKey(prev => prev + 1);
+    setIsLoading(true);
 
-    // Try VideoJS if available, otherwise native HTML5 video
-    if (typeof videojs !== 'undefined') {
-      try {
-        const player = videojs(videoRef.current, {
-          autoplay: false,
-          controls: false, 
-          muted: true,
-          responsive: true,
-          fluid: true,
-          preload: 'auto',
-          poster: movie.thumbnail,
-          sources: movie.videoUrl ? [{
-            src: movie.videoUrl,
-            type: 'video/mp4'
-          }] : []
-        });
-
-        playerRef.current = player;
-
-        player.ready(() => {
-          if (movie.id) incrementMovieView(movie.id);
-        });
-
-        player.on('loadedmetadata', () => {
-          setDuration(player.duration());
-        });
-
-        player.on('timeupdate', () => {
-          setCurrentTime(player.currentTime());
-        });
-
-        player.on('play', () => setIsPlaying(true));
-        player.on('pause', () => setIsPlaying(false));
-        player.on('volumechange', () => {
-          setIsMuted(player.muted());
-          setVolume(player.volume());
-        });
-      } catch (err) {
-        console.warn("Video Player Init Error, falling back to native:", err);
-      }
-    } else {
-      const vid = videoRef.current;
-      if (vid) {
-        if (movie.videoUrl) vid.src = movie.videoUrl;
-        if (movie.thumbnail) vid.poster = movie.thumbnail;
-        vid.onloadedmetadata = () => setDuration(vid.duration || 0);
-        vid.ontimeupdate = () => setCurrentTime(vid.currentTime || 0);
-        vid.onplay = () => setIsPlaying(true);
-        vid.onpause = () => setIsPlaying(false);
-        if (movie.id) incrementMovieView(movie.id);
-      }
+    if (movie.id) {
+      incrementMovieView(movie.id);
     }
-
-    return () => {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      if (playerRef.current) {
-        try {
-          playerRef.current.dispose();
-        } catch (e) {}
-      }
-    };
   }, [movie]);
 
-  const handleStartBroadcast = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setNeedsClickToStart(false);
-    if (playerRef.current) {
-      playerRef.current.muted(false);
-      playerRef.current.play();
-      setIsPlaying(true);
-    } else if (videoRef.current) {
-      videoRef.current.muted = false;
-      videoRef.current.play().catch(console.error);
-      setIsPlaying(true);
-    }
+  const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
+
+  const handleReload = () => {
+    setIsLoading(true);
+    setIframeKey(prev => prev + 1);
   };
 
-  const togglePlay = (e?: React.MouseEvent | React.TouchEvent) => {
-    e?.stopPropagation();
-    if (playerRef.current) {
-      if (playerRef.current.paused()) {
-        playerRef.current.play();
-      } else {
-        playerRef.current.pause();
-      }
-      resetControlsTimeout();
-    } else if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(console.error);
-      } else {
-        videoRef.current.pause();
-      }
-      resetControlsTimeout();
-    }
-  };
-
-  const seek = (seconds: number, e?: React.MouseEvent | React.TouchEvent) => {
-    e?.stopPropagation();
-    if (playerRef.current) {
-      const current = playerRef.current.currentTime();
-      const dur = playerRef.current.duration();
-      const newTime = current + seconds;
-      
-      playerRef.current.currentTime(Math.max(0, Math.min(newTime, dur)));
-      setCurrentTime(playerRef.current.currentTime());
-      
-      setSeekFeedback(seconds > 0 ? 'forward' : 'backward');
-      setTimeout(() => setSeekFeedback(null), 500);
-      
-      resetControlsTimeout();
-    } else if (videoRef.current) {
-      const current = videoRef.current.currentTime;
-      const dur = videoRef.current.duration || 0;
-      const newTime = current + seconds;
-      videoRef.current.currentTime = Math.max(0, Math.min(newTime, dur));
-      setCurrentTime(videoRef.current.currentTime);
-      setSeekFeedback(seconds > 0 ? 'forward' : 'backward');
-      setTimeout(() => setSeekFeedback(null), 500);
-      resetControlsTimeout();
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (needsClickToStart) return;
-    const touch = e.touches[0];
-    const screenWidth = window.innerWidth;
-    const side = touch.clientX < screenWidth / 2 ? 'left' : 'right';
-    const now = Date.now();
-    if (lastTapRef.current.side === side && now - lastTapRef.current.time < 300) {
-      seek(side === 'left' ? -10 : 10, e);
-      lastTapRef.current = { time: 0, side: null };
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.().catch(console.error);
+      setIsFullscreen(true);
     } else {
-      lastTapRef.current = { time: now, side };
-      resetControlsTimeout();
+      document.exitFullscreen?.().catch(console.error);
+      setIsFullscreen(false);
     }
   };
 
-  const handleProgressBarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (playerRef.current) {
-      playerRef.current.currentTime(time);
-      setCurrentTime(time);
-    }
-  };
-
-  const toggleMute = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (playerRef.current) {
-      const newMuted = !isMuted;
-      playerRef.current.muted(newMuted);
-      setIsMuted(newMuted);
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    if (playerRef.current) {
-      playerRef.current.volume(val);
-      playerRef.current.muted(val === 0);
-      setVolume(val);
-    }
-  };
-
-  const toggleFullscreen = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (playerRef.current) {
-      if (playerRef.current.isFullscreen()) {
-        playerRef.current.exitFullscreen();
-        setIsFullscreen(false);
-      } else {
-        playerRef.current.requestFullscreen();
-        setIsFullscreen(true);
+  // Keyboard controls (Esc to close, F to fullscreen)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (!document.fullscreenElement) {
+          onClose();
+        }
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
       }
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return "0:00";
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
     <div 
-      className={`fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500 overflow-hidden ${showControls ? '' : 'md:cursor-none'}`}
-      onMouseMove={() => resetControlsTimeout()}
-      onTouchStart={handleTouchStart}
+      ref={containerRef}
+      className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-between select-none overflow-hidden animate-in fade-in duration-300"
     >
-      <div className={`absolute top-0 left-0 w-full p-4 md:p-8 flex items-center justify-between z-[220] bg-gradient-to-b from-black/90 to-transparent transition-all duration-500 ${showControls || needsClickToStart ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-        <button onClick={onClose} className="flex items-center text-white hover:text-gray-300 transition-colors group p-2">
-          <ArrowLeft className="w-6 h-6 md:w-8 md:h-8 mr-1 md:mr-2 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm md:text-xl font-bold tracking-tight">Back</span>
-        </button>
-        <div className="text-center flex-1 mx-2 overflow-hidden">
-          <h2 className="text-xs md:text-2xl font-black truncate uppercase tracking-tighter text-white">{movie.title}</h2>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-          <X className="w-6 h-6 md:w-8 md:h-8 text-white" />
-        </button>
-      </div>
+      {/* 1. Sleek Top Bar with Back, Title, Server Selectors, and Controls */}
+      <header className="w-full bg-gradient-to-b from-black via-black/80 to-transparent px-4 md:px-8 py-3.5 z-50 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 backdrop-blur-md">
+        {/* Left: Back Button & Movie Metadata */}
+        <div className="flex items-center space-x-3 md:space-x-4">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex items-center space-x-1.5 bg-white/10 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded-full text-xs md:text-sm transition-all active:scale-95 shadow-md"
+            title="Return to library"
+          >
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
 
-      <div className="w-full h-full flex items-center justify-center bg-black relative group" onClick={() => !needsClickToStart && togglePlay()}>
-        {seekFeedback && (
-          <div className="absolute inset-0 z-[215] flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center bg-black/40 backdrop-blur-md p-6 rounded-full animate-in zoom-in-95 fade-in duration-200">
-               {seekFeedback === 'forward' ? <RotateCw className="w-12 h-12 text-white animate-pulse" /> : <RotateCcw className="w-12 h-12 text-white animate-pulse" />}
-               <span className="text-white font-black mt-2 text-xl">{seekFeedback === 'forward' ? '+10s' : '-10s'}</span>
+          <div className="truncate max-w-[160px] sm:max-w-xs md:max-w-md">
+            <div className="flex items-center space-x-2">
+              <h1 className="text-sm md:text-lg font-black text-white tracking-tight uppercase truncate">
+                {movie.title}
+              </h1>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600/30 text-red-400 border border-red-500/40 hidden md:inline">
+                TMDb {tmdbId}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2 text-[10px] md:text-xs text-gray-400 font-medium">
+              <span>{movie.year}</span>
+              <span aria-hidden="true">·</span>
+              <span>{movie.genre}</span>
+              <span aria-hidden="true">·</span>
+              <span className="text-green-400 font-bold">4K Ultra HD</span>
             </div>
           </div>
-        )}
-
-        {needsClickToStart && (
-          <div className="absolute inset-0 z-[216] flex flex-col items-center justify-center bg-black/90 px-6 text-center">
-             <button onClick={handleStartBroadcast} className="flex flex-col items-center space-y-4 md:space-y-6 hover:scale-105 transition-transform group/start">
-                <div className="w-20 h-20 md:w-32 md:h-32 bg-red-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(229,9,20,0.6)] group-hover/start:shadow-red-600/80 transition-all">
-                  <PlayCircle className="w-10 h-10 md:w-16 md:h-16 text-white fill-white/20" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs md:text-xl font-black uppercase tracking-[0.3em] text-white">Watch BroadCast</span>
-                </div>
-             </button>
-          </div>
-        )}
-
-        <div data-vjs-player className="w-full h-full flex items-center justify-center">
-          <video id="my-video" ref={videoRef} className="video-js vjs-big-play-centered" playsInline />
         </div>
 
-        {!needsClickToStart && (
-          <div className={`absolute inset-0 z-[210] flex flex-col justify-end bg-gradient-to-t from-black/90 via-transparent to-black/50 transition-all duration-500 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 pointer-events-none translate-y-4'}`}>
-            <div className="absolute inset-0 flex items-center justify-center space-x-8 md:space-x-20 pointer-events-none">
-              <button onClick={(e) => seek(-10, e)} className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto shadow-xl group/seek">
-                <RotateCcw className="w-8 h-8 md:w-12 md:h-12 text-white group-hover/seek:rotate-[-45deg] transition-transform" />
+        {/* Center: Server Switcher */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1">
+          {servers.map((s) => {
+            const isActive = s.id === activeServer.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  if (s.id !== activeServer.id) {
+                    setActiveServerId(s.id);
+                    setIsLoading(true);
+                  }
+                }}
+                className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-black transition-all flex items-center space-x-1.5 shadow-sm whitespace-nowrap active:scale-95 ${
+                  isActive 
+                    ? 'bg-red-600 text-white shadow-red-600/40 border border-red-500 ring-2 ring-red-500/30' 
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/10'
+                }`}
+              >
+                {s.id.includes('codespecters') ? (
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                ) : s.id.includes('trailer') ? (
+                  <Film className="w-3 h-3 text-blue-400" />
+                ) : (
+                  <Play className="w-3 h-3 text-green-400" />
+                )}
+                <span>{s.name}</span>
               </button>
-              <button onClick={togglePlay} className="w-16 h-16 md:w-28 md:h-28 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-95 pointer-events-auto shadow-2xl">
-                {isPlaying ? <Pause className="w-8 h-8 md:w-14 md:h-14 text-white fill-white" /> : <Play className="w-8 h-8 md:w-14 md:h-14 text-white fill-white ml-1 md:ml-2" />}
-              </button>
-              <button onClick={(e) => seek(10, e)} className="p-3 md:p-4 rounded-full bg-black/30 hover:bg-black/50 transition-all active:scale-90 pointer-events-auto shadow-xl group/seek">
-                <RotateCw className="w-8 h-8 md:w-12 md:h-12 text-white group-hover/seek:rotate-[45deg] transition-transform" />
-              </button>
-            </div>
+            );
+          })}
+        </div>
 
-            <div className="px-4 pb-6 md:px-8 md:pb-8 space-y-2 md:space-y-4" onClick={(e) => e.stopPropagation()}>
-              <div className="relative flex flex-col group/progress pt-8 pb-2" onMouseEnter={() => setIsHoveringProgressBar(true)} onMouseLeave={() => setIsHoveringProgressBar(false)}>
-                <div className="flex justify-between mb-2 text-[9px] md:text-xs font-black text-gray-400 uppercase tracking-widest px-1">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration - currentTime)}</span>
-                </div>
-                <div className="relative w-full h-6 flex items-center">
-                   <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleProgressBarChange} className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer" />
-                   <div className="relative w-full h-1 md:h-1.5 bg-white/20 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
-                   </div>
-                   <div className="absolute h-3 w-3 md:h-5 md:w-5 bg-red-600 rounded-full border-2 border-white shadow-lg pointer-events-none transition-all z-10" style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - ${currentTime > duration / 2 ? '14px' : '0px'})` }} />
-                </div>
-              </div>
+        {/* Right: Player Utilities */}
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={handleReload}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
+            title="Reload video stream"
+          >
+            <RotateCw className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
 
-              <div className="flex items-center justify-between h-10 md:h-12">
-                <div className="flex items-center space-x-4 md:space-x-8">
-                  <button onClick={togglePlay} className="text-white hover:scale-110 transition p-1">
-                    {isPlaying ? <Pause className="w-5 h-5 md:w-8 md:h-8 fill-white" /> : <Play className="w-5 h-5 md:w-8 md:h-8 fill-white" />}
-                  </button>
-                  <div className="flex items-center space-x-2 group/volume">
-                    <button onClick={toggleMute} className="text-white hover:scale-110 transition p-1">
-                      {isMuted || volume === 0 ? <VolumeX className="w-5 h-5 md:w-8 md:h-8" /> : <Volume2 className="w-5 h-5 md:w-8 md:h-8" />}
-                    </button>
-                    <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={handleVolumeChange} className="w-0 md:group-hover/volume:w-32 transition-all overflow-hidden h-1 accent-white hidden md:block" />
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4 md:space-x-8">
-                  <button className="text-white opacity-50 hover:opacity-100 transition hidden md:block"><Settings className="w-5 h-5 md:w-6 md:h-6" /></button>
-                  <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition p-1">
-                    {isFullscreen ? <Minimize className="w-5 h-5 md:w-8 md:h-8" /> : <Maximize className="w-5 h-5 md:w-8 md:h-8" />}
-                  </button>
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
+            title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+          </button>
+
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-2 rounded-full bg-white/10 hover:bg-red-600 text-gray-300 hover:text-white transition"
+            title="Close Player"
+          >
+            <X className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Main Streaming Canvas Area */}
+      <main className="w-full flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+        {/* Loading Spinner */}
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-none space-y-3">
+            <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin shadow-lg shadow-red-600/30" />
+            <div className="text-center">
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-white block">
+                Loading CodeSpecters NexStream
+              </span>
+              <span className="text-[10px] text-gray-400 mt-0.5 block">
+                Connecting to 4K Ultra HD broadcast server...
+              </span>
             </div>
           </div>
         )}
-      </div>
-      <style>{`
-        .video-js { width: 100% !important; height: 100% !important; border: none !important; background-color: transparent !important; }
-        .vjs-control-bar { display: none !important; }
-        .vjs-tech { object-fit: contain !important; }
-      `}</style>
+
+        {/* Stream Source: Either CodeSpecters Iframe or Direct Video */}
+        {activeServer.type === 'iframe' ? (
+          <iframe
+            key={`${activeServer.id}-${iframeKey}`}
+            src={activeServer.url}
+            title={movie.title}
+            className="w-full h-full border-0 select-auto"
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allowFullScreen
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            onLoad={() => setIsLoading(false)}
+          />
+        ) : (
+          <video
+            key={`${activeServer.id}-${iframeKey}`}
+            src={activeServer.url}
+            poster={movie.backdrop || movie.thumbnail}
+            controls
+            autoPlay
+            playsInline
+            className="w-full h-full object-contain"
+            onCanPlay={() => setIsLoading(false)}
+          />
+        )}
+      </main>
+
+      {/* 3. Subtle Footer with Streaming Info & Source Verification */}
+      <footer className="w-full bg-gradient-to-t from-black via-black/90 to-transparent px-4 md:px-8 py-2.5 z-40 flex items-center justify-between text-[11px] text-gray-400 border-t border-white/5">
+        <div className="flex items-center space-x-2">
+          <ShieldCheck className="w-4 h-4 text-green-400" />
+          <span className="font-semibold text-gray-300">
+            Broadcasting via CodeSpecters NexStream
+          </span>
+          <span className="text-gray-600 hidden sm:inline">·</span>
+          <span className="text-gray-400 hidden sm:inline">
+            Official Key: <code className="text-gray-300 font-mono">nx_f3ccdd...ec50</code>
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <span className="text-gray-500 hidden md:inline">Press ESC to exit</span>
+          <a
+            href={`https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${CODESPECTERS_API_KEY}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1 hover:text-white transition"
+          >
+            <span>External Player</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };
