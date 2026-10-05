@@ -1,9 +1,12 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, AlertCircle, Loader2, Sparkles, Brain, ExternalLink } from 'lucide-react';
+import { 
+  X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, 
+  AlertCircle, Loader2, Sparkles, Brain, ExternalLink, Tv, Layers 
+} from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { deleteVideoFromCloud } from '../services/storageService.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
+import { isTvOrSeries } from '../services/streamService.ts';
 import AdBanner from './AdBanner.tsx';
 
 interface MovieDetailsProps {
@@ -29,12 +32,22 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
 
+  const isTv = isTvOrSeries(movie) || !!movie.isTv;
+  const [selectedSeason, setSelectedSeason] = useState<number>(movie.initialSeason || 1);
+  const [selectedEpisode, setSelectedEpisode] = useState<number>(movie.initialEpisode || 1);
+  const [showTvPicker, setShowTvPicker] = useState<boolean>(isTv);
+
   const isOwner = user && movie.uploaderId === user.id;
 
   useEffect(() => {
     const modal = document.querySelector('.modal-scroll-container');
     if (modal) modal.scrollTo({ top: 0, behavior: 'smooth' });
     
+    // Reset season/episode if movie changes
+    setSelectedSeason(movie.initialSeason || 1);
+    setSelectedEpisode(movie.initialEpisode || 1);
+    setShowTvPicker(isTvOrSeries(movie) || !!movie.isTv);
+
     // Fetch AI Insight when movie changes
     const fetchInsight = async () => {
       setIsLoadingInsight(true);
@@ -83,6 +96,17 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
     }
   };
 
+  const handlePlayAction = (seasonNum?: number, episodeNum?: number) => {
+    const finalSeason = seasonNum ?? selectedSeason;
+    const finalEpisode = episodeNum ?? selectedEpisode;
+    onPlay({
+      ...movie,
+      initialSeason: finalSeason,
+      initialEpisode: finalEpisode,
+      isTv: isTv || showTvPicker
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/90 backdrop-blur-md overflow-y-auto modal-scroll-container">
       <div className="relative bg-[#141414] w-full max-w-3xl min-h-screen md:min-h-0 md:rounded-2xl overflow-hidden shadow-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200 mb-10 md:mb-0">
@@ -106,7 +130,7 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
           
           <div className="absolute inset-0 flex items-center justify-center">
              <button 
-              onClick={() => onPlay(movie)}
+              onClick={() => handlePlayAction()}
               className="bg-red-600 text-white w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(229,9,20,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 border-4 border-white/20"
              >
                 <Play className="w-8 h-8 md:w-12 md:h-12 fill-white ml-1 md:ml-2" />
@@ -117,6 +141,14 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
           {isOwner && (
             <div className="absolute top-4 left-4 flex items-center bg-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-xl border border-blue-400/30">
               Your Upload
+            </div>
+          )}
+
+          {/* TV Badge */}
+          {isTv && (
+            <div className="absolute top-4 left-4 flex items-center space-x-1 bg-purple-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-xl border border-purple-400/30">
+              <Tv className="w-3 h-3" />
+              <span>TV Series</span>
             </div>
           )}
         </div>
@@ -165,9 +197,24 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
           )}
 
           <div className="space-y-2">
-            <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter italic leading-none">
-              {movie.title}
-            </h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter italic leading-none">
+                {movie.title}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowTvPicker(!showTvPicker)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition flex items-center space-x-1 shrink-0 ${
+                  showTvPicker 
+                    ? 'bg-purple-600/20 text-purple-300 border-purple-500/40' 
+                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
+                }`}
+              >
+                <Tv className="w-3 h-3" />
+                <span>{showTvPicker ? 'Hide Episodes' : 'Select Episode'}</span>
+              </button>
+            </div>
+
             <div className="flex items-center space-x-3 md:space-x-4 text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest">
               <span>{movie.year}</span>
               <span>•</span>
@@ -176,12 +223,93 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
               <span className="flex items-center">
                 <Eye className="w-3 h-3 mr-1" /> {formatViews(movie.views)}
               </span>
+              {(isTv || showTvPicker) && (
+                <>
+                  <span>•</span>
+                  <span className="text-purple-400 font-bold">Series</span>
+                </>
+              )}
             </div>
           </div>
 
           <p className="text-gray-400 text-sm md:text-base leading-relaxed line-clamp-4">
             {movie.description}
           </p>
+
+          {/* TV Shows: Select Episode Section */}
+          {(isTv || showTvPicker) && (
+            <div className="bg-gradient-to-b from-purple-950/20 to-zinc-900/60 border border-purple-500/30 rounded-2xl p-4 md:p-5 space-y-3.5 shadow-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 rounded-lg bg-purple-600/20 text-purple-300">
+                    <Tv className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs md:text-sm font-black uppercase tracking-wider text-white">
+                    Select Episode to Watch
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono font-bold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-lg border border-amber-400/20">
+                  Season {selectedSeason} • Ep {selectedEpisode}
+                </span>
+              </div>
+
+              {/* Season Selection Pills */}
+              <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(sNum => (
+                  <button
+                    key={sNum}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSeason(sNum);
+                      setSelectedEpisode(1);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition active:scale-95 ${
+                      selectedSeason === sNum 
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400' 
+                        : 'bg-zinc-800 text-gray-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    Season {sNum}
+                  </button>
+                ))}
+              </div>
+
+              {/* Episode Selection Chips */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                  Season {selectedSeason} Episodes:
+                </div>
+                <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 gap-2">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(epNum => {
+                    const isCurrent = selectedEpisode === epNum;
+                    return (
+                      <button
+                        key={epNum}
+                        type="button"
+                        onClick={() => {
+                          setSelectedEpisode(epNum);
+                          handlePlayAction(selectedSeason, epNum);
+                        }}
+                        className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-0.5 active:scale-95 ${
+                          isCurrent 
+                            ? 'bg-red-600 border-red-500 text-white shadow-md' 
+                            : 'bg-zinc-800/80 hover:bg-zinc-700 border-white/5 text-gray-200 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span className="text-xs font-black">Ep {epNum}</span>
+                        </div>
+                        <span className="text-[9px] text-gray-400 font-medium">
+                          S{selectedSeason}:E{epNum}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI Insights Section */}
           <div className="relative overflow-hidden group/ai">
@@ -241,13 +369,14 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
             </div>
           )}
 
+          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button 
-              onClick={() => onPlay(movie)}
+              onClick={() => handlePlayAction()}
               className="flex-1 bg-white text-black py-3 md:py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 shadow-lg text-xs md:text-sm"
             >
               <PlayCircle className="w-5 h-5 md:w-6 md:h-6 mr-2 fill-black" />
-              Watch Now
+              {(isTv || showTvPicker) ? `Watch S${selectedSeason}:E${selectedEpisode}` : 'Watch Now'}
             </button>
             
             <button 

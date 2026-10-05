@@ -522,12 +522,7 @@ const App: React.FC = () => {
             onLogout={handleLogout}
             onSearch={setSearchTerm}
             onSelectPlatform={handleSelectPlatform}
-            movies={movies}
             searchTerm={searchTerm}
-            onSelectMovie={handleSelectMovie}
-            onPlay={handlePlay}
-            apiSearchResults={apiSearchResults}
-            isSearchingApi={isSearchingApi}
           />
 
           {searchTerm.trim().length > 0 ? (

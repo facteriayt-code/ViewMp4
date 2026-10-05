@@ -146,6 +146,9 @@ export function getAnimeAnilistId(movie: Movie): number | null {
  * Checks if a movie/title represents a TV Series
  */
 export function isTvOrSeries(movie: Movie): boolean {
+  if (movie.isTv) return true;
+  if (movie.initialSeason !== undefined || movie.initialEpisode !== undefined) return true;
+
   const titleLower = (movie.title || '').toLowerCase();
   const genreLower = (movie.genre || '').toLowerCase();
 
@@ -164,11 +167,33 @@ export function isTvOrSeries(movie: Movie): boolean {
     'the bear',
     'better call saul',
     'arcane',
-    'succession'
+    'succession',
+    'renegade immortal',
+    'peaky blinders',
+    'money heist',
+    'vikings',
+    'the witcher',
+    'friends',
+    'the office',
+    'sherlock',
+    'narcos',
+    'dark',
+    'black mirror',
+    'westworld',
+    'fargo',
+    'dexter',
+    'prison break',
+    'supernatural',
+    'attack on titan',
+    'demon slayer',
+    'jujutsu kaisen',
+    'one piece',
+    'naruto',
+    'solo leveling'
   ];
 
   if (tvTitles.some(t => titleLower.includes(t))) return true;
-  if (genreLower.includes('tv') || genreLower.includes('series') || titleLower.includes('season')) return true;
+  if (genreLower.includes('tv') || genreLower.includes('series') || titleLower.includes('season') || titleLower.includes('episode')) return true;
 
   return false;
 }
@@ -231,7 +256,30 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   const servers: StreamServer[] = [];
 
   // ============================================================
-  // SERVER 1: CineSrc 4K (Primary Hindi & Multi-Audio - CONNECTED FIRST)
+  // SERVER 1: Filmy / Filmu Player (Top Priority - CONNECTED FIRST)
+  // URL Pattern:
+  //   Movies: https://embed.filmu.in/movie/${tmdbId}
+  //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
+  // ============================================================
+  const filmuUrl = isSeries 
+    ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
+    : `https://embed.filmu.in/movie/${tmdbId}`;
+
+  servers.push({
+    id: 'filmu-primary',
+    name: 'Filmy Server',
+    badge: 'Filmy #1 Priority',
+    url: filmuUrl,
+    type: 'iframe',
+    quality: '4K / 1080p',
+    description: 'Top priority Filmy server with Hindi audio, multi-language switcher & subtitles',
+    isHindi: true,
+    isFilmu: true,
+    isTv: isSeries
+  });
+
+  // ============================================================
+  // SERVER 2: CineSrc 4K (Secondary Fast Backup Server)
   // URL Pattern:
   //   Movies: https://cinesrc.st/embed/movie/${tmdbId}
   //   TV:     https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}
@@ -242,37 +290,14 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
 
   servers.push({
     id: 'cinesrc-hindi',
-    name: 'Hindi · CineSrc 4K',
-    badge: 'Hindi 1st Priority',
+    name: 'CineSrc 4K',
+    badge: 'Hindi / Multi-Audio',
     url: cinesrcUrl,
     type: 'iframe',
     quality: '4K Ultra HD',
-    description: 'Primary Hindi & Multi-Audio fast stream (connected first by default)',
+    description: 'Secondary Hindi & Multi-Audio fast stream with multi-server failover',
     isHindi: true,
     isCineSrc: true,
-    isTv: isSeries
-  });
-
-  // ============================================================
-  // SERVER 2: Filmu Cinema Player (Secondary Hindi / Multi-Audio Fallback)
-  // URL Pattern:
-  //   Movies: https://embed.filmu.in/movie/${tmdbId}
-  //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
-  // ============================================================
-  const filmuUrl = isSeries 
-    ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
-    : `https://embed.filmu.in/movie/${tmdbId}`;
-
-  servers.push({
-    id: 'filmu-hindi',
-    name: 'Hindi · Filmu Player',
-    badge: 'Hindi/Multi-Audio',
-    url: filmuUrl,
-    type: 'iframe',
-    quality: '4K / 1080p',
-    description: 'Secondary Hindi server with built-in multi-audio switcher & subtitles',
-    isHindi: true,
-    isFilmu: true,
     isTv: isSeries
   });
 

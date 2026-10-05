@@ -35,6 +35,9 @@ export interface Movie {
   userRating?: number;
   criticScore?: number;
   streamingSources?: StreamingSource[];
+  initialSeason?: number;
+  initialEpisode?: number;
+  isTv?: boolean;
 }
 
 export interface UserUpload {

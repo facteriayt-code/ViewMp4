@@ -86,14 +86,16 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   const totalResultsCount = filteredCatalog.length + filteredApiResults.length;
 
   const handlePlayApiItem = (item: WatchmodeSearchResult) => {
+    const isTv = item.type === 'tv_series' || item.type === 'tv' || (item as any).is_tv;
     const movie = convertSearchResultToMovie(item);
-    onPlay(movie);
+    onPlay({ ...movie, isTv: Boolean(isTv) });
     onClose?.();
   };
 
   const handleSelectApiItem = (item: WatchmodeSearchResult) => {
+    const isTv = item.type === 'tv_series' || item.type === 'tv' || (item as any).is_tv;
     const movie = convertSearchResultToMovie(item);
-    onSelectMovie(movie);
+    onSelectMovie({ ...movie, isTv: Boolean(isTv) });
     onClose?.();
   };
 
@@ -290,7 +292,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onPlay(movie);
+                              onPlay({ ...movie, isTv: Boolean(isTv) });
                               onClose?.();
                             }}
                             className="flex items-center space-x-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] sm:text-xs font-black transition active:scale-95 shadow-sm"
@@ -355,7 +357,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onPlay(movie);
+                            onPlay({ ...movie, isTv: Boolean(isTv) });
                           }}
                           className="flex-1 flex items-center justify-center space-x-1 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-black transition active:scale-95"
                           title="Watch now"
