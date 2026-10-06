@@ -196,6 +196,7 @@ export const KNOWN_IMDB_MAP: Record<string, string> = {
   'wednesday': 'tt13443470',
   'squid game': 'tt10919420',
   'arcane': 'tt11126994',
+  'dark': 'tt5753856',
   'deadpool & wolverine': 'tt6263850',
   'avengers: endgame': 'tt4154796',
   'the dark knight': 'tt0468569',
@@ -219,10 +220,23 @@ export const KNOWN_IMDB_MAP: Record<string, string> = {
 export function getMovieTmdbId(movie: Movie): number {
   if (!movie) return 533535;
 
+  const titleLower = (movie.title || '').toLowerCase().trim();
+  const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // SPECIAL PROTECTION: TV Show "Dark" must ALWAYS resolve to 70523 (TV Series)
+  // and NEVER to The Dark Knight (155) or The Dark Knight Rises (49026)
+  if (cleanTitle === 'dark' || movie.id === 'tmdb_70523') {
+    return 70523;
+  }
+
   // 0. Check verified user report fix override first
   if (movie.id) {
     const override = getMovieOverride(movie.id);
     if (override && override.tmdbId && !isNaN(Number(override.tmdbId)) && Number(override.tmdbId) > 0) {
+      // Prevent corrupted override mapping Dark to Batman / Dark Knight
+      if (cleanTitle === 'dark' && (Number(override.tmdbId) === 155 || Number(override.tmdbId) === 49026)) {
+        return 70523;
+      }
       return Number(override.tmdbId);
     }
   }
@@ -242,9 +256,6 @@ export function getMovieTmdbId(movie: Movie): number {
     const rawNum = parseInt(String(movie.id).replace('tmdb_', ''), 10);
     if (!isNaN(rawNum) && rawNum > 0) return rawNum;
   }
-
-  const titleLower = (movie.title || '').toLowerCase().trim();
-  const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
 
   // 4. Exact match in KNOWN_TMDB_MAP
   if (KNOWN_TMDB_MAP[titleLower]) {
@@ -317,6 +328,16 @@ export function checkMovieVerification(movie: Movie): MovieVerificationStatus {
   const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
   const tmdbId = getMovieTmdbId(movie);
 
+  // TV Series "Dark" is permanently verified as TMDb 70523 (never The Dark Knight 155)
+  if (cleanTitle === 'dark' || movie.id === 'tmdb_70523') {
+    return {
+      isAlreadyCorrect: true,
+      verifiedTitle: 'Dark',
+      verifiedTmdbId: 70523,
+      reason: 'Official Netflix sci-fi TV series (2017) with verified multi-season streaming'
+    };
+  }
+
   // 1. Direct match in KNOWN_TMDB_MAP
   if (KNOWN_TMDB_MAP[titleLower] && KNOWN_TMDB_MAP[titleLower] === tmdbId) {
     return {
@@ -387,6 +408,14 @@ export function checkMovieVerification(movie: Movie): MovieVerificationStatus {
 export function isTvOrSeries(movie: Movie): boolean {
   if (!movie) return false;
 
+  const titleLower = (movie.title || '').toLowerCase().trim();
+  const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // TV Series "Dark" is always TV
+  if (cleanTitle === 'dark' || movie.id === 'tmdb_70523') {
+    return true;
+  }
+
   // 1. Explicit boolean on isTv property
   if (movie.isTv !== undefined) {
     return Boolean(movie.isTv);
@@ -401,9 +430,6 @@ export function isTvOrSeries(movie: Movie): boolean {
   if (genreLower.includes('tv') || genreLower.includes('series') || genreLower.includes('show')) {
     return true;
   }
-
-  const titleLower = (movie.title || '').toLowerCase().trim();
-  const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
 
   // 3. Exact match only with known TV titles (never use loose .includes() to avoid classifying movies like The Dark Knight as TV)
   const tvTitles = [
@@ -767,11 +793,14 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   };
 
   // User specification:
-  // For foreign films priorities filmu server (#1)
-  // For Indian films priorities autoembed server (#1)
-  const orderedServers: StreamServer[] = isIndian
-    ? [autoembedServer, filmuServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
-    : [filmuServer, autoembedServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer];
+  // For TV Series: prioritize autoembedServer (#1) and vidsrcServer (#2) as they contain full seasons/episodes
+  // For foreign films prioritize filmu server (#1)
+  // For Indian films prioritize autoembed server (#1)
+  const orderedServers: StreamServer[] = isSeries
+    ? [autoembedServer, vidsrcServer, cinesrcServer, filmuServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
+    : (isIndian
+        ? [autoembedServer, filmuServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
+        : [filmuServer, autoembedServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]);
 
   const servers: StreamServer[] = [...orderedServers];
 

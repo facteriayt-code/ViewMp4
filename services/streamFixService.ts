@@ -64,19 +64,35 @@ const memoryReports: StreamFixReport[] = [];
  * Loads all locally persisted movie fix overrides
  */
 export function getAllMovieOverrides(): Record<string, MovieOverride> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-    return memoryOverrides;
-  }
-  try {
-    const raw = localStorage.getItem(FIX_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return { ...memoryOverrides, ...parsed };
+  let overrides: Record<string, MovieOverride> = { ...memoryOverrides };
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(FIX_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        overrides = { ...memoryOverrides, ...parsed };
+      }
+    } catch (err) {
+      console.error("Failed to load movie overrides:", err);
     }
-  } catch (err) {
-    console.error("Failed to load movie overrides:", err);
   }
-  return memoryOverrides;
+
+  // Sanitize bug: if any override mapped Dark (tmdb_70523) to 155 (The Dark Knight), repair it immediately
+  let modified = false;
+  for (const [k, v] of Object.entries(overrides)) {
+    if ((k.includes('70523') || v.fixedTitle?.toLowerCase() === 'dark') && (v.tmdbId === 155 || v.tmdbId === 49026)) {
+      v.tmdbId = 70523;
+      v.fixedTitle = 'Dark';
+      modified = true;
+    }
+  }
+  if (modified && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(FIX_STORAGE_KEY, JSON.stringify(overrides));
+    } catch {}
+  }
+
+  return overrides;
 }
 
 /**
@@ -93,6 +109,11 @@ export function getMovieOverride(movieId: string): MovieOverride | null {
  */
 export function saveMovieOverride(movieId: string, override: Partial<MovieOverride>): void {
   if (!movieId) return;
+  // Block saving The Dark Knight (155) for Dark
+  if ((movieId.includes('70523') || override.fixedTitle?.toLowerCase() === 'dark') && (override.tmdbId === 155 || override.tmdbId === 49026)) {
+    override.tmdbId = 70523;
+    override.fixedTitle = 'Dark';
+  }
   try {
     const all = getAllMovieOverrides();
     const existing = all[movieId] || memoryOverrides[movieId] || { appliedAt: Date.now() };
@@ -266,22 +287,33 @@ export async function diagnoseAndFixMovie(
         // Filter out candidates that were ALREADY tried in previous reports
         const freshCandidates = uniqueCandidates.filter(c => !triedTmdbIds.has(Number(c.id)));
 
-        if (freshCandidates.length > 0) {
+        const normQuery = cleanTitle.toLowerCase();
+        if (normQuery === 'dark' || movie.id === 'tmdb_70523') {
+          fixedTmdbId = 70523;
+        } else if (freshCandidates.length > 0) {
           // Find best candidate matching clean title
           const matched = freshCandidates.find((r: any) => {
             const rTitle = (r.title || r.name || '').toLowerCase();
-            return rTitle === cleanTitle.toLowerCase();
+            return rTitle === normQuery;
           }) || freshCandidates[0];
 
           if (matched && matched.id) {
-            fixedTmdbId = Number(matched.id);
-            triedTmdbIds.add(fixedTmdbId);
+            if (normQuery === 'dark' && (Number(matched.id) === 155 || Number(matched.id) === 49026)) {
+              fixedTmdbId = 70523;
+            } else {
+              fixedTmdbId = Number(matched.id);
+              triedTmdbIds.add(fixedTmdbId);
+            }
           }
         } else if (uniqueCandidates.length > 0) {
-          // If all were tried, pick candidate with highest vote count
-          const bestFallback = [...uniqueCandidates].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))[0];
-          if (bestFallback && bestFallback.id) {
-            fixedTmdbId = Number(bestFallback.id);
+          if (normQuery === 'dark' || movie.id === 'tmdb_70523') {
+            fixedTmdbId = 70523;
+          } else {
+            // If all were tried, pick candidate with highest vote count
+            const bestFallback = [...uniqueCandidates].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))[0];
+            if (bestFallback && bestFallback.id) {
+              fixedTmdbId = Number(bestFallback.id);
+            }
           }
         }
       } catch (err) {

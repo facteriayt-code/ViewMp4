@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Check, Zap, Flame, Heart, PlayCircle, Star } from 'lucide-react';
+import { Share2, Check, Flame, Star, Tv, Sparkles, Film } from 'lucide-react';
 
 interface CategoryShareBarProps {
   onCategoryClick: (category: string) => void;
@@ -7,10 +7,10 @@ interface CategoryShareBarProps {
 
 const CATEGORIES = [
   { name: 'Trending Now', icon: <Flame className="w-3 h-3" />, color: 'text-orange-500' },
-  { name: 'New Community Uploads', icon: <Zap className="w-3 h-3" />, color: 'text-yellow-400' },
-  { name: 'onlyfans Content', icon: <Heart className="w-3 h-3" />, color: 'text-blue-400' },
-  { name: 'Insta post', icon: <Star className="w-3 h-3" />, color: 'text-pink-500' },
-  { name: 'Viral Highlights', icon: <PlayCircle className="w-3 h-3" />, color: 'text-red-500' },
+  { name: 'Top TV Series & Binge Shows', icon: <Tv className="w-3 h-3" />, color: 'text-purple-400' },
+  { name: 'Sci-Fi & Cosmic Adventures', icon: <Sparkles className="w-3 h-3" />, color: 'text-cyan-400' },
+  { name: 'Action & Adventure Hits', icon: <Film className="w-3 h-3" />, color: 'text-red-500' },
+  { name: 'Top Rated Movies & Masterpieces', icon: <Star className="w-3 h-3" />, color: 'text-amber-400' },
 ];
 
 const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick }) => {

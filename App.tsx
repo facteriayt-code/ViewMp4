@@ -183,7 +183,7 @@ const App: React.FC = () => {
       setIsSyncing(true);
       try {
         const cloudVideos = await getAllVideosFromCloud();
-        const updatedMovies = [...cloudVideos, ...INITIAL_MOVIES];
+        const updatedMovies = [...INITIAL_MOVIES, ...cloudVideos];
         const uniqueMovies = Array.from(new Map(updatedMovies.map(m => [m.id, m])).values());
         setMovies(uniqueMovies);
         setIsOnline(true);
@@ -336,9 +336,10 @@ const App: React.FC = () => {
   }, [movies, searchTerm]);
 
   const rows = useMemo(() => {
-    // Ensure primary homepage rows feature verified playable movies and shows
-    const playableMovies = filteredMovies.filter(m => m.year && m.year <= 2024);
-    const pool = playableMovies.length > 0 ? playableMovies : filteredMovies;
+    // Exclude community uploads from homepage recommendation rows per user specification
+    const officialMovies = filteredMovies.filter(m => !m.isUserUploaded);
+    const playableMovies = officialMovies.filter(m => m.year && m.year <= 2024);
+    const pool = playableMovies.length > 0 ? playableMovies : officialMovies;
     const tvShows = pool.filter(m => m.isTv || /tv|series/i.test(m.genre || ''));
     const moviesOnly = pool.filter(m => !m.isTv && !/tv|series/i.test(m.genre || ''));
 
@@ -369,6 +370,11 @@ const App: React.FC = () => {
       }
     ];
   }, [filteredMovies]);
+
+  // Featured Hero movie: always verified cinema title (never community upload)
+  const heroMovie = useMemo(() => {
+    return movies.find(m => !m.isUserUploaded && (m.backdrop || m.thumbnail)) || INITIAL_MOVIES[0];
+  }, [movies]);
 
   // Real-time Watchmode Database API search when user types in search bar
   useEffect(() => {
@@ -563,7 +569,7 @@ const App: React.FC = () => {
           ) : (
             <>
               <Hero 
-                movie={movies[0]} 
+                movie={heroMovie} 
                 onInfoClick={handleSelectMovie} 
                 onPlay={handlePlay} 
               />
