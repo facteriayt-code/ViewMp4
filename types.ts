@@ -48,3 +48,13 @@ export interface UserUpload {
   thumbnail: File | null;
   description: string;
 }
+
+export interface ContinueWatchingItem {
+  movie: Movie;
+  progress: number;
+  currentTimeSeconds?: number;
+  durationSeconds?: number;
+  lastWatchedAt: number;
+  season?: number;
+  episode?: number;
+}

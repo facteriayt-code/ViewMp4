@@ -13,7 +13,7 @@ import AdBanner from './components/AdBanner.tsx';
 import IntermissionAd from './components/IntermissionAd.tsx';
 import CategoryShareBar from './components/CategoryShareBar.tsx';
 import { INITIAL_MOVIES } from './constants.ts';
-import { Movie, User } from './types.ts';
+import { Movie, User, ContinueWatchingItem } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
@@ -22,6 +22,8 @@ import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, Watchmo
 import { StreamingPlatformLogosBar } from './components/StreamingPlatformLogosBar.tsx';
 import { StreamingPlatformReplica } from './components/StreamingPlatformReplica.tsx';
 import { SearchBoxResults } from './components/SearchBoxResults.tsx';
+import { ContinueWatchingRow } from './components/ContinueWatchingRow.tsx';
+import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from './services/continueWatchingService.ts';
 import { PlatformId } from './services/platformCatalog.ts';
 
 const STORAGE_KEYS = {
@@ -32,6 +34,9 @@ const STORAGE_KEYS = {
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
+  const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
+    getContinueWatchingList(INITIAL_MOVIES)
+  );
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -76,6 +81,14 @@ const App: React.FC = () => {
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Listen for Continue Watching updates (persisted in localStorage & synced across components)
+  useEffect(() => {
+    const unsub = subscribeToContinueWatching((items) => {
+      setContinueWatchingItems(items);
+    });
+    return unsub;
   }, []);
 
   // Update refs to avoid stale closures in event listeners
@@ -572,6 +585,25 @@ const App: React.FC = () => {
                   <div className="flex items-center justify-center space-x-2 text-amber-500 bg-black/40 backdrop-blur-md py-2 px-4 rounded-full w-fit mx-auto border border-amber-500/20 shadow-lg animate-bounce mt-8">
                      <WifiOff className="w-4 h-4" />
                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Offline Mode</span>
+                  </div>
+                )}
+
+                {/* Continue Watching Section */}
+                {continueWatchingItems.length > 0 && (
+                  <div id="continue-watching" className="scroll-mt-24">
+                    <ContinueWatchingRow
+                      userName={user?.name ? user.name.split(' ')[0] : 'You'}
+                      items={continueWatchingItems}
+                      onPlay={(movie, season, episode) => {
+                        handlePlay({
+                          ...movie,
+                          initialSeason: season ?? movie.initialSeason,
+                          initialEpisode: episode ?? movie.initialEpisode
+                        });
+                      }}
+                      onSelectMovie={handleSelectMovie}
+                      onRemove={(id) => removeContinueWatching(id)}
+                    />
                   </div>
                 )}
 

@@ -126,6 +126,18 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
+          <button 
+            onClick={() => {
+              handleClearSearch();
+              setTimeout(() => {
+                const el = document.getElementById('continue-watching');
+                el?.scrollIntoView({ behavior: 'smooth' });
+              }, 50);
+            }} 
+            className="hover:text-white transition"
+          >
+            Continue Watching
+          </button>
           <button onClick={() => onUploadClick()} className="hover:text-white transition flex items-center space-x-1">
             <span>Database API</span>
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>

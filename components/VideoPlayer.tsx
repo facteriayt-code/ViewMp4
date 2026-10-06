@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
+import { saveContinueWatching } from '../services/continueWatchingService.ts';
 import { 
   getMovieStreamServers, 
   getMovieTmdbId, 
@@ -33,11 +34,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to first server in list (AutoEmbed 4K VIP priority)
+  // Default to first server in list (Filmy priority for foreign films, AutoEmbed for Indian films)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    return list[0]?.id || 'autoembed-mirror';
+    return list[0]?.id || 'filmu-primary';
   });
+
+  const lastMovieIdRef = useRef<string>(movie.id);
   
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -53,19 +56,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     const list = getMovieStreamServers(movie, season, episode);
     setServers(list);
     
-    // If active server is still in list, keep it; otherwise switch to first
-    setActiveServerId(prev => {
-      const exists = list.some(s => s.id === prev);
-      return exists ? prev : (list[0]?.id || 'autoembed-mirror');
-    });
+    // When switching to a different movie, always prioritize the top server
+    // (Filmy Server for foreign films, AutoEmbed for Indian films)
+    if (lastMovieIdRef.current !== movie.id) {
+      lastMovieIdRef.current = movie.id;
+      setActiveServerId(list[0]?.id || 'filmu-primary');
+    } else {
+      // If same movie (e.g. season or episode changed), preserve user's server if still valid
+      setActiveServerId(prev => {
+        const exists = list.some(s => s.id === prev);
+        return exists ? prev : (list[0]?.id || 'filmu-primary');
+      });
+    }
     
     setIframeKey(k => k + 1);
     setIsLoading(true);
 
     if (movie.id) {
       incrementMovieView(movie.id);
+      saveContinueWatching(movie, 25, isSeries ? season : undefined, isSeries ? episode : undefined);
     }
-  }, [movie, season, episode]);
+  }, [movie, season, episode, isSeries]);
+
+  // Track progress while watching
+  useEffect(() => {
+    let currentProgress = 25;
+    const progressTimer = setInterval(() => {
+      currentProgress = Math.min(95, currentProgress + 10);
+      saveContinueWatching(movie, currentProgress, isSeries ? season : undefined, isSeries ? episode : undefined);
+    }, 15000);
+    return () => clearInterval(progressTimer);
+  }, [movie, season, episode, isSeries]);
 
   // Fast auto-clear for loading state so the iframe is never obscured
   useEffect(() => {

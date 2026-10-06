@@ -566,5 +566,255 @@
         "format": "4K HDR"
       }
     ]
+  },
+  {
+    "id": "tmdb_579974",
+    "title": "RRR",
+    "description": "A fictional history of two legendary revolutionaries' journey away from home before they began fighting for their country in the 1920s.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/wE0I6efAW4cDDmZQWtwZMOW44EJ.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/i0Y0wP8H6SRgjr6QmuwbtQbS24D.jpg",
+    "genre": "Action",
+    "year": 2022,
+    "rating": "PG-13",
+    "views": 4061904,
+    "userRating": 7.719,
+    "criticScore": 77,
+    "watchmodeId": 579974,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=RRR+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_872906",
+    "title": "Jawan",
+    "description": "An emotional journey of a prison warden, driven by a personal vendetta while keeping up to a promise made years ago, recruits inmates to commit outrageous crimes that shed light on corruption and injustice, in an attempt to get even with his past,  and that leads him to an unexpected reunion.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/jFt1gS4BGHlK8xt76Y81Alp4dbt.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/5LtSjMNw6j3LkG29Oa4O0iY5U8.jpg",
+    "genre": "Action",
+    "year": 2023,
+    "rating": "PG-13",
+    "views": 3502680,
+    "userRating": 7,
+    "criticScore": 70,
+    "watchmodeId": 872906,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Jawan+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_781732",
+    "title": "Animal",
+    "description": "The hardened son of a powerful industrialist returns home after years abroad and vows to take bloody revenge on those threatening his father's life.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/hr9rjR3J0xBBKmlJ4n3gHId9ccx.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/lprsAHkwMxk2iC6VZxNmV0H7g1t.jpg",
+    "genre": "Action",
+    "year": 2023,
+    "rating": "PG-13",
+    "views": 3465608,
+    "userRating": 6.123,
+    "criticScore": 61,
+    "watchmodeId": 781732,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Animal+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_360814",
+    "title": "Dangal",
+    "description": "Dangal is an extraordinary true story based on the life of Mahavir Singh and his two daughters, Geeta and Babita Phogat. The film traces the inspirational journey of a father who trains his daughters to become world class wrestlers.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/cJRPOLEexI7qp2DKtFfCh7YaaUG.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/l0fNAHLOFReQJsxCOmGWvJDnimn.jpg",
+    "genre": "Drama",
+    "year": 2016,
+    "rating": "PG-13",
+    "views": 3508760,
+    "userRating": 7.9,
+    "criticScore": 79,
+    "watchmodeId": 360814,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Dangal+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_587412",
+    "title": "K.G.F: Chapter 2",
+    "description": "The blood-soaked land of Kolar Gold Fields (KGF) has a new overlord now - Rocky, whose name strikes fear in the heart of his foes. His allies look up to Rocky as their Savior, the government sees him as a threat to law and order; enemies are clamoring for revenge and conspiring for his downfall. Bloodier battles and darker days await as Rocky continues on his quest for unchallenged supremacy.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/khNVygolU0TxLIDWff5tQlAhZ23.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/nsV5Mfi9FAV4w8eDsdr7uqVswOk.jpg",
+    "genre": "Action",
+    "year": 2022,
+    "rating": "PG-13",
+    "views": 3374824,
+    "userRating": 7.4,
+    "criticScore": 74,
+    "watchmodeId": 587412,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=K.G.F%3A%20Chapter%202+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_350312",
+    "title": "Bāhubali 2: The Conclusion",
+    "description": "When Mahendra, the son of Bāhubali, learns about his heritage, he begins to look for answers. His story is juxtaposed with past events that unfolded in the Mahishmati Kingdom.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/21sC2assImQIYCEDA84Qh9d1RsK.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/whNjsTOUVg2lZLCKgGhnACnmV8E.jpg",
+    "genre": "Action",
+    "year": 2017,
+    "rating": "PG-13",
+    "views": 3503752,
+    "userRating": 7.5,
+    "criticScore": 75,
+    "watchmodeId": 350312,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=B%C4%81hubali%202%3A%20The%20Conclusion+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_801688",
+    "title": "Kalki 2898-AD",
+    "description": "In the year 2898 AD, around 6000 years after Kurukshetra war, Ashwatthama gears up for his final battle of redemption at the sign of hope in a dystopian world and Bhairava, a wisecracking and self-interested bounty hunter, tired of the perilous life becomes the hurdle in the process.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/rstcAnBeCkxNQjNp3YXrF6IP1tW.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/o8XSR1SONnjcsv84NRu6Mwsl5io.jpg",
+    "genre": "Sci-Fi",
+    "year": 2024,
+    "rating": "PG-13",
+    "views": 3392272,
+    "userRating": 6.4,
+    "criticScore": 64,
+    "watchmodeId": 801688,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Kalki%202898-AD+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_1112426",
+    "title": "Stree 2",
+    "description": "Following the events of 'Stree', the town of Chanderi is being haunted again. This time, women are mysteriously abducted by a terrifying headless entity. Once again, it's up to Vicky and friends to save their town and loved ones.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/nfnhwfUEFuSOxxf4jDdBlY6Lccw.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/fVV0A67kDjTTQ4CvUn8LoletRmI.jpg",
+    "genre": "Comedy",
+    "year": 2024,
+    "rating": "PG-13",
+    "views": 3234168,
+    "userRating": 6.7,
+    "criticScore": 67,
+    "watchmodeId": 1112426,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Stree%202+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_690957",
+    "title": "Pushpa: The Rise",
+    "description": "As Pushpa, a labourer, rises in the world of red sandalwood smuggling, he ends up making many enemies. However, violence ensues when the police try to topple his illegal business.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/h6Pd89ngvl9quPVsx3KoJlQsvk9.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/jQIcn51nsvMrpB9NFwEOb9QHhFt.jpg",
+    "genre": "Action",
+    "year": 2021,
+    "rating": "PG-13",
+    "views": 3282632,
+    "userRating": 6.8,
+    "criticScore": 68,
+    "watchmodeId": 690957,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Pushpa%3A%20The%20Rise+watch+online",
+        "format": "4K HDR"
+      }
+    ]
+  },
+  {
+    "id": "tmdb_20453",
+    "title": "3 Idiots",
+    "description": "Rascal. Joker. Dreamer. Genius... You've never met a college student quite like \"Rancho.\" From the moment he arrives at India's most prestigious university, Rancho's outlandish schemes turn the campus upside down—along with the lives of his two newfound best friends. Together, they make life miserable for \"Virus,\" the school’s uptight and heartless dean. But when Rancho catches the eye of the dean's daughter, Virus sets his sights on flunking out the \"3 idiots\" once and for all.",
+    "thumbnail": "https://image.tmdb.org/t/p/w780/66A9MqXOyVFCssoloscw79z8Tew.jpg",
+    "backdrop": "https://image.tmdb.org/t/p/w1280/u7kuUaySqXBVAtqEl9vkTkAzHV9.jpg",
+    "genre": "Comedy",
+    "year": 2009,
+    "rating": "PG-13",
+    "views": 3977640,
+    "userRating": 8,
+    "criticScore": 80,
+    "watchmodeId": 20453,
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=3%20Idiots+watch+online",
+        "format": "4K HDR"
+      }
+    ]
   }
 ]

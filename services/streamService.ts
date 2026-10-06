@@ -137,7 +137,42 @@ const KNOWN_TMDB_MAP: Record<string, number> = {
   'fargo': 57243,
   'dexter': 1405,
   'prison break': 2288,
-  'supernatural': 1622
+  'supernatural': 1622,
+
+  // Indian Cinema Blockbusters (strictly mapped to prevent mismatch)
+  'rrr': 579974,
+  'jawan': 872906,
+  'animal': 781732,
+  'dangal': 360814,
+  'k.g.f: chapter 2': 587412,
+  'kgf chapter 2': 587412,
+  'k.g.f: chapter 1': 564147,
+  'kgf chapter 1': 564147,
+  'baahubali 2: the conclusion': 350312,
+  'bahubali 2': 350312,
+  'baahubali: the beginning': 256040,
+  'bahubali': 256040,
+  'kalki 2898 ad': 801688,
+  'kalki 2898-ad': 801688,
+  'stree 2': 1112426,
+  'stree': 534444,
+  'pushpa: the rise': 690957,
+  'pushpa the rise': 690957,
+  'pushpa 2 - the rule': 857598,
+  'pushpa 2': 857598,
+  'pathaan': 864692,
+  'dunki': 960876,
+  '3 idiots': 20453,
+  'sholay': 12259,
+  'lagaan': 19666,
+  'bajrangi bhaijaan': 348892,
+  'dilwale dulhania le jayenge': 19404,
+  'salaar: part 1 - ceasefire': 770906,
+  'salaar': 770906,
+  'vikram': 743563,
+  'leo': 949229,
+  'jailer': 937020,
+  'kantara': 858485
 };
 
 // Sort known title keys from longest to shortest so specific sequels match before generic titles
@@ -400,64 +435,171 @@ export interface StreamServer {
 }
 
 /**
+ * Determines whether a title is of Indian origin (Bollywood, Tollywood, regional cinema, Hindi/Tamil/Telugu/etc.)
+ * Accurately prevents false positives on Hollywood/Western movies (e.g. War, Animal, Star Wars, Dark Knight).
+ */
+export function isIndianContent(movie: Movie): boolean {
+  if (!movie) return false;
+
+  const anyMovie = movie as any;
+  // 1. Language code check
+  const lang = String(anyMovie.original_language || anyMovie.language || '').toLowerCase().trim();
+  if (['hi', 'ta', 'te', 'ml', 'kn', 'pa', 'bn', 'mr', 'gu', 'ur', 'or'].includes(lang)) {
+    return true;
+  }
+
+  // 2. Country check
+  if (Array.isArray(anyMovie.origin_country) && anyMovie.origin_country.some((c: string) => String(c).toUpperCase() === 'IN')) {
+    return true;
+  }
+  if (anyMovie.country && String(anyMovie.country).toUpperCase() === 'IN') {
+    return true;
+  }
+
+  // 3. Indian genres (avoid generic single English words)
+  const genreLower = (movie.genre || '').toLowerCase();
+  if (/\b(bollywood|tollywood|kollywood|mollywood|sandalwood|hindi cinema|indian cinema)\b/i.test(genreLower)) {
+    return true;
+  }
+
+  // 4. Normalized title match against known Indian titles
+  const cleanTitle = (movie.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  const EXACT_INDIAN_TITLES = new Set([
+    'rrr', 'jawan', 'pathaan', 'animal', 'dangal', 'pk', '3 idiots', 'sholay', 'lagaan',
+    'baahubali the beginning', 'baahubali 2 the conclusion', 'bahubali', 'bahubali 2',
+    'k g f chapter 1', 'k g f chapter 2', 'kgf', 'kgf 1', 'kgf 2', 'kalki 2898 ad',
+    'stree', 'stree 2', 'salaar', 'pushpa', 'pushpa the rise', 'pushpa 2', 'pushpa 2 the rule',
+    'dunki', 'brahmastra', 'brahmastra part one shiva', 'kabir singh', 'bajrangi bhaijaan',
+    'chennai express', 'om shanti om', 'dilwale dulhania le jayenge', 'drishyam', 'drishyam 2',
+    'kantara', 'vikram', 'jailer', 'chhaava', 'devara', 'devara part 1', 'leo', 'master',
+    'tiger 3', 'tiger zinda hai', 'ek tha tiger', 'fighter', 'bhool bhulaiyaa 2',
+    'bhool bhulaiyaa 3', 'singham', 'singham again', 'gadar 2', 'sooryavanshi', 'simmba'
+  ]);
+
+  if (EXACT_INDIAN_TITLES.has(cleanTitle)) {
+    return true;
+  }
+
+  // Title starting with specific multi-word Indian franchises
+  const INDIAN_TITLE_PREFIXES = [
+    'baahubali', 'k g f', 'kgf', 'pushpa', 'stree', 'drishyam', 'bhool bhulaiyaa',
+    'singham', 'kalki 2898', 'dilwale dulhania', 'chennai express', 'bajrangi bhaijaan'
+  ];
+  if (INDIAN_TITLE_PREFIXES.some(prefix => cleanTitle.startsWith(prefix))) {
+    return true;
+  }
+
+  // 5. Explicit Indian stars or industry terms in description (NO single words like "war" or "animal")
+  const text = `${movie.description || ''} ${genreLower}`.toLowerCase();
+  const indianKeywords = /\b(bollywood|tollywood|kollywood|mollywood|hindi film|hindi movie|tamil film|tamil movie|telugu film|telugu movie|malayalam cinema|kannada cinema|indian cinema|shah rukh khan|salman khan|aamir khan|deepika padukone|ranbir kapoor|amitabh bachchan|hrithik roshan|allu arjun|ram charan|rajinikanth|kamal haasan|prabhas|thalapathy vijay|ajith kumar|junior ntr|jr ntr|sanjay dutt|ranveer singh)\b/i;
+  if (indianKeywords.test(text)) {
+    return true;
+  }
+
+  // 6. Known Indian TMDb IDs
+  const INDIAN_TMDB_IDS = new Set<number>([
+    19404,  // Dilwale Dulhania Le Jayenge
+    579974, // RRR
+    564147, // K.G.F: Chapter 1
+    587412, // K.G.F: Chapter 2
+    256040, // Bāhubali: The Beginning
+    350312, // Bāhubali 2: The Conclusion
+    872906, // Jawan
+    864692, // Pathaan
+    360814, // Dangal
+    20453,  // 3 Idiots
+    12259,  // Sholay
+    19666,  // Lagaan
+    297222, // PK
+    348892, // Bajrangi Bhaijaan
+    581388, // Kabir Singh
+    781732, // Animal
+    770906, // Salaar
+    801688, // Kalki 2898 AD
+    1112426,// Stree 2
+    493529, // Brahmāstra
+    690957, // Pushpa: The Rise
+    857598, // Pushpa 2: The Rule
+    960876, // Dunki
+    849869, // Tiger 3
+    850165, // Fighter
+    949229, // Leo
+    671039, // Master
+    743563, // Vikram
+    937020, // Jailer
+    858485  // Kantara
+  ]);
+
+  const id = movie.watchmodeId || movie.tmdbId;
+  if (id && INDIAN_TMDB_IDS.has(Number(id))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Generates stream servers for a movie or TV show.
  * 
- * Order:
- * 1. AutoEmbed 4K VIP (player.autoembed.co - verified ultra-fast player, zero blocking)
- * 2. CineSrc 4K (4K Ultra HD)
- * 3. VidSrc Pro (vidsrc.pm - reliable global streaming player)
- * 4. 2Embed Mirror (2embed.cc - dual stream failover)
- * 5. AutoEmbed Portal (autoembed.co mirror)
- * 6. Filmy Server (embed.filmu.in - Hindi / multi-audio backup)
+ * Order logic per user specification:
+ * - Foreign films: Filmy Server (embed.filmu.in) prioritized as Server #1
+ * - Indian films: AutoEmbed Server (player.autoembed.co) prioritized as Server #1
  */
 export function getMovieStreamServers(movie: Movie, season: number = 1, episode: number = 1): StreamServer[] {
   const tmdbId = getMovieTmdbId(movie);
   const imdbId = getMovieImdbId(movie);
   const key = CODESPECTERS_API_KEY;
   const isSeries = isTvOrSeries(movie);
+  const isIndian = isIndianContent(movie);
 
-  const servers: StreamServer[] = [];
-
-  // ============================================================
-  // SERVER 1: AutoEmbed Mirror (player.autoembed.co - Fast, 4K & Working)
-  // Supports TMDb ID or IMDb ID (tt...)
-  // Endpoints:
-  //   Movies: https://player.autoembed.co/embed/movie/${id}
-  //   TV:     https://player.autoembed.co/embed/tv/${id}/${season}/${episode}
-  // ============================================================
   const autoembedId = imdbId || tmdbId;
   const autoembedPlayerUrl = isSeries
     ? `https://player.autoembed.co/embed/tv/${autoembedId}/${season}/${episode}`
     : `https://player.autoembed.co/embed/movie/${autoembedId}`;
 
-  servers.push({
+  const autoembedServer: StreamServer = {
     id: 'autoembed-mirror',
     name: 'AutoEmbed 4K VIP',
-    badge: '4K Ultra HD',
+    badge: isIndian ? 'Indian Priority (Fast)' : '4K Ultra HD',
     url: autoembedPlayerUrl,
     type: 'iframe',
     quality: '1080p / 4K',
-    description: isSeries 
-      ? `AutoEmbed VIP Player (Season ${season} Episode ${episode})`
-      : 'Ultra-fast 4K streaming player with instant playback and multi-source failover',
+    description: isIndian
+      ? 'AutoEmbed VIP - Prioritized top server for Indian & regional titles'
+      : (isSeries 
+          ? `AutoEmbed VIP Player (Season ${season} Episode ${episode})`
+          : 'Ultra-fast 4K streaming player with instant playback and multi-source failover'),
     isAutoEmbed: true,
     isTv: isSeries
-  });
+  };
 
-  // ============================================================
-  // SERVER 2: CineSrc 4K (Ultra HD Streamer)
-  // URL Pattern:
-  //   Movies: https://cinesrc.st/embed/movie/${tmdbId}
-  //   TV:     https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}
-  // ============================================================
+  const filmuUrl = isSeries 
+    ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
+    : `https://embed.filmu.in/movie/${tmdbId}`;
+
+  const filmuServer: StreamServer = {
+    id: 'filmu-primary',
+    name: 'Filmy Server',
+    badge: !isIndian ? 'Foreign Priority (Filmy)' : 'Hindi / Multi-Audio',
+    url: filmuUrl,
+    type: 'iframe',
+    quality: '4K / 1080p',
+    description: !isIndian
+      ? 'Top priority Filmy server for foreign/international cinema with multi-language audio & subtitles'
+      : 'Filmy Server with Hindi/multi-language audio switcher & subtitles',
+    isHindi: true,
+    isFilmu: true,
+    isTv: isSeries
+  };
+
   const cinesrcUrl = isSeries
     ? `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`
     : `https://cinesrc.st/embed/movie/${tmdbId}`;
 
-  servers.push({
+  const cinesrcServer: StreamServer = {
     id: 'cinesrc-hindi',
     name: 'CineSrc 4K',
-    badge: 'Ultra HD',
+    badge: 'Cinema 4K',
     url: cinesrcUrl,
     type: 'iframe',
     quality: '4K Ultra HD',
@@ -465,16 +607,13 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isHindi: true,
     isCineSrc: true,
     isTv: isSeries
-  });
+  };
 
-  // ============================================================
-  // SERVER 3: VidSrc Pro (vidsrc.pm - Ultra Reliable Global Stream)
-  // ============================================================
   const vidsrcMirrorUrl = isSeries
     ? `https://vidsrc.pm/embed/tv/${tmdbId}/${season}/${episode}`
     : `https://vidsrc.pm/embed/movie/${tmdbId}`;
 
-  servers.push({
+  const vidsrcServer: StreamServer = {
     id: 'vidsrc-mirror',
     name: 'VidSrc Pro',
     badge: 'Instant Play',
@@ -484,19 +623,13 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     description: 'High availability secondary mirror for seamless playback',
     isVidSrc: true,
     isTv: isSeries
-  });
+  };
 
-  // ============================================================
-  // SERVER 4: 2Embed Mirror (2embed.cc - High Compatibility)
-  // URL Pattern:
-  //   Movies: https://www.2embed.cc/embed/${tmdbId}
-  //   TV:     https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}
-  // ============================================================
   const twoEmbedUrl = isSeries
     ? `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
     : `https://www.2embed.cc/embed/${tmdbId}`;
 
-  servers.push({
+  const twoEmbedServer: StreamServer = {
     id: 'twoembed-mirror',
     name: '2Embed 4K',
     badge: 'Dual Stream',
@@ -505,19 +638,13 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     quality: '1080p Full HD',
     description: 'Direct multi-source player with fast stream failover',
     isTv: isSeries
-  });
+  };
 
-  // ============================================================
-  // SERVER 5: AutoEmbed Portal Mirror (autoembed.co)
-  // Endpoints:
-  //   Movies: https://autoembed.co/movie/tmdb/${tmdbId}
-  //   TV:     https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}
-  // ============================================================
   const autoembedCoUrl = isSeries
     ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
     : `https://autoembed.co/movie/tmdb/${tmdbId}`;
 
-  servers.push({
+  const autoembedPortalServer: StreamServer = {
     id: 'autoembed-co',
     name: 'AutoEmbed Portal',
     badge: 'Portal Mirror',
@@ -527,39 +654,13 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     description: 'AutoEmbed portal mirror with internal server selector',
     isAutoEmbed: true,
     isTv: isSeries
-  });
+  };
 
-  // ============================================================
-  // SERVER 6: Filmy / Filmu Player (Hindi & Multi-Audio Backup)
-  // URL Pattern:
-  //   Movies: https://embed.filmu.in/movie/${tmdbId}
-  //   TV:     https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}
-  // ============================================================
-  const filmuUrl = isSeries 
-    ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
-    : `https://embed.filmu.in/movie/${tmdbId}`;
-
-  servers.push({
-    id: 'filmu-primary',
-    name: 'Filmy Server',
-    badge: 'Hindi / Multi-Audio',
-    url: filmuUrl,
-    type: 'iframe',
-    quality: '4K / 1080p',
-    description: 'Filmy server with Hindi audio, multi-language switcher & subtitles',
-    isHindi: true,
-    isFilmu: true,
-    isTv: isSeries
-  });
-
-  // ============================================================
-  // SERVER 8: CodeSpecters NexStream (Your Official API Key)
-  // ============================================================
   const codespectersUrl = isSeries
     ? `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`
     : `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`;
 
-  servers.push({
+  const codespectersServer: StreamServer = {
     id: 'codespecters-primary',
     name: 'CodeSpecters (nx_ Key)',
     badge: 'Verified API',
@@ -568,7 +669,16 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     quality: '4K Ultra HD',
     description: 'Direct high-speed verified stream with your official API key',
     isTv: isSeries
-  });
+  };
+
+  // User specification:
+  // For foreign films priorities filmu server (#1)
+  // For Indian films priorities autoembed server (#1)
+  const orderedServers: StreamServer[] = isIndian
+    ? [autoembedServer, filmuServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
+    : [filmuServer, autoembedServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer];
+
+  const servers: StreamServer[] = [...orderedServers];
 
   // ============================================================
   // SERVER 9: Direct User Upload / MP4 (if available)

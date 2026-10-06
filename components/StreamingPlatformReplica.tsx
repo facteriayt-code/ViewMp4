@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Movie } from '../types.ts';
-import { PLATFORMS, PlatformId } from '../services/platformCatalog.ts';
+import { Movie, ContinueWatchingItem } from '../types.ts';
+import { PLATFORMS, PlatformId, isMovieOnPlatform } from '../services/platformCatalog.ts';
 import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
 import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield } from 'lucide-react';
+import { ContinueWatchingRow } from './ContinueWatchingRow.tsx';
+import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from '../services/continueWatchingService.ts';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -26,8 +28,22 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   const [activeTab, setActiveTab] = useState('Home');
   const [scrolled, setScrolled] = useState(false);
   const [myListIds, setMyListIds] = useState<Set<string>>(new Set());
+  const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
+    getContinueWatchingList(movies)
+  );
+
+  useEffect(() => {
+    return subscribeToContinueWatching((items) => {
+      setContinueWatchingItems(items);
+    });
+  }, []);
 
   const config = PLATFORMS[platformId];
+
+  // Continue Watching items specifically on this platform replica
+  const platformContinueWatching = useMemo(() => {
+    return continueWatchingItems.filter(item => isMovieOnPlatform(item.movie, platformId));
+  }, [continueWatchingItems, platformId]);
 
   // Detect scroll for dynamic navbar background
   useEffect(() => {
@@ -371,6 +387,25 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
           {/* 6. Content Carousels & Rows */}
           <main className="px-4 md:px-12 -mt-10 md:-mt-16 relative z-30 pb-20 space-y-10">
+            {/* Continue Watching Section for Platform */}
+            {platformContinueWatching.length > 0 && (
+              <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 p-1 sm:p-2">
+                <ContinueWatchingRow
+                  userName="You"
+                  items={platformContinueWatching}
+                  onPlay={(movie, season, episode) => {
+                    onPlay({
+                      ...movie,
+                      initialSeason: season ?? movie.initialSeason,
+                      initialEpisode: episode ?? movie.initialEpisode
+                    });
+                  }}
+                  onSelectMovie={onSelectMovie}
+                  onRemove={(id) => removeContinueWatching(id)}
+                />
+              </div>
+            )}
+
             {/* Top 10 Styled Row */}
             <section className="space-y-4">
               <div className="flex items-center space-x-2">
