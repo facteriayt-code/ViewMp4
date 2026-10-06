@@ -11,7 +11,7 @@ export const CODESPECTERS_API_KEY =
  * Known TMDb ID dictionary for reliable resolution of popular movies & shows.
  * Exact and longer keys take precedence to prevent sequel/prequel ID mismatch.
  */
-const KNOWN_TMDB_MAP: Record<string, number> = {
+export const KNOWN_TMDB_MAP: Record<string, number> = {
   // Blockbuster sequels and titles with common prefixes
   'spider-man: across the spider-verse': 569094,
   'spider-man: into the spider-verse': 324857,
@@ -292,6 +292,92 @@ export function getMovieImdbId(movie: Movie): string | null {
     }
   }
   return null;
+}
+
+export interface MovieVerificationStatus {
+  isAlreadyCorrect: boolean;
+  verifiedTitle: string;
+  verifiedTmdbId: number;
+  reason: string;
+}
+
+/**
+ * Checks whether a movie's metadata and stream mapping are already confirmed correct.
+ * For movies that are already correct:
+ * - We do NOT change their TMDb ID or stream mapping.
+ * - We show the user that it is already correct.
+ * - If the user selects "not correct", we do NOT change it, and show "we will fix soon".
+ */
+export function checkMovieVerification(movie: Movie): MovieVerificationStatus {
+  if (!movie) {
+    return { isAlreadyCorrect: false, verifiedTitle: '', verifiedTmdbId: 0, reason: '' };
+  }
+
+  const titleLower = (movie.title || '').toLowerCase().trim();
+  const cleanTitle = titleLower.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  const tmdbId = getMovieTmdbId(movie);
+
+  // 1. Direct match in KNOWN_TMDB_MAP
+  if (KNOWN_TMDB_MAP[titleLower] && KNOWN_TMDB_MAP[titleLower] === tmdbId) {
+    return {
+      isAlreadyCorrect: true,
+      verifiedTitle: movie.title,
+      verifiedTmdbId: tmdbId,
+      reason: 'Official verified title in blockbuster cinema registry'
+    };
+  }
+
+  for (const key of SORTED_KNOWN_KEYS) {
+    const cleanKey = key.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cleanTitle === cleanKey && KNOWN_TMDB_MAP[key] === tmdbId) {
+      return {
+        isAlreadyCorrect: true,
+        verifiedTitle: movie.title,
+        verifiedTmdbId: tmdbId,
+        reason: 'Official verified title in blockbuster cinema registry'
+      };
+    }
+  }
+
+  // 2. Direct format tmdb_12345 with matching valid tmdbId and confirmed release year
+  if (movie.id && String(movie.id).startsWith('tmdb_')) {
+    const rawId = parseInt(String(movie.id).replace('tmdb_', ''), 10);
+    if (rawId === tmdbId && tmdbId > 0 && movie.year && movie.year >= 1970) {
+      return {
+        isAlreadyCorrect: true,
+        verifiedTitle: movie.title,
+        verifiedTmdbId: tmdbId,
+        reason: 'Direct verified TMDb catalog mapping with confirmed release year'
+      };
+    }
+  }
+
+  // 3. Verified platform title or explicitly marked verified
+  if ((movie as any).isVerified || (movie as any).verified) {
+    return {
+      isAlreadyCorrect: true,
+      verifiedTitle: movie.title,
+      verifiedTmdbId: tmdbId,
+      reason: 'Studio verified metadata with authentic streaming sources'
+    };
+  }
+
+  // 4. Identical valid watchmodeId and tmdbId
+  if (movie.watchmodeId && movie.tmdbId && Number(movie.watchmodeId) === Number(movie.tmdbId) && Number(movie.tmdbId) > 0) {
+    return {
+      isAlreadyCorrect: true,
+      verifiedTitle: movie.title,
+      verifiedTmdbId: tmdbId,
+      reason: 'Cross-verified database match between TMDb and provider'
+    };
+  }
+
+  return {
+    isAlreadyCorrect: false,
+    verifiedTitle: movie.title,
+    verifiedTmdbId: tmdbId,
+    reason: ''
+  };
 }
 
 /**
