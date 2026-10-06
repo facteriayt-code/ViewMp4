@@ -2,11 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Movie, ContinueWatchingItem } from '../types.ts';
 import { PLATFORMS, PlatformId, isMovieOnPlatform } from '../services/platformCatalog.ts';
 import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
-import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield } from 'lucide-react';
+import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield, AlertTriangle, Wrench } from 'lucide-react';
 import { ContinueWatchingRow } from './ContinueWatchingRow.tsx';
 import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from '../services/continueWatchingService.ts';
 import { SearchBoxResults } from './SearchBoxResults.tsx';
 import { searchWatchmode, WatchmodeSearchResult } from '../services/watchmodeService.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -31,10 +32,11 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   const [scrolled, setScrolled] = useState(false);
   const [myListIds, setMyListIds] = useState<Set<string>>(new Set());
   const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
-    getContinueWatchingList(movies)
+    getContinueWatchingList()
   );
   const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
 
   useEffect(() => {
     return subscribeToContinueWatching((items) => {
@@ -453,6 +455,22 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                         />
+
+                        {/* Top-right Report Button */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportingMovie(movie);
+                            }}
+                            className="p-1.5 bg-black/80 hover:bg-amber-600 text-amber-300 hover:text-white rounded-full border border-white/20 transition shadow-lg active:scale-90"
+                            title="Report if this movie is not playing or wrong movie"
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                          </button>
+                        </div>
+
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5">
                           <button
                             onClick={(e) => {
@@ -503,6 +521,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                           onToggleList={(e) => toggleMyList(movie.id, e)}
                           onPlay={() => onPlay(movie)}
                           onSelect={() => onSelectMovie(movie)}
+                          onReport={() => setReportingMovie(movie)}
                         />
                       </div>
                     ))}
@@ -534,6 +553,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                     onToggleList={(e) => toggleMyList(movie.id, e)}
                     onPlay={() => onPlay(movie)}
                     onSelect={() => onSelectMovie(movie)}
+                    onReport={() => setReportingMovie(movie)}
                   />
                 ))}
               </div>
@@ -569,6 +589,22 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
           Interactive replica of {config.name} integrated with GeminiStream cinema database. All video content provided for streaming demonstration.
         </p>
       </footer>
+
+      {/* Instant Stream Fix & Report Modal for Platform Replicas */}
+      {reportingMovie && (
+        <ReportIssueModal
+          isOpen={!!reportingMovie}
+          movie={reportingMovie}
+          onClose={() => setReportingMovie(null)}
+          onFixApplied={() => {
+            // Stream override saved automatically
+          }}
+          onPlayFixed={(fixedMovie) => {
+            setReportingMovie(null);
+            onPlay(fixedMovie);
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -581,6 +617,7 @@ interface MovieCardProps {
   onToggleList: (e: React.MouseEvent) => void;
   onPlay: () => void;
   onSelect: () => void;
+  onReport: () => void;
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({
@@ -589,7 +626,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
   isInMyList,
   onToggleList,
   onPlay,
-  onSelect
+  onSelect,
+  onReport
 }) => {
   return (
     <div
@@ -617,6 +655,21 @@ const MovieCard: React.FC<MovieCardProps> = ({
           </span>
         </div>
 
+        {/* Top Right Quick Report Button */}
+        <div className="absolute top-2 right-2 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReport();
+            }}
+            className="p-1.5 rounded-full bg-black/75 hover:bg-amber-600 text-amber-300 hover:text-white transition backdrop-blur-md border border-white/20 shadow-lg active:scale-90"
+            title="Report if this movie is not playing or wrong movie"
+          >
+            <AlertTriangle className="w-3 h-3" />
+          </button>
+        </div>
+
         {/* Hover Quick Action Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
           <div className="flex items-center justify-between mb-2">
@@ -637,6 +690,17 @@ const MovieCard: React.FC<MovieCardProps> = ({
               title={isInMyList ? "Remove from List" : "Add to My List"}
             >
               {isInMyList ? <Check className="w-4 h-4 text-green-400" /> : <Plus className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReport();
+              }}
+              className="p-2 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-white transition backdrop-blur-md border border-amber-500/30"
+              title="Report issue (not playing or wrong movie)"
+            >
+              <AlertTriangle className="w-4 h-4" />
             </button>
 
             <button

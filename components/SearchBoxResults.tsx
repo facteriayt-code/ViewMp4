@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Play, Info, Database, Film, Tv, Sparkles, X, ChevronRight, Loader2, Filter } from 'lucide-react';
+import { Play, Info, Database, Film, Tv, Sparkles, X, ChevronRight, Loader2, Filter, AlertTriangle } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { WatchmodeSearchResult, convertSearchResultToMovie } from '../services/watchmodeService.ts';
 import { matchesMediaType, matchesCategory, isTvOrSeries } from '../services/streamService.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface SearchBoxResultsProps {
   searchTerm: string;
@@ -41,6 +42,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
 }) => {
   const [mediaType, setMediaType] = useState<'all' | 'movie' | 'tv'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('All Genres');
+  const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
 
   // Convert and merge results
   // 1. Filtered catalog movies matching searchTerm, mediaType, and category
@@ -314,6 +316,17 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                             <Info className="w-2.5 h-2.5" />
                             <span>Details</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportingMovie({ ...movie, isTv: Boolean(isTv) });
+                            }}
+                            className="p-1 sm:p-1.5 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-white rounded-lg text-[10px] font-bold transition border border-amber-500/20 active:scale-90"
+                            title="Report if this movie is not playing or wrong movie"
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -375,6 +388,17 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                           title="Details"
                         >
                           <Info className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReportingMovie({ ...movie, isTv: Boolean(isTv) });
+                          }}
+                          className="px-1.5 py-1 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-white rounded-lg text-[10px] font-bold transition border border-amber-500/20 active:scale-90"
+                          title="Report issue (not playing or wrong movie)"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -468,6 +492,18 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                             <Info className="w-2.5 h-2.5" />
                             <span>Details</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const m = convertSearchResultToMovie(item);
+                              setReportingMovie({ ...m, isTv: Boolean(isTv) });
+                            }}
+                            className="p-1 sm:p-1.5 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-white rounded-lg text-[10px] font-bold transition border border-amber-500/20 active:scale-90"
+                            title="Report if this movie is not playing or wrong movie"
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -541,6 +577,18 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                         >
                           <Info className="w-3 h-3" />
                         </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const m = convertSearchResultToMovie(item);
+                            setReportingMovie({ ...m, isTv: Boolean(isTv) });
+                          }}
+                          className="px-1.5 py-1 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-white rounded-lg text-[10px] font-bold transition border border-amber-500/20 active:scale-90"
+                          title="Report issue (not playing or wrong movie)"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -550,6 +598,23 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Instant Stream Fix & Report Modal */}
+      {reportingMovie && (
+        <ReportIssueModal
+          isOpen={!!reportingMovie}
+          movie={reportingMovie}
+          onClose={() => setReportingMovie(null)}
+          onFixApplied={() => {
+            // Fix applied
+          }}
+          onPlayFixed={(fixedMovie) => {
+            setReportingMovie(null);
+            onPlay(fixedMovie);
+            onClose?.();
+          }}
+        />
+      )}
     </div>
   );
 };

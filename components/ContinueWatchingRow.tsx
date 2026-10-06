@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Play, Info, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Play, Info, X, ChevronLeft, ChevronRight, Check, AlertTriangle } from 'lucide-react';
 import { Movie, ContinueWatchingItem } from '../types.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface ContinueWatchingRowProps {
   userName?: string;
@@ -20,6 +21,7 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({
   const rowRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [reportingItem, setReportingItem] = useState<ContinueWatchingItem | null>(null);
 
   if (!items || items.length === 0) return null;
 
@@ -107,18 +109,32 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({
                 {/* Dark Vignette Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/20 to-transparent" />
 
-                {/* Remove 'X' Button on top right */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(movie.id);
-                  }}
-                  className="absolute top-2 right-2 z-20 bg-black/70 hover:bg-red-600 text-gray-300 hover:text-white p-1 rounded-full backdrop-blur-md border border-white/15 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                  title="Remove from Continue Watching"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                {/* Action Buttons on top right */}
+                <div className="absolute top-2 right-2 z-20 flex items-center space-x-1.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReportingItem(item);
+                    }}
+                    className="bg-black/70 hover:bg-amber-600 text-amber-300 hover:text-white p-1 rounded-full backdrop-blur-md border border-white/15 transition-colors shadow-lg active:scale-90"
+                    title="Report if this movie is not playing or wrong movie"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(movie.id);
+                    }}
+                    className="bg-black/70 hover:bg-red-600 text-gray-300 hover:text-white p-1 rounded-full backdrop-blur-md border border-white/15 transition-colors shadow-lg active:scale-90"
+                    title="Remove from Continue Watching"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
                 {/* Centered Play Button (Revealed on hover) */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity z-10 bg-black/40 backdrop-blur-[2px]">
@@ -181,6 +197,24 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({
           );
         })}
       </div>
+
+      {/* Instant Stream Fix & Report Modal for Continue Watching */}
+      {reportingItem && (
+        <ReportIssueModal
+          isOpen={!!reportingItem}
+          movie={reportingItem.movie}
+          season={reportingItem.season}
+          episode={reportingItem.episode}
+          onClose={() => setReportingItem(null)}
+          onFixApplied={() => {
+            // Fix applied
+          }}
+          onPlayFixed={(fixedMovie) => {
+            setReportingItem(null);
+            onPlay(fixedMovie, reportingItem.season, reportingItem.episode);
+          }}
+        />
+      )}
     </section>
   );
 };

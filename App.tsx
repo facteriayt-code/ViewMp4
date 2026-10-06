@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
   const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
-    getContinueWatchingList(INITIAL_MOVIES)
+    getContinueWatchingList()
   );
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [playingMovie, setPlayingMovie] = useState<Movie | null>(null);

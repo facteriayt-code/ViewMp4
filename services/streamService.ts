@@ -1,4 +1,5 @@
 import { Movie } from '../types.ts';
+import { getMovieOverride } from './streamFixService.ts';
 
 export const CODESPECTERS_API_KEY = 
   (import.meta as any).env?.VITE_CODESPECTERS_API_KEY || 
@@ -217,6 +218,14 @@ export const KNOWN_IMDB_MAP: Record<string, string> = {
  */
 export function getMovieTmdbId(movie: Movie): number {
   if (!movie) return 533535;
+
+  // 0. Check verified user report fix override first
+  if (movie.id) {
+    const override = getMovieOverride(movie.id);
+    if (override && override.tmdbId && !isNaN(Number(override.tmdbId)) && Number(override.tmdbId) > 0) {
+      return Number(override.tmdbId);
+    }
+  }
 
   // 1. Direct numeric tmdbId if provided
   if (movie.tmdbId && !isNaN(Number(movie.tmdbId)) && Number(movie.tmdbId) > 0) {
@@ -679,6 +688,21 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     : [filmuServer, autoembedServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer];
 
   const servers: StreamServer[] = [...orderedServers];
+
+  // If user reported an issue and streamFixService fixed it with a preferred server, prioritize it immediately
+  if (movie.id) {
+    const override = getMovieOverride(movie.id);
+    if (override && override.preferredServer) {
+      const preferredIdx = servers.findIndex(s => s.id === override.preferredServer);
+      if (preferredIdx > 0) {
+        const [promoted] = servers.splice(preferredIdx, 1);
+        servers.unshift({
+          ...promoted,
+          badge: 'Fixed & Verified (Fast)'
+        });
+      }
+    }
+  }
 
   // ============================================================
   // SERVER 9: Direct User Upload / MP4 (if available)

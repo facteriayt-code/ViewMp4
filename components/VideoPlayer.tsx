@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, ArrowLeft, Maximize, Minimize, RotateCw, ExternalLink, 
   ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers, HelpCircle,
-  AlertTriangle, RefreshCw, Check
+  AlertTriangle, RefreshCw, Check, Wrench
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -13,6 +13,8 @@ import {
   isTvOrSeries,
   StreamServer 
 } from '../services/streamService.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { StreamFixResult } from '../services/streamFixService.ts';
 
 interface VideoPlayerProps {
   movie: Movie;
@@ -46,10 +48,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showGuidePopover, setShowGuidePopover] = useState<boolean>(false);
   const [showEpisodesModal, setShowEpisodesModal] = useState<boolean>(false);
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
 
   const tmdbId = getMovieTmdbId(movie);
   const isSeries = detectedIsSeries || forceSeriesMode;
+
+  const handleFixApplied = (result: StreamFixResult) => {
+    // Instantly re-fetch stream servers with the new fix applied
+    const updatedList = getMovieStreamServers(movie, season, episode);
+    setServers(updatedList);
+    setActiveServerId(result.preferredServerId);
+    setIframeKey(k => k + 1);
+    setIsLoading(true);
+    setFailoverNotice(`Stream Fixed! Switched to ${result.preferredServerName}`);
+    setTimeout(() => setFailoverNotice(null), 5000);
+  };
 
   // Update servers when movie, season or episode changes
   useEffect(() => {
@@ -263,6 +277,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           >
             <RefreshCw className="w-3 h-3" />
             <span className="hidden xs:inline">Next Server</span>
+          </button>
+
+          {/* Instant Stream Fix / Report Button */}
+          <button
+            type="button"
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 transition shadow-sm active:scale-95"
+            title="Report if this movie is not playing or wrong movie, and fix immediately"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+            <span className="hidden xs:inline">Report / Fix</span>
           </button>
 
           {/* TV Episodes Toggle */}
@@ -620,6 +645,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         <div className="flex items-center space-x-3">
           <button
             type="button"
+            onClick={() => setShowReportModal(true)}
+            className="text-red-400 hover:text-red-300 font-bold bg-red-600/10 hover:bg-red-600/20 px-2.5 py-1 rounded-full border border-red-500/20 flex items-center space-x-1 transition active:scale-95"
+            title="Report if this movie is not playing or wrong movie"
+          >
+            <AlertTriangle className="w-3 h-3 text-red-400" />
+            <span>Report / Fix Stream</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleNextServer}
             className="text-amber-400 hover:text-amber-300 font-bold underline flex items-center space-x-1"
           >
@@ -638,6 +673,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </a>
         </div>
       </footer>
+
+      {/* Instant Stream Fix & Report Modal */}
+      <ReportIssueModal
+        isOpen={showReportModal}
+        movie={movie}
+        currentServerId={activeServer.id}
+        currentServerName={activeServer.name}
+        season={season}
+        episode={episode}
+        onClose={() => setShowReportModal(false)}
+        onFixApplied={handleFixApplied}
+      />
     </div>
   );
 };

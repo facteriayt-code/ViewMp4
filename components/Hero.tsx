@@ -1,6 +1,7 @@
-import React from 'react';
-import { Play, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Info, AlertTriangle } from 'lucide-react';
 import { Movie } from '../types.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface HeroProps {
   movie: Movie;
@@ -9,6 +10,8 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ movie, onInfoClick, onPlay }) => {
+  const [showReportModal, setShowReportModal] = useState(false);
+
   return (
     <div className="relative h-[65vh] sm:h-[75vh] md:h-[85vh] w-full overflow-hidden">
       <img 
@@ -63,8 +66,30 @@ const Hero: React.FC<HeroProps> = ({ movie, onInfoClick, onPlay }) => {
           >
             <Info className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> More Details
           </button>
+          <button 
+            type="button"
+            onClick={() => setShowReportModal(true)}
+            className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 md:py-3 rounded-xl flex items-center font-bold text-xs sm:text-sm md:text-base transition active:scale-95 shadow-xl"
+            title="Report if not playing or wrong movie"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 text-amber-400" />
+            <span className="hidden xs:inline">Report / Fix</span>
+          </button>
         </div>
       </div>
+
+      {/* Instant Stream Fix & Report Modal for Hero */}
+      {showReportModal && (
+        <ReportIssueModal
+          isOpen={showReportModal}
+          movie={movie}
+          onClose={() => setShowReportModal(false)}
+          onPlayFixed={(fixedMovie) => {
+            setShowReportModal(false);
+            onPlay(fixedMovie);
+          }}
+        />
+      )}
     </div>
   );
 };

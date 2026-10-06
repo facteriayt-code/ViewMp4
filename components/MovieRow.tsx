@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle } from 'lucide-react';
 import { Movie } from '../types.ts';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface MovieRowProps {
   title: string;
@@ -19,6 +20,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   const rowRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedCategory, setCopiedCategory] = useState(false);
+  const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
@@ -114,12 +116,26 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                 className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 transition-all duration-500 pointer-events-none"
               />
               
-              <div className="absolute top-2 right-2 z-30 flex flex-col space-y-2 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 translate-y-2 group-hover/card:translate-y-0">
+              <div className="absolute top-2 right-2 z-30 flex flex-col space-y-1.5 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 translate-y-2 group-hover/card:translate-y-0">
                 <button 
-                  onClick={(e) => handleShareMovie(e, movie)}
-                  className="p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-red-600 transition-colors shadow-lg active:scale-90"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReportingMovie(movie);
+                  }}
+                  className="p-1.5 md:p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-amber-600 text-amber-300 hover:text-white transition-colors shadow-lg active:scale-90"
+                  title="Report if this movie is not playing or wrong movie"
                 >
-                  {copiedId === movie.id ? <Check className="w-4 h-4 text-white" /> : <Share2 className="w-4 h-4 text-white" />}
+                  <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={(e) => handleShareMovie(e, movie)}
+                  className="p-1.5 md:p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-red-600 transition-colors shadow-lg active:scale-90"
+                  title="Share movie link"
+                >
+                  {copiedId === movie.id ? <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />}
                 </button>
               </div>
 
@@ -178,6 +194,18 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           scroll-snap-align: start;
         }
       `}</style>
+      {/* Instant Stream Fix & Report Modal */}
+      {reportingMovie && (
+        <ReportIssueModal
+          isOpen={!!reportingMovie}
+          movie={reportingMovie}
+          onClose={() => setReportingMovie(null)}
+          onPlayFixed={(fixedMovie) => {
+            onPlay(fixedMovie);
+            setReportingMovie(null);
+          }}
+        />
+      )}
     </div>
   );
 };

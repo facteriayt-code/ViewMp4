@@ -1,77 +1,31 @@
 import { Movie, ContinueWatchingItem } from '../types.ts';
 
-const STORAGE_KEY = 'geministream_continue_watching';
+// Strict User Watched Tracking Key
+const STORAGE_KEY = 'geministream_user_continue_watching_v2';
+const LEGACY_STORAGE_KEY = 'geministream_continue_watching';
 const EVENT_KEY = 'geministream_continue_watching_updated';
 
-// Realistic starter items to populate Continue Watching on first visit
-const DEFAULT_STARTER_ITEMS = [
-  {
-    movieId: 'tmdb_66732', // Stranger Things (Netflix)
-    progress: 42,
-    season: 1,
-    episode: 2
-  },
-  {
-    movieId: 'tmdb_872906', // Jawan (Netflix Indian Blockbuster)
-    progress: 58,
-    season: undefined,
-    episode: undefined
-  },
-  {
-    movieId: 'tmdb_533535', // Deadpool & Wolverine (Disney+)
-    progress: 68,
-    season: undefined,
-    episode: undefined
-  },
-  {
-    movieId: 'tmdb_76479', // The Boys (Prime Video)
-    progress: 74,
-    season: 1,
-    episode: 3
-  },
-  {
-    movieId: 'tmdb_1396', // Breaking Bad
-    progress: 81,
-    season: 1,
-    episode: 1
-  }
-];
-
-export const getContinueWatchingList = (fallbackMovies: Movie[] = []): ContinueWatchingItem[] => {
+/**
+ * Gets continue watching list based strictly on what the user actually watched.
+ * Never generates random or fake starter items.
+ */
+export const getContinueWatchingList = (): ContinueWatchingItem[] => {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
     return [];
   }
   try {
+    // Clean up legacy random seeded storage if it exists
+    if (localStorage.getItem(LEGACY_STORAGE_KEY)) {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed: ContinueWatchingItem[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(item => item && item.movie && item.movie.id);
-      }
-    }
-
-    // First visit: Seed with initial titles from fallbackMovies if available
-    if (fallbackMovies.length > 0) {
-      const seeded: ContinueWatchingItem[] = [];
-      for (const starter of DEFAULT_STARTER_ITEMS) {
-        const found = fallbackMovies.find(m => 
-          m.id === starter.movieId || 
-          m.watchmodeId === parseInt(starter.movieId.replace('tmdb_', ''), 10) ||
-          m.tmdbId === parseInt(starter.movieId.replace('tmdb_', ''), 10)
-        );
-        if (found) {
-          seeded.push({
-            movie: found,
-            progress: starter.progress,
-            lastWatchedAt: Date.now() - Math.floor(Math.random() * 86400000),
-            season: starter.season,
-            episode: starter.episode
-          });
-        }
-      }
-      if (seeded.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-        return seeded;
+        return parsed
+          .filter(item => item && item.movie && item.movie.id && item.lastWatchedAt)
+          .sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
       }
     }
   } catch (err) {

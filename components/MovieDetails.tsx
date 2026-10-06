@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, Play, Share2, Check, Eye, TrendingUp, PlayCircle, Trash2, Edit3, 
-  AlertCircle, Loader2, Sparkles, Brain, ExternalLink, Tv, Layers 
+  AlertCircle, Loader2, Sparkles, Brain, ExternalLink, Tv, Layers, AlertTriangle, Wrench 
 } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { deleteVideoFromCloud } from '../services/storageService.ts';
 import { getMovieAIInsight } from '../services/geminiService.ts';
 import { isTvOrSeries } from '../services/streamService.ts';
 import AdBanner from './AdBanner.tsx';
+import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -31,6 +32,7 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const isTv = isTvOrSeries(movie) || !!movie.isTv;
   const [selectedSeason, setSelectedSeason] = useState<number>(movie.initialSeason || 1);
@@ -378,13 +380,23 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
               <PlayCircle className="w-5 h-5 md:w-6 md:h-6 mr-2 fill-black" />
               {(isTv || showTvPicker) ? `Watch S${selectedSeason}:E${selectedEpisode}` : 'Watch Now'}
             </button>
+
+            <button 
+              type="button"
+              onClick={() => setShowReportModal(true)}
+              className="flex-none px-4 py-3 md:py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-wider transition-all active:scale-95 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs md:text-sm shadow-md"
+              title="Report issue (not playing or wrong movie) & fix immediately"
+            >
+              <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-400" />
+              <span>Report / Fix Stream</span>
+            </button>
             
             <button 
               onClick={handleShare}
-              className={`flex-1 py-3 md:py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-widest transition-all active:scale-95 border-2 text-xs md:text-sm ${copied ? 'bg-green-600 border-green-600 text-white' : 'bg-transparent border-white/10 text-white hover:bg-white/5'}`}
+              className={`flex-none px-5 py-3 md:py-4 rounded-xl flex items-center justify-center font-black uppercase tracking-widest transition-all active:scale-95 border-2 text-xs md:text-sm ${copied ? 'bg-green-600 border-green-600 text-white' : 'bg-transparent border-white/10 text-white hover:bg-white/5'}`}
             >
-              {copied ? <Check className="w-5 h-5 md:w-6 md:h-6 mr-2" /> : <Share2 className="w-5 h-5 md:w-6 md:h-6 mr-2" />}
-              {copied ? 'Link Copied' : 'Share Link'}
+              {copied ? <Check className="w-5 h-5 md:w-6 md:h-6 mr-1.5" /> : <Share2 className="w-5 h-5 md:w-6 md:h-6 mr-1.5" />}
+              {copied ? 'Copied' : 'Share'}
             </button>
           </div>
 
@@ -416,6 +428,19 @@ const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, allMovies, user, onC
           </div>
         </div>
       </div>
+
+      {/* Instant Stream Fix & Report Modal */}
+      <ReportIssueModal
+        isOpen={showReportModal}
+        movie={movie}
+        season={selectedSeason}
+        episode={selectedEpisode}
+        onClose={() => setShowReportModal(false)}
+        onPlayFixed={(fixedMovie) => {
+          onPlay(fixedMovie);
+          onClose();
+        }}
+      />
     </div>
   );
 };
