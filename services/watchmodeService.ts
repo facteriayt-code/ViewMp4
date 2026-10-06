@@ -98,8 +98,9 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
 
 // Automatic conversion of ANY TMDb search result into a real Movie available in database
 export const convertSearchResultToMovie = (res: WatchmodeSearchResult): Movie => {
+  const isTv = res.type === 'tv_series' || res.type === 'tv';
   const existing = INITIAL_MOVIES.find(m => m.watchmodeId === res.id || m.title.toLowerCase() === (res.name || res.title || '').toLowerCase());
-  if (existing) return existing;
+  if (existing) return { ...existing, isTv: existing.isTv ?? isTv };
 
   const streamIdx = Math.abs(res.id) % SAMPLE_STREAMS.length;
   const rating = (res.voteAverage && res.voteAverage >= 8) ? "R" : (res.voteAverage && res.voteAverage >= 7 ? "PG-13" : "PG");
@@ -115,13 +116,16 @@ export const convertSearchResultToMovie = (res: WatchmodeSearchResult): Movie =>
     thumbnail: res.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
     backdrop: res.backdropUrl || res.imageUrl || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop',
     videoUrl: SAMPLE_STREAMS[streamIdx],
-    genre: res.type === 'tv_series' ? 'TV Series' : 'Cinema',
+    genre: isTv ? 'TV Series' : 'Cinema',
     year: res.year || new Date().getFullYear(),
     rating: rating,
     views: views,
     watchmodeId: res.id,
     userRating: userRating,
     criticScore: criticScore,
+    isTv: isTv,
+    initialSeason: isTv ? 1 : undefined,
+    initialEpisode: isTv ? 1 : undefined,
     isUserUploaded: false,
     uploaderName: 'The Movie Database (TMDb)',
     streamingSources: [

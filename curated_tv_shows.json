@@ -15,7 +15,17 @@
     "watchmodeId": 1396,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Breaking%20Bad%20watch%20online%20Netflix",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_66732",
@@ -33,7 +43,17 @@
     "watchmodeId": 66732,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Stranger%20Things%20watch%20online%20Netflix",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_94997",
@@ -51,7 +71,17 @@
     "watchmodeId": 94997,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=House%20of%20the%20Dragon%20watch%20online%20Max",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_1399",
@@ -69,7 +99,17 @@
     "watchmodeId": 1399,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Game%20of%20Thrones%20watch%20online%20Max",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_76479",
@@ -87,7 +127,17 @@
     "watchmodeId": 76479,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Boys%20watch%20online%20Prime%20Video",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_106379",
@@ -105,7 +155,17 @@
     "watchmodeId": 106379,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Fallout%20watch%20online%20Prime%20Video",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_126308",
@@ -123,7 +183,17 @@
     "watchmodeId": 126308,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Hulu",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Sh%C5%8Dgun%20watch%20online%20Hulu",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_84958",
@@ -141,7 +211,17 @@
     "watchmodeId": 84958,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Disney+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Loki%20watch%20online%20Disney%2B",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_100088",
@@ -159,7 +239,17 @@
     "watchmodeId": 100088,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Last%20of%20Us%20watch%20online%20Max",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_119051",
@@ -177,7 +267,17 @@
     "watchmodeId": 119051,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Wednesday%20watch%20online%20Netflix",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_93405",
@@ -195,7 +295,17 @@
     "watchmodeId": 93405,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Squid%20Game%20watch%20online%20Netflix",
+        "format": "4K UHD"
+      }
+    ]
   },
   {
     "id": "tmdb_94605",
@@ -213,6 +323,16 @@
     "watchmodeId": 94605,
     "isTv": true,
     "initialSeason": 1,
-    "initialEpisode": 1
+    "initialEpisode": 1,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Arcane%20watch%20online%20Netflix",
+        "format": "4K UHD"
+      }
+    ]
   }
 ]

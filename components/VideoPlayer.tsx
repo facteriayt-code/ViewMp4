@@ -33,10 +33,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to first server in list (Filmy priority)
+  // Default to first server in list (AutoEmbed 4K VIP priority)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    return list[0]?.id || 'filmu-primary';
+    return list[0]?.id || 'autoembed-mirror';
   });
   
   const [iframeKey, setIframeKey] = useState<number>(0);
@@ -56,7 +56,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     // If active server is still in list, keep it; otherwise switch to first
     setActiveServerId(prev => {
       const exists = list.some(s => s.id === prev);
-      return exists ? prev : (list[0]?.id || 'filmu-primary');
+      return exists ? prev : (list[0]?.id || 'autoembed-mirror');
     });
     
     setIframeKey(k => k + 1);
@@ -205,6 +205,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
               >
                 {s.id.includes('autoembed') ? (
                   <Layers className="w-3 h-3 text-emerald-400" />
+                ) : s.id.includes('twoembed') ? (
+                  <Play className="w-3 h-3 text-fuchsia-400" />
                 ) : s.id.includes('vidsrc') ? (
                   <Film className="w-3 h-3 text-indigo-400" />
                 ) : s.id.includes('filmu') ? (

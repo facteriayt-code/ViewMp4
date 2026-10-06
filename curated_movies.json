@@ -13,7 +13,17 @@
     "userRating": 8.022,
     "criticScore": 80,
     "watchmodeId": 872585,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Oppenheimer%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_98",
@@ -29,7 +39,25 @@
     "userRating": 8.2,
     "criticScore": 82,
     "watchmodeId": 98,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Gladiator%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Paramount+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Gladiator%20watch%20online%20Paramount%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_346698",
@@ -45,7 +73,17 @@
     "userRating": 6.907,
     "criticScore": 69,
     "watchmodeId": 346698,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Barbie%20watch%20online%20Max",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_603692",
@@ -61,7 +99,25 @@
     "userRating": 7.712,
     "criticScore": 77,
     "watchmodeId": 603692,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=John%20Wick%3A%20Chapter%204%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Starz",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=John%20Wick%3A%20Chapter%204%20watch%20online%20Starz",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_945961",
@@ -77,7 +133,17 @@
     "userRating": 7.16,
     "criticScore": 72,
     "watchmodeId": 945961,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Hulu",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Alien%3A%20Romulus%20watch%20online%20Hulu",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_1184918",
@@ -93,7 +159,25 @@
     "userRating": 8.311,
     "criticScore": 83,
     "watchmodeId": 1184918,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Peacock",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Wild%20Robot%20watch%20online%20Peacock",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Wild%20Robot%20watch%20online%20Netflix",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_533535",
@@ -109,7 +193,17 @@
     "userRating": 7.588,
     "criticScore": 76,
     "watchmodeId": 533535,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Disney+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Deadpool%20%26%20Wolverine%20watch%20online%20Disney%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_299534",
@@ -125,7 +219,17 @@
     "userRating": 8.245,
     "criticScore": 82,
     "watchmodeId": 299534,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Disney+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Avengers%3A%20Endgame%20watch%20online%20Disney%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_155",
@@ -141,7 +245,17 @@
     "userRating": 8.537,
     "criticScore": 85,
     "watchmodeId": 155,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Dark%20Knight%20watch%20online%20Max",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_157336",
@@ -157,7 +271,25 @@
     "userRating": 8.5,
     "criticScore": 85,
     "watchmodeId": 157336,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Interstellar%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Paramount+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Interstellar%20watch%20online%20Paramount%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_693134",
@@ -173,7 +305,17 @@
     "userRating": 8.138,
     "criticScore": 81,
     "watchmodeId": 693134,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Dune%3A%20Part%20Two%20watch%20online%20Max",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_1726",
@@ -189,7 +331,17 @@
     "userRating": 7.666,
     "criticScore": 77,
     "watchmodeId": 1726,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Disney+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Iron%20Man%20watch%20online%20Disney%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_597",
@@ -205,7 +357,25 @@
     "userRating": 7.901,
     "criticScore": 79,
     "watchmodeId": 597,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Titanic%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Paramount+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Titanic%20watch%20online%20Paramount%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_361743",
@@ -221,7 +391,25 @@
     "userRating": 8.2,
     "criticScore": 82,
     "watchmodeId": 361743,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Prime Video",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Top%20Gun%3A%20Maverick%20watch%20online%20Prime%20Video",
+        "format": "4K HDR"
+      },
+      {
+        "source_id": 2,
+        "name": "Paramount+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Top%20Gun%3A%20Maverick%20watch%20online%20Paramount%2B",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_569094",
@@ -237,7 +425,17 @@
     "userRating": 8.351,
     "criticScore": 84,
     "watchmodeId": 569094,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Spider-Man%3A%20Across%20the%20Spider-Verse%20watch%20online%20Netflix",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_278",
@@ -253,7 +451,17 @@
     "userRating": 8.732,
     "criticScore": 87,
     "watchmodeId": 278,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Netflix",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Shawshank%20Redemption%20watch%20online%20Netflix",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_550",
@@ -269,7 +477,17 @@
     "userRating": 8.4,
     "criticScore": 84,
     "watchmodeId": 550,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Hulu",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Fight%20Club%20watch%20online%20Hulu",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_603",
@@ -285,7 +503,17 @@
     "userRating": 8.3,
     "criticScore": 83,
     "watchmodeId": 603,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=The%20Matrix%20watch%20online%20Max",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_27205",
@@ -301,7 +529,17 @@
     "userRating": 8.374,
     "criticScore": 84,
     "watchmodeId": 27205,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Max",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Inception%20watch%20online%20Max",
+        "format": "4K HDR"
+      }
+    ]
   },
   {
     "id": "tmdb_1022789",
@@ -317,6 +555,16 @@
     "userRating": 7.539,
     "criticScore": 75,
     "watchmodeId": 1022789,
-    "isTv": false
+    "isTv": false,
+    "streamingSources": [
+      {
+        "source_id": 1,
+        "name": "Disney+",
+        "type": "sub",
+        "region": "US",
+        "web_url": "https://www.google.com/search?q=Inside%20Out%202%20watch%20online%20Disney%2B",
+        "format": "4K HDR"
+      }
+    ]
   }
 ]

@@ -23,6 +23,41 @@ export interface PlatformConfig {
   filterMovies: (movies: Movie[]) => Movie[];
 }
 
+/**
+ * Strict verification of whether a movie or show is officially available on a given platform.
+ * As requested: only titles with verified streaming sources for Netflix are included in the Netflix replica,
+ * and identically for all other platform replicas (Prime Video, Disney+, Apple TV+, Max, Hulu).
+ */
+export function isMovieOnPlatform(movie: Movie, platformId: PlatformId): boolean {
+  if (!movie) return false;
+
+  // Strict check on verified streamingSources
+  if (Array.isArray(movie.streamingSources) && movie.streamingSources.length > 0) {
+    const hasSource = movie.streamingSources.some(s => {
+      const name = (s.name || '').toLowerCase().trim();
+      switch (platformId) {
+        case 'netflix':
+          return name.includes('netflix');
+        case 'prime':
+          return name.includes('prime') || name.includes('amazon');
+        case 'disney':
+          return name.includes('disney');
+        case 'appletv':
+          return name.includes('apple');
+        case 'max':
+          return name.includes('max') || name.includes('hbo');
+        case 'hulu':
+          return name.includes('hulu');
+        default:
+          return false;
+      }
+    });
+    if (hasSource) return true;
+  }
+
+  return false;
+}
+
 export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
   netflix: {
     id: 'netflix',
@@ -36,7 +71,7 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     headerBg: 'bg-[#141414]/90',
     bodyBg: 'bg-[#141414]',
     heroBadge: 'TOP 10 IN MOVIES TODAY',
-    top10Title: 'Top 10 Movies on Netflix Today',
+    top10Title: 'Top 10 on Netflix Today',
     ctaPlayText: 'Play',
     ctaInfoText: 'More Info',
     navLinks: ['Home', 'TV Shows', 'Movies', 'New & Popular', 'My List', 'Browse by Languages'],
@@ -54,17 +89,12 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
         filter: (m) => (m.criticScore || 80) >= 80
       },
       {
-        title: 'Bingeworthy Hits & Dramas',
-        filter: (m) => /drama|adventure|mystery/i.test(`${m.genre} ${m.title}`)
+        title: 'Bingeworthy Hits & Series',
+        filter: (m) => Boolean(m.isTv) || /drama|adventure|mystery|tv/i.test(`${m.genre} ${m.title}`)
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m, idx) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('netflix'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /inception|dark knight|matrix|spider|interstellar|resident evil|unabomber|runner|digger|pulp fiction|shawshank|blade runner|gladiator|dune|fight club/i.test(`${t} ${g}`) || idx % 2 === 0;
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'netflix'));
     }
   },
 
@@ -87,28 +117,23 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     categoryRows: [
       {
         title: 'Amazon Originals & Exclusives',
-        filter: (m) => /action|adventure|sci-fi/i.test(`${m.genre}`)
+        filter: (m) => Boolean(m.isTv) || /action|adventure|sci-fi/i.test(`${m.genre}`)
       },
       {
         title: 'Top Movies Included with Prime',
-        filter: (m) => m.views > 2500000
+        filter: (m) => !m.isTv || m.views > 2500000
       },
       {
         title: 'Action-Packed Blockbusters',
-        filter: (m) => /action|adventure|thriller/i.test(m.genre)
+        filter: (m) => /action|adventure|thriller|boys|reacher/i.test(`${m.genre} ${m.title}`)
       },
       {
         title: 'Prime Sci-Fi & Fantasy Showcase',
-        filter: (m) => /sci-fi|fantasy|cosmic/i.test(`${m.genre} ${m.title}`)
+        filter: (m) => /sci-fi|fantasy|cosmic|fallout|boys|invincible|rings|lord/i.test(`${m.genre} ${m.title}`)
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m, idx) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('prime') || s.name.toLowerCase().includes('amazon'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /top gun|gladiator|john wick|jurassic|oppenheimer|rings|fellowship|fast|titanic|back to the future|interstellar|avatar/i.test(`${t} ${g}`) || idx % 2 === 1;
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'prime'));
     }
   },
 
@@ -138,28 +163,23 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     categoryRows: [
       {
         title: 'Marvel & Superhero Sagas',
-        filter: (m) => /avenger|iron man|spider|deadpool|hero/i.test(`${m.title} ${m.genre}`)
+        filter: (m) => /avenger|iron man|spider|deadpool|loki|wanda|x-men|hero/i.test(`${m.title} ${m.genre}`)
       },
       {
         title: 'Cosmic & Galactic Worlds',
-        filter: (m) => /avatar|star wars|interstellar|space|alien/i.test(`${m.title} ${m.genre}`)
+        filter: (m) => /avatar|star wars|mandalorian|andor|ahsoka|interstellar|space|alien|cosmic/i.test(`${m.title} ${m.genre}`)
       },
       {
         title: 'Animation & Family Blockbusters',
-        filter: (m) => /animation|adventure|family/i.test(`${m.genre} ${m.title}`)
+        filter: (m) => /animation|adventure|family|inside out|frozen|lion king|coco|encanto|moana/i.test(`${m.genre} ${m.title}`)
       },
       {
         title: 'Popular on Disney+',
-        filter: (m) => m.views > 2000000
+        filter: (m) => m.views > 2000000 || (m.userRating || 0) >= 7.5
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('disney'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /avatar|avenger|iron man|spider|deadpool|star wars|alien|wild robot|flow|animation|family|adventure|sci-fi/i.test(`${t} ${g}`);
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'disney'));
     }
   },
 
@@ -182,15 +202,15 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     categoryRows: [
       {
         title: 'Apple Original Feature Films',
-        filter: (m) => /drama|sci-fi|history/i.test(`${m.genre}`)
+        filter: (m) => !m.isTv || /drama|sci-fi|history/i.test(`${m.genre}`)
       },
       {
         title: 'Award-Winning Masterpieces',
-        filter: (m) => (m.criticScore || 80) >= 82
+        filter: (m) => (m.criticScore || 80) >= 75
       },
       {
         title: 'Prestige Sci-Fi & Thrillers',
-        filter: (m) => /sci-fi|thriller|mystery/i.test(m.genre)
+        filter: (m) => /sci-fi|thriller|mystery|severance|silo|foundation|slow horses/i.test(`${m.genre} ${m.title}`)
       },
       {
         title: 'Explore All on Apple TV+',
@@ -198,12 +218,7 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m, idx) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('apple'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /oppenheimer|interstellar|dune|blade runner|matrix|inception|history|drama|sci-fi/i.test(`${t} ${g}`) || idx % 2 === 0;
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'appletv'));
     }
   },
 
@@ -225,16 +240,16 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     navLinks: ['Home', 'Series', 'Movies', 'HBO', 'DC', 'Discovery'],
     categoryRows: [
       {
-        title: 'Warner Bros. Box Office Hits',
-        filter: (m) => /dark knight|batman|inception|matrix|dune|gladiator/i.test(`${m.title} ${m.genre}`)
+        title: 'Warner Bros. & HBO Hits',
+        filter: (m) => /dark knight|batman|inception|matrix|dune|gladiator|house|game/i.test(`${m.title} ${m.genre}`)
       },
       {
         title: 'DC Universe & Action Spectacles',
         filter: (m) => /action|adventure|thriller/i.test(m.genre)
       },
       {
-        title: 'Critically Acclaimed Dramas',
-        filter: (m) => (m.criticScore || 80) >= 80
+        title: 'Critically Acclaimed Dramas & Series',
+        filter: (m) => (m.criticScore || 80) >= 80 || Boolean(m.isTv)
       },
       {
         title: 'Trending on Max',
@@ -242,12 +257,7 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m, idx) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('max') || s.name.toLowerCase().includes('hbo'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /dune|dark knight|batman|inception|matrix|oppenheimer|rings|fellowship|gladiator|action|thriller/i.test(`${t} ${g}`) || idx % 2 === 1;
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'max'));
     }
   },
 
@@ -286,12 +296,7 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
       }
     ],
     filterMovies: (allMovies: Movie[]) => {
-      return allMovies.filter((m, idx) => {
-        if (m.streamingSources?.some(s => s.name.toLowerCase().includes('hulu'))) return true;
-        const t = m.title.toLowerCase();
-        const g = (m.genre || '').toLowerCase();
-        return /alien|fight club|deadpool|spider|resident evil|horror|thriller|comedy|dune/i.test(`${t} ${g}`) || idx % 2 === 0;
-      });
+      return allMovies.filter(m => isMovieOnPlatform(m, 'hulu'));
     }
   }
 };

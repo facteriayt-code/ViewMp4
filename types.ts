@@ -38,6 +38,8 @@ export interface Movie {
   initialSeason?: number;
   initialEpisode?: number;
   isTv?: boolean;
+  tmdbId?: number;
+  imdbId?: string;
 }
 
 export interface UserUpload {
