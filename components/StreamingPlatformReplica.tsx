@@ -5,6 +5,8 @@ import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo,
 import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield } from 'lucide-react';
 import { ContinueWatchingRow } from './ContinueWatchingRow.tsx';
 import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from '../services/continueWatchingService.ts';
+import { SearchBoxResults } from './SearchBoxResults.tsx';
+import { searchWatchmode, WatchmodeSearchResult } from '../services/watchmodeService.ts';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -31,12 +33,39 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
     getContinueWatchingList(movies)
   );
+  const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
 
   useEffect(() => {
     return subscribeToContinueWatching((items) => {
       setContinueWatchingItems(items);
     });
   }, []);
+
+  // Real-time API and catalog search matching the site search box
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (!term || term.length < 1) {
+      setApiSearchResults([]);
+      setIsSearchingApi(false);
+      return;
+    }
+
+    setIsSearchingApi(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchWatchmode(term);
+        setApiSearchResults(results);
+      } catch (err) {
+        console.error("Replica search error:", err);
+        setApiSearchResults([]);
+      } finally {
+        setIsSearchingApi(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const config = PLATFORMS[platformId];
 
@@ -69,16 +98,6 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
     }
     return list;
   }, [movies, config, selectedBrandTile]);
-
-  // In-platform search filter
-  const displayedMovies = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return platformMovies;
-    return platformMovies.filter(m => 
-      m.title.toLowerCase().includes(q) || 
-      m.genre.toLowerCase().includes(q)
-    );
-  }, [platformMovies, searchQuery]);
 
   // Featured Hero Movie (highest rated/views)
   const heroMovie = useMemo(() => {
@@ -198,7 +217,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${config.shortName}...`}
+              placeholder={`Search all movies & ${config.shortName}...`}
               className="bg-transparent border-none focus:outline-none text-xs ml-2 w-28 sm:w-44 md:w-56 text-white placeholder:text-gray-500 font-medium"
             />
             {searchQuery && (
@@ -253,49 +272,38 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
         </div>
       )}
 
-      {/* 4. Search Results View (If User Typed in Search) */}
+      {/* 4. Search Results View (Shows all site results just like site search box) */}
       {searchQuery.trim().length > 0 ? (
-        <main className="px-4 md:px-12 py-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
-            <div>
-              <span className="text-xs uppercase font-bold text-gray-400">
-                Searching inside {config.name}
+        <main className="px-2 sm:px-4 md:px-12 py-6 sm:py-8 min-h-screen relative z-20">
+          <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+            <div className="flex items-center space-x-2">
+              <span 
+                className="w-2.5 h-2.5 rounded-full" 
+                style={{ backgroundColor: config.brandColor === '#FFFFFF' ? '#E5E7EB' : config.brandColor }} 
+              />
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                All Search Results ({config.name} Hub)
               </span>
-              <h2 className="text-2xl font-black text-white mt-0.5">
-                Results for "<span style={{ color: config.brandColor === '#FFFFFF' ? '#E5E7EB' : config.brandColor }}>{searchQuery}</span>"
-              </h2>
             </div>
-            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-full font-bold">
-              {displayedMovies.length} Movies Available
-            </span>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-xs font-bold text-gray-400 hover:text-white transition flex items-center space-x-1"
+            >
+              <span>Back to {config.name}</span>
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {displayedMovies.length === 0 ? (
-            <div className="text-center py-24 space-y-3">
-              <p className="text-lg font-bold text-gray-300">No movies found on {config.name} matching "{searchQuery}"</p>
-              <p className="text-xs text-gray-500">Try searching for other blockbusters or clear the search.</p>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="mt-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition"
-              >
-                Clear Search
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {displayedMovies.map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  config={config}
-                  isInMyList={myListIds.has(movie.id)}
-                  onToggleList={(e) => toggleMyList(movie.id, e)}
-                  onPlay={() => onPlay(movie)}
-                  onSelect={() => onSelectMovie(movie)}
-                />
-              ))}
-            </div>
-          )}
+          <SearchBoxResults
+            searchTerm={searchQuery}
+            catalogMovies={movies}
+            apiSearchResults={apiSearchResults}
+            isSearchingApi={isSearchingApi}
+            onSelectMovie={onSelectMovie}
+            onPlay={onPlay}
+            onClose={() => setSearchQuery('')}
+            isDropdown={false}
+          />
         </main>
       ) : (
         /* Normal Platform Feed: Hero Billboard & Styled Rows */
