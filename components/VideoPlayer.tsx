@@ -15,6 +15,7 @@ import {
 } from '../services/streamService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { StreamFixResult } from '../services/streamFixService.ts';
+import { AdGuardDnsModal } from './AdGuardDnsModal.tsx';
 
 interface VideoPlayerProps {
   movie: Movie;
@@ -36,10 +37,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to first server in list (Filmy priority for foreign films, AutoEmbed for Indian films)
+  // Default to first server in list (AutoEmbed prioritized, Filmy temporarily deprioritized)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    return list[0]?.id || 'filmu-primary';
+    return list[0]?.id || 'autoembed-mirror';
   });
 
   const lastMovieIdRef = useRef<string>(movie.id);
@@ -49,52 +50,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [showGuidePopover, setShowGuidePopover] = useState<boolean>(false);
   const [showEpisodesModal, setShowEpisodesModal] = useState<boolean>(false);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [showAdGuardModal, setShowAdGuardModal] = useState<boolean>(false);
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
 
-  // Pop-up & Ad Blocker for all players (enabled by default)
-  const [blockPopups, setBlockPopups] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('geministream_block_popups');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-
-  const toggleBlockPopups = () => {
-    setBlockPopups(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('geministream_block_popups', String(next));
-      } catch {}
-      setFailoverNotice(next ? '🛡️ Pop-up & Ad Shield: ACTIVE (Blocking all pop-ups & ads)' : '⚠️ Pop-up Shield Paused');
-      setTimeout(() => setFailoverNotice(null), 3500);
-      return next;
-    });
-  };
-
-  // Intercept window.open calls and top-level redirects while player is open to block popup ads
+  // Clean up any legacy popup blocking keys to avoid browser issues
   useEffect(() => {
-    if (!blockPopups) return;
-
-    const originalOpen = window.open;
-    window.open = function (...args) {
-      console.warn("Blocked player popup ad:", args[0]);
-      return null;
-    };
-
-    // Prevent rogue ad scripts from navigating the top window away from playback
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      return (e.returnValue = '');
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.open = originalOpen;
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [blockPopups]);
+    try {
+      localStorage.removeItem('geministream_block_popups');
+    } catch {}
+  }, []);
 
   const tmdbId = getMovieTmdbId(movie);
   const isSeries = detectedIsSeries || forceSeriesMode;
@@ -116,15 +80,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     setServers(list);
     
     // When switching to a different movie, always prioritize the top server
-    // (Filmy Server for foreign films, AutoEmbed for Indian films)
+    // (AutoEmbed prioritized, Filmy temporarily deprioritized)
     if (lastMovieIdRef.current !== movie.id) {
       lastMovieIdRef.current = movie.id;
-      setActiveServerId(list[0]?.id || 'filmu-primary');
+      setActiveServerId(list[0]?.id || 'autoembed-mirror');
     } else {
       // If same movie (e.g. season or episode changed), preserve user's server if still valid
       setActiveServerId(prev => {
         const exists = list.some(s => s.id === prev);
-        return exists ? prev : (list[0]?.id || 'filmu-primary');
+        return exists ? prev : (list[0]?.id || 'autoembed-mirror');
       });
     }
     
@@ -313,23 +277,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
         {/* Right: Next Server, Episodes, Guide, Fullscreen, Close */}
         <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-          {/* Pop-up & Ad Blocker Shield for all players */}
+          {/* Ad Block Option (Step-by-step AdGuard DNS Instructions) */}
           <button
             type="button"
-            onClick={toggleBlockPopups}
-            className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all shadow-sm active:scale-95 ${
-              blockPopups
-                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 ring-1 ring-emerald-500/30'
-                : 'bg-zinc-850 hover:bg-zinc-750 text-gray-400 border border-white/10'
-            }`}
-            title={blockPopups ? 'Pop-up & Ad Shield: ACTIVE for all players (Blocks pop-ups, new tabs & ad redirects)' : 'Pop-up Shield Paused (Click to activate)'}
+            onClick={() => setShowAdGuardModal(true)}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all shadow-sm active:scale-95 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 ring-1 ring-emerald-500/30"
+            title="Step-by-step instructions to block all ads using AdGuard DNS"
           >
-            <ShieldCheck className={`w-3.5 h-3.5 ${blockPopups ? 'text-emerald-400' : 'text-gray-400'}`} />
-            <span className="hidden xs:inline">{blockPopups ? 'Ad Shield' : 'Shield Off'}</span>
-            <span className={`text-[8px] sm:text-[9px] px-1 py-0.2 rounded font-mono font-bold uppercase ${
-              blockPopups ? 'bg-emerald-500/30 text-emerald-200' : 'bg-zinc-700 text-gray-300'
-            }`}>
-              {blockPopups ? 'ON' : 'OFF'}
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden xs:inline">Ad Block</span>
+            <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded font-mono font-bold uppercase bg-emerald-500/30 text-emerald-200">
+              DNS
             </span>
           </button>
 
@@ -405,24 +363,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 </div>
 
                 <div className="space-y-2 text-[11px] text-gray-300 leading-relaxed">
-                  <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/30 text-red-200">
-                    <span className="font-bold block mb-0.5 text-red-300">⭐ Filmy Server (1st Priority):</span>
-                    Multi-audio stream with Hindi audio, subtitles, and instant server switcher.
-                  </div>
-
                   <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed Mirror (player.autoembed.co):</span>
-                    Fast verified 4K mirror with instant playback for movies and TV episodes.
-                  </div>
-
-                  <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
-                    <span className="text-amber-300 font-bold block mb-0.5">🇮🇳 CineSrc 4K:</span>
-                    Fast 4K playback mirror with multi-audio and episodic TV support.
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed 4K VIP (1st Priority):</span>
+                    Ultra-fast 4K verified player with instant playback for movies and TV shows.
                   </div>
 
                   <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-200">
-                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Ultra:</span>
-                    Ultra-reliable global backup player with zero buffering.
+                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Pro (2nd Priority):</span>
+                    High-speed global stream mirror with zero buffering and multi-resolution.
+                  </div>
+
+                  <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
+                    <span className="text-amber-300 font-bold block mb-0.5">🎬 CineSrc 4K (3rd Priority):</span>
+                    Fast 4K playback mirror with multi-audio and episodic TV support.
+                  </div>
+
+                  <div className="p-2 bg-zinc-800/80 rounded-xl border border-white/10 text-gray-400">
+                    <span className="text-gray-300 font-bold block mb-0.5">⚠️ Filmy Server (Temporarily Down / Deprioritized):</span>
+                    Undergoing temporary server maintenance. Deprioritized until further notice.
                   </div>
                 </div>
               </div>
@@ -697,15 +655,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </span>
           <span className="text-gray-500">•</span>
           <span className="text-emerald-400 font-semibold">{activeServer.quality}</span>
-          {blockPopups && (
-            <>
-              <span className="text-gray-500">•</span>
-              <span className="flex items-center space-x-1 text-emerald-400 font-bold text-[9px] sm:text-[10px] bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                <span>Pop-ups Blocked</span>
-              </span>
-            </>
-          )}
+          <span className="text-gray-500">•</span>
+          <button
+            type="button"
+            onClick={() => setShowAdGuardModal(true)}
+            className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 font-bold text-[9px] sm:text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full transition active:scale-95"
+            title="Step-by-step instructions to block all ads with AdGuard DNS"
+          >
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <span>Ad Block (AdGuard DNS)</span>
+          </button>
           {isSeries && (
             <>
               <span className="text-gray-500">•</span>
@@ -758,6 +717,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
         episode={episode}
         onClose={() => setShowReportModal(false)}
         onFixApplied={handleFixApplied}
+      />
+
+      {/* Step-by-Step AdGuard DNS Ad Block Instructions Modal */}
+      <AdGuardDnsModal
+        isOpen={showAdGuardModal}
+        onClose={() => setShowAdGuardModal(false)}
       />
     </div>
   );

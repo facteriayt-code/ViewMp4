@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown } from 'lucide-react';
+import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown, ShieldCheck } from 'lucide-react';
 import { User } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
 
@@ -10,6 +10,7 @@ interface NavbarProps {
   onLogout: () => void;
   onSearch: (term: string) => void;
   onSelectPlatform?: (platform: PlatformId) => void;
+  onAdBlockClick?: () => void;
   searchTerm?: string;
 }
 
@@ -20,6 +21,7 @@ const Navbar: React.FC<NavbarProps> = ({
   onLogout, 
   onSearch, 
   onSelectPlatform,
+  onAdBlockClick,
   searchTerm: parentSearchTerm = ''
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -181,6 +183,19 @@ const Navbar: React.FC<NavbarProps> = ({
           <Crown className="w-3.5 h-3.5 fill-black group-hover:animate-bounce" />
           <span className="text-[10px] font-black uppercase tracking-widest">VIP</span>
         </a>
+
+        {/* Ad Block Option (Step-by-Step AdGuard DNS) */}
+        {onAdBlockClick && (
+          <button
+            type="button"
+            onClick={onAdBlockClick}
+            className="hidden sm:flex items-center space-x-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-300 px-2.5 py-1.5 rounded-lg transition text-xs font-semibold shrink-0 active:scale-95 shadow-sm"
+            title="Block All Ads: Step-by-step instructions to use AdGuard DNS"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Ad Block</span>
+          </button>
+        )}
 
         {/* TMDb API Live Badge (Desktop) */}
         <button

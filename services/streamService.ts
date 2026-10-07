@@ -701,13 +701,11 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   const filmuServer: StreamServer = {
     id: 'filmu-primary',
     name: 'Filmy Server',
-    badge: !isIndian ? 'Foreign Priority (Filmy)' : 'Hindi / Multi-Audio',
+    badge: 'Temporarily Down',
     url: filmuUrl,
     type: 'iframe',
-    quality: '4K / 1080p',
-    description: !isIndian
-      ? 'Top priority Filmy server for foreign/international cinema with multi-language audio & subtitles'
-      : 'Filmy Server with Hindi/multi-language audio switcher & subtitles',
+    quality: 'Backup / Down',
+    description: 'Filmy Server (temporarily down / maintenance - deprioritized to bottom of list)',
     isHindi: true,
     isFilmu: true,
     isTv: isSeries
@@ -793,21 +791,19 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   };
 
   // User specification:
-  // For TV Series: prioritize autoembedServer (#1) and vidsrcServer (#2) as they contain full seasons/episodes
-  // For foreign films prioritize filmu server (#1)
-  // For Indian films prioritize autoembed server (#1)
+  // Filmy Server is temporarily down, so deprioritize it temporarily (moved to end of server list)
+  // Priority #1 is AutoEmbed 4K VIP, Priority #2 is VidSrc Pro, Priority #3 is CineSrc 4K
   const orderedServers: StreamServer[] = isSeries
-    ? [autoembedServer, vidsrcServer, cinesrcServer, filmuServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
-    : (isIndian
-        ? [autoembedServer, filmuServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
-        : [filmuServer, autoembedServer, cinesrcServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]);
+    ? [autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer, filmuServer]
+    : [autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer, filmuServer];
 
   const servers: StreamServer[] = [...orderedServers];
 
   // If user reported an issue and streamFixService fixed it with a preferred server, prioritize it immediately
+  // (unless it points to filmu-primary which is temporarily down)
   if (movie.id) {
     const override = getMovieOverride(movie.id);
-    if (override && override.preferredServer) {
+    if (override && override.preferredServer && override.preferredServer !== 'filmu-primary') {
       const preferredIdx = servers.findIndex(s => s.id === override.preferredServer);
       if (preferredIdx > 0) {
         const [promoted] = servers.splice(preferredIdx, 1);

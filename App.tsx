@@ -25,6 +25,7 @@ import { SearchBoxResults } from './components/SearchBoxResults.tsx';
 import { ContinueWatchingRow } from './components/ContinueWatchingRow.tsx';
 import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from './services/continueWatchingService.ts';
 import { PlatformId } from './services/platformCatalog.ts';
+import { AdGuardDnsModal } from './components/AdGuardDnsModal.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -44,6 +45,7 @@ const App: React.FC = () => {
   const [uploadModalInitialQuery, setUploadModalInitialQuery] = useState<string | undefined>(undefined);
   const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAdGuardModal, setShowAdGuardModal] = useState(false);
   const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true); 
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(true);
@@ -549,6 +551,7 @@ const App: React.FC = () => {
             onLogout={handleLogout}
             onSearch={setSearchTerm}
             onSelectPlatform={handleSelectPlatform}
+            onAdBlockClick={() => setShowAdGuardModal(true)}
             searchTerm={searchTerm}
           />
 
@@ -702,6 +705,13 @@ const App: React.FC = () => {
             setShowLoginModal(false);
           }}
           onClose={() => setShowLoginModal(false)}
+        />
+      )}
+
+      {showAdGuardModal && (
+        <AdGuardDnsModal 
+          isOpen={showAdGuardModal} 
+          onClose={() => setShowAdGuardModal(false)} 
         />
       )}
     </div>
