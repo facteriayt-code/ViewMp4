@@ -37,13 +37,13 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
   };
 
   return (
-    <div className="relative h-[72vh] sm:h-[82vh] md:h-[90vh] w-full overflow-hidden bg-[#090b10]">
+    <div className="relative min-h-[580px] sm:min-h-[640px] md:min-h-[720px] h-[82vh] lg:h-[88vh] w-full overflow-hidden bg-[#090b10]">
       {/* Background Backdrop with Smooth Crossfade Effect */}
       <img 
         key={activeMovie.id}
         src={activeMovie.backdrop || activeMovie.thumbnail} 
         alt={activeMovie.title} 
-        className="w-full h-full object-cover brightness-[0.6] md:brightness-[0.72] scale-105 transition-all duration-1000 animate-in fade-in"
+        className="w-full h-full object-cover brightness-[0.62] md:brightness-[0.74] scale-105 transition-all duration-1000 animate-in fade-in"
         onError={(e) => {
           if (activeMovie.thumbnail && e.currentTarget.src !== activeMovie.thumbnail) {
             e.currentTarget.src = activeMovie.thumbnail;
@@ -51,13 +51,13 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
         }}
       />
 
-      {/* Bingr Cinematic Multi-layer Vignette */}
+      {/* Bingr Cinematic Multi-layer Vignette - seamlessly blends under navigation bar */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#090b10] via-[#090b10]/60 to-transparent pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#090b10]/95 via-[#090b10]/50 to-transparent pointer-events-none" />
-      <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#090b10]/80 to-transparent pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#090b10] via-[#090b10]/60 to-transparent pointer-events-none z-10" />
       
-      {/* Content Overlay */}
-      <div className="absolute bottom-8 sm:bottom-14 md:bottom-20 left-4 sm:left-8 md:left-14 max-w-3xl space-y-3 sm:space-y-4 pr-4 z-20">
+      {/* Content Overlay - Horizontally aligned with Navbar logo and container */}
+      <div className="absolute bottom-8 sm:bottom-12 md:bottom-16 left-4 sm:left-8 md:left-12 lg:left-16 max-w-3xl space-y-3 sm:space-y-4 pr-4 z-20">
         {/* Spotlight & Quality Badges (Bingr Style) */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold text-gray-300">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 text-[10px] font-black uppercase tracking-wider backdrop-blur-md">
@@ -130,9 +130,9 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
         </div>
       </div>
 
-      {/* Bingr Carousel Controls (Right Side / Pagination) */}
+      {/* Bingr Carousel Controls (Right Side / Pagination) - Aligned with Navbar right padding */}
       {playlist.length > 1 && (
-        <div className="absolute bottom-8 sm:bottom-14 md:bottom-20 right-4 sm:right-8 md:right-14 z-20 flex items-center space-x-3">
+        <div className="absolute bottom-8 sm:bottom-12 md:bottom-16 right-4 sm:right-8 md:right-12 lg:right-16 z-20 flex items-center space-x-3">
           <button
             type="button"
             onClick={handlePrev}

@@ -77,7 +77,11 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-3 sm:px-6 md:px-12 py-2 sm:py-3 md:py-4 flex items-center justify-between ${isScrolled || searchTerm.trim().length > 0 ? 'bg-[#141414] shadow-lg' : 'bg-transparent'}`}>
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-4 sm:px-8 md:px-12 lg:px-16 py-3 sm:py-3.5 md:py-4 flex items-center justify-between ${
+      isScrolled || searchTerm.trim().length > 0 
+        ? 'bg-[#090b10]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.7)]' 
+        : 'bg-gradient-to-b from-[#090b10]/95 via-[#090b10]/60 to-transparent'
+    }`}>
       <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-8 shrink-0">
         <div className="flex items-center space-x-1.5 sm:space-x-2 cursor-pointer" onClick={() => handleClearSearch()}>
            <Film className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-red-600 fill-red-600 shrink-0" />
@@ -100,7 +104,7 @@ const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {showHubsDropdown && (
-              <div className="absolute left-0 mt-2 w-56 bg-[#181818]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 space-y-1">
+              <div className="absolute left-0 mt-2 w-56 bg-[#0d0f17]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 space-y-1">
                 {[
                   { id: 'netflix' as PlatformId, name: 'Netflix', color: '#E50914' },
                   { id: 'prime' as PlatformId, name: 'Prime Video', color: '#00A8E1' },
