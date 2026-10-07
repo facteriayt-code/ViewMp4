@@ -51,6 +51,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
 
+  // Pop-up & Ad Blocker for all players (enabled by default)
+  const [blockPopups, setBlockPopups] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('geministream_block_popups');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleBlockPopups = () => {
+    setBlockPopups(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('geministream_block_popups', String(next));
+      } catch {}
+      setFailoverNotice(next ? '🛡️ Pop-up & Ad Shield: ACTIVE (Blocking all pop-ups & ads)' : '⚠️ Pop-up Shield Paused');
+      setTimeout(() => setFailoverNotice(null), 3500);
+      return next;
+    });
+  };
+
+  // Intercept window.open calls while player is open to block any popup ads or redirect attempts
+  useEffect(() => {
+    if (!blockPopups) return;
+
+    const originalOpen = window.open;
+    window.open = function (...args) {
+      console.warn("Blocked player popup ad:", args[0]);
+      return null;
+    };
+
+    return () => {
+      window.open = originalOpen;
+    };
+  }, [blockPopups]);
+
   const tmdbId = getMovieTmdbId(movie);
   const isSeries = detectedIsSeries || forceSeriesMode;
 
@@ -268,6 +305,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
         {/* Right: Next Server, Episodes, Guide, Fullscreen, Close */}
         <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
+          {/* Pop-up & Ad Blocker Shield for all players */}
+          <button
+            type="button"
+            onClick={toggleBlockPopups}
+            className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all shadow-sm active:scale-95 ${
+              blockPopups
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 ring-1 ring-emerald-500/30'
+                : 'bg-zinc-850 hover:bg-zinc-750 text-gray-400 border border-white/10'
+            }`}
+            title={blockPopups ? 'Pop-up & Ad Shield: ACTIVE for all players (Blocks pop-ups, new tabs & ad redirects)' : 'Pop-up Shield Paused (Click to activate)'}
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 ${blockPopups ? 'text-emerald-400' : 'text-gray-400'}`} />
+            <span className="hidden xs:inline">{blockPopups ? 'Ad Shield' : 'Shield Off'}</span>
+            <span className={`text-[8px] sm:text-[9px] px-1 py-0.2 rounded font-mono font-bold uppercase ${
+              blockPopups ? 'bg-emerald-500/30 text-emerald-200' : 'bg-zinc-700 text-gray-300'
+            }`}>
+              {blockPopups ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
           {/* Quick Switch Server Button */}
           <button
             type="button"
@@ -611,13 +668,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           />
         ) : (
           <iframe 
-            key={`${activeServer.url}-${iframeKey}`}
+            key={`${activeServer.url}-${iframeKey}-${blockPopups ? 'shield-active' : 'shield-off'}`}
             src={activeServer.url}
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
             allowFullScreen
             referrerPolicy="origin"
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media; display-capture; clipboard-write;"
+            sandbox={blockPopups ? "allow-forms allow-scripts allow-same-origin allow-presentation" : undefined}
             onLoad={() => setIsLoading(false)}
           />
         )}
@@ -632,6 +690,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           </span>
           <span className="text-gray-500">•</span>
           <span className="text-emerald-400 font-semibold">{activeServer.quality}</span>
+          {blockPopups && (
+            <>
+              <span className="text-gray-500">•</span>
+              <span className="flex items-center space-x-1 text-emerald-400 font-bold text-[9px] sm:text-[10px] bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span>Pop-ups Blocked</span>
+              </span>
+            </>
+          )}
           {isSeries && (
             <>
               <span className="text-gray-500">•</span>
