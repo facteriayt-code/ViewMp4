@@ -26,6 +26,7 @@ import { ContinueWatchingRow } from './components/ContinueWatchingRow.tsx';
 import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from './services/continueWatchingService.ts';
 import { PlatformId } from './services/platformCatalog.ts';
 import { AdGuardDnsModal } from './components/AdGuardDnsModal.tsx';
+import { getPlatformTop10, initTop10AutoRefresh, NETFLIX_TUDUM_SNAPSHOT, PRIME_FLIXPATROL_SNAPSHOT } from './services/top10Service.ts';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -51,6 +52,30 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
+  const [netflixTop10, setNetflixTop10] = useState<Movie[]>(NETFLIX_TUDUM_SNAPSHOT);
+  const [primeTop10, setPrimeTop10] = useState<Movie[]>(PRIME_FLIXPATROL_SNAPSHOT);
+
+  // Load and subscribe to 24-hour automatic refresh for Netflix and Prime Top 10
+  useEffect(() => {
+    let isMounted = true;
+    getPlatformTop10('netflix').then(data => {
+      if (isMounted && data.movies.length > 0) setNetflixTop10(data.movies);
+    });
+    getPlatformTop10('prime').then(data => {
+      if (isMounted && data.movies.length > 0) setPrimeTop10(data.movies);
+    });
+
+    const cleanup = initTop10AutoRefresh((platform, data) => {
+      if (!isMounted) return;
+      if (platform === 'netflix' && data.movies.length > 0) setNetflixTop10(data.movies);
+      if (platform === 'prime' && data.movies.length > 0) setPrimeTop10(data.movies);
+    });
+
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
+  }, []);
 
   // Active Streaming Platform Replica State (Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu)
   const [activePlatform, setActivePlatform] = useState<PlatformId | null>(() => {
@@ -618,6 +643,30 @@ const App: React.FC = () => {
 
                 {/* Normal Homepage Feed */}
                 <div className="space-y-4">
+                  {/* Top 10 on Netflix India Today (According to Netflix Tudum) */}
+                  {netflixTop10.length > 0 && (
+                    <MovieRow 
+                      title="Top 10 on Netflix India Today" 
+                      movies={netflixTop10} 
+                      onMovieClick={handleSelectMovie} 
+                      onPlay={handlePlay} 
+                      isTop10={true}
+                      sourceUrl="https://www.netflix.com/tudum/top10/india"
+                    />
+                  )}
+
+                  {/* Top 10 on Prime Video India Today (According to FlixPatrol) */}
+                  {primeTop10.length > 0 && (
+                    <MovieRow 
+                      title="Top 10 on Prime Video India Today" 
+                      movies={primeTop10} 
+                      onMovieClick={handleSelectMovie} 
+                      onPlay={handlePlay} 
+                      isTop10={true}
+                      sourceUrl="https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/"
+                    />
+                  )}
+
                   {rows.map((row, idx) => (
                     row.movies.length > 0 && (
                       <React.Fragment key={row.title}>

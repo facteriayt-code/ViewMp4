@@ -2,12 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Movie, ContinueWatchingItem } from '../types.ts';
 import { PLATFORMS, PlatformId, isMovieOnPlatform } from '../services/platformCatalog.ts';
 import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
-import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield, AlertTriangle, Wrench } from 'lucide-react';
+import { Play, Info, Plus, Check, ArrowLeft, Search, Bell, X, Sparkles, Star, ChevronRight, Volume2, Shield, AlertTriangle, Wrench, ExternalLink, RefreshCw } from 'lucide-react';
 import { ContinueWatchingRow } from './ContinueWatchingRow.tsx';
 import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWatching } from '../services/continueWatchingService.ts';
 import { SearchBoxResults } from './SearchBoxResults.tsx';
 import { searchWatchmode, WatchmodeSearchResult } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { getPlatformTop10, Top10PlatformData, NETFLIX_TUDUM_SNAPSHOT, PRIME_FLIXPATROL_SNAPSHOT } from '../services/top10Service.ts';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -37,6 +38,33 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
   const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
+  const [top10Data, setTop10Data] = useState<Top10PlatformData | null>(null);
+  const [isRefreshingTop10, setIsRefreshingTop10] = useState(false);
+
+  // Fetch verified Top 10 data for Netflix (Tudum) and Prime (FlixPatrol) with 24-hour auto-refresh
+  useEffect(() => {
+    let isMounted = true;
+    if (platformId === 'netflix' || platformId === 'prime') {
+      getPlatformTop10(platformId).then(data => {
+        if (isMounted) setTop10Data(data);
+      });
+    } else {
+      setTop10Data(null);
+    }
+    return () => { isMounted = false; };
+  }, [platformId]);
+
+  const handleManualRefreshTop10 = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (platformId !== 'netflix' && platformId !== 'prime') return;
+    setIsRefreshingTop10(true);
+    try {
+      const fresh = await getPlatformTop10(platformId, true);
+      setTop10Data(fresh);
+    } finally {
+      setIsRefreshingTop10(false);
+    }
+  };
 
   useEffect(() => {
     return subscribeToContinueWatching((items) => {
@@ -106,10 +134,13 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
     return platformMovies[0] || movies[0];
   }, [platformMovies, movies]);
 
-  // Top 10 Movies on this platform
+  // Top 10 Movies on this platform (According to Netflix Tudum for Netflix and FlixPatrol for Prime Video)
   const top10Movies = useMemo(() => {
+    if ((platformId === 'netflix' || platformId === 'prime') && top10Data && top10Data.movies.length > 0) {
+      return top10Data.movies.slice(0, 10);
+    }
     return [...platformMovies].sort((a, b) => b.views - a.views).slice(0, 10);
-  }, [platformMovies]);
+  }, [platformMovies, platformId, top10Data]);
 
   const toggleMyList = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -418,11 +449,45 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
             {/* Top 10 Styled Row */}
             <section className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <h3 className="text-base md:text-xl font-black tracking-tight text-white flex items-center gap-2">
-                  <span>{config.top10Title}</span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-base md:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                    <span>{config.top10Title}</span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </h3>
+                  {top10Data && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/10 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Refreshes in 24h</span>
+                    </span>
+                  )}
+                </div>
+
+                {top10Data && (
+                  <div className="flex items-center space-x-2 text-[11px] text-gray-400">
+                    <a
+                      href={top10Data.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-white underline flex items-center gap-1 transition text-[10px] sm:text-xs"
+                      title={`Official Chart Source: ${top10Data.sourceUrl}`}
+                    >
+                      <span>Source: {top10Data.sourceName}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={handleManualRefreshTop10}
+                      disabled={isRefreshingTop10}
+                      className="hover:text-white flex items-center gap-1 transition text-[10px] sm:text-xs text-amber-300 hover:text-amber-200 disabled:opacity-50"
+                      title="Force refresh chart data from website"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRefreshingTop10 ? 'animate-spin text-emerald-400' : ''}`} />
+                      <span>{isRefreshingTop10 ? 'Refreshing...' : 'Refresh'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Numbered Row (Authentic Netflix/Prime Style) */}

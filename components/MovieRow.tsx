@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 
@@ -8,6 +8,8 @@ interface MovieRowProps {
   movies: Movie[];
   onMovieClick: (movie: Movie) => void;
   onPlay: (movie: Movie) => void;
+  isTop10?: boolean;
+  sourceUrl?: string;
 }
 
 const formatViews = (views: number) => {
@@ -16,7 +18,7 @@ const formatViews = (views: number) => {
   return views.toString();
 };
 
-const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay }) => {
+const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay, isTop10, sourceUrl }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedCategory, setCopiedCategory] = useState(false);
@@ -65,6 +67,24 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
             {title}
           </h3>
+          {isTop10 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Refreshes in 24h</span>
+            </span>
+          )}
+          {sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-gray-300 hover:text-white underline inline-flex items-center gap-1 transition bg-white/5 px-2 py-0.5 rounded-full border border-white/10"
+              title={`Source: ${sourceUrl}`}
+            >
+              <span>Source: {sourceUrl.includes('netflix.com') ? 'Netflix Tudum' : 'FlixPatrol'}</span>
+              <ExternalLink className="w-2.5 h-2.5 text-gray-400" />
+            </a>
+          )}
           <button 
             onClick={handleShareCategory}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all duration-500 shadow-xl ${
@@ -104,12 +124,26 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 scroll-smooth py-4 no-scrollbar scroll-snap-x-mandatory"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {movies.map((movie) => (
+          {movies.map((movie, idx) => (
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none w-48 h-28 md:w-80 md:h-44 cursor-pointer transition-all duration-500 hover:scale-105 hover:z-20 rounded-2xl overflow-hidden bg-zinc-900 group/card shadow-2xl hover:shadow-red-600/30 border border-white/5 scroll-snap-align-start"
+              className="relative flex-none flex items-center cursor-pointer transition-all duration-500 hover:scale-105 hover:z-20 scroll-snap-align-start group/card"
             >
+              {isTop10 && (
+                <span 
+                  className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter select-none font-sans mr-[-14px] md:mr-[-20px] z-10 drop-shadow-2xl"
+                  style={{
+                    WebkitTextStroke: '2px rgba(255,255,255,0.4)',
+                    color: '#000000',
+                    opacity: 0.95
+                  }}
+                >
+                  {idx + 1}
+                </span>
+              )}
+
+              <div className="w-48 h-28 md:w-80 md:h-44 rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl hover:shadow-red-600/30 border border-white/5 relative">
               <img 
                 src={movie.thumbnail} 
                 alt={movie.title} 
@@ -169,6 +203,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                  </div>
               </div>
             </div>
+          </div>
           ))}
         </div>
 
