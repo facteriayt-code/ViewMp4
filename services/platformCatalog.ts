@@ -116,12 +116,12 @@ export const PLATFORMS: Record<PlatformId, PlatformConfig> = {
     navLinks: ['Home', 'Store', 'Live TV', 'Categories', 'My Stuff'],
     categoryRows: [
       {
-        title: 'Amazon Originals & Exclusives',
-        filter: (m) => Boolean(m.isTv) || /action|adventure|sci-fi/i.test(`${m.genre}`)
+        title: 'Amazon Originals & TV Series',
+        filter: (m) => Boolean(m.isTv) || /tv|series|show/i.test(`${m.genre}`)
       },
       {
         title: 'Top Movies Included with Prime',
-        filter: (m) => !m.isTv || m.views > 2500000
+        filter: (m) => !m.isTv && !/tv|series|show/i.test(`${m.genre}`)
       },
       {
         title: 'Action-Packed Blockbusters',

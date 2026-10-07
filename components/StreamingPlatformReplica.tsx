@@ -490,35 +490,49 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                 )}
               </div>
 
-              {/* Numbered Row (Authentic Netflix/Prime Style) */}
-              <div className="flex items-center space-x-4 md:space-x-6 overflow-x-auto no-scrollbar py-2">
+              {/* Numbered Row (Authentic, Pixel-Perfect Netflix/Prime Style) */}
+              <div className="flex items-end space-x-2 sm:space-x-3 md:space-x-4 overflow-x-auto no-scrollbar py-3 pl-1">
                 {top10Movies.map((movie, idx) => {
-                  const rank = idx + 1;
+                  const rank = movie.rank || (idx + 1);
                   return (
                     <div
                       key={movie.id}
                       onClick={() => onSelectMovie(movie)}
-                      className="group cursor-pointer shrink-0 flex items-center relative transition-transform duration-300 hover:scale-105"
+                      className="group cursor-pointer shrink-0 flex items-end relative transition-all duration-300 hover:scale-[1.04] hover:z-20 select-none"
                     >
-                      {/* Huge Stylized Rank Number */}
-                      <span 
-                        className="text-7xl sm:text-8xl md:text-9xl font-black tracking-tighter select-none font-sans mr-[-18px] md:mr-[-26px] z-10 drop-shadow-2xl"
-                        style={{
-                          WebkitTextStroke: '2px rgba(255,255,255,0.4)',
-                          color: '#000000',
-                          opacity: 0.95
-                        }}
-                      >
-                        {rank}
-                      </span>
+                      {/* Fixed-width Rank Number Container ensuring posters never displace */}
+                      <div className="w-12 sm:w-16 md:w-20 flex items-end justify-end shrink-0 z-10 pointer-events-none -mr-3 sm:-mr-5 md:-mr-7">
+                        <span 
+                          className="font-black tracking-tighter leading-none select-none drop-shadow-[0_10px_25px_rgba(0,0,0,0.95)]"
+                          style={{
+                            fontSize: 'clamp(5rem, 8vw, 8rem)',
+                            WebkitTextStroke: platformId === 'netflix' ? '3px #595959' : '2.5px rgba(255,255,255,0.45)',
+                            color: '#0a0a0a',
+                            lineHeight: '0.8',
+                            letterSpacing: '-0.07em'
+                          }}
+                        >
+                          {rank}
+                        </span>
+                      </div>
 
-                      {/* Movie Card */}
-                      <div className="w-32 sm:w-36 md:w-44 aspect-[2/3] rounded-xl overflow-hidden bg-black/50 border border-white/10 group-hover:border-white/40 shadow-xl relative">
+                      {/* Movie Card - strictly uniform 2:3 aspect ratio */}
+                      <div className="w-32 sm:w-36 md:w-44 aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-900 border border-white/10 group-hover:border-white/40 shadow-2xl relative shrink-0">
                         <img
-                          src={movie.thumbnail}
+                          src={movie.thumbnail || movie.poster || movie.backdrop}
                           alt={movie.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (movie.backdrop && target.src !== movie.backdrop) {
+                              target.src = movie.backdrop;
+                            } else if (movie.poster && target.src !== movie.poster) {
+                              target.src = movie.poster;
+                            } else {
+                              target.src = "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
+                            }
+                          }}
                         />
 
                         {/* Top-right Report Button */}
@@ -701,10 +715,20 @@ const MovieCard: React.FC<MovieCardProps> = ({
     >
       <div className="aspect-[2/3] relative overflow-hidden bg-black/60">
         <img
-          src={movie.thumbnail}
+          src={movie.thumbnail || movie.poster || movie.backdrop}
           alt={movie.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (movie.backdrop && target.src !== movie.backdrop) {
+              target.src = movie.backdrop;
+            } else if (movie.poster && target.src !== movie.poster) {
+              target.src = movie.poster;
+            } else {
+              target.src = "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
+            }
+          }}
         />
 
         {/* Top Badges */}

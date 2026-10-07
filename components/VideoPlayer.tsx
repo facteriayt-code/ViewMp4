@@ -37,10 +37,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to first server in list (AutoEmbed prioritized, Filmy temporarily deprioritized)
+  // Default to top priority server in list (Filmy Server / AutoEmbed 4K)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
-    return list[0]?.id || 'autoembed-mirror';
+    return list[0]?.id || 'filmu-primary';
   });
 
   const lastMovieIdRef = useRef<string>(movie.id);
@@ -79,16 +79,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     const list = getMovieStreamServers(movie, season, episode);
     setServers(list);
     
-    // When switching to a different movie, always prioritize the top server
-    // (AutoEmbed prioritized, Filmy temporarily deprioritized)
+    // When switching to a different movie, always prioritize the top server (Filmu Server #1)
     if (lastMovieIdRef.current !== movie.id) {
       lastMovieIdRef.current = movie.id;
-      setActiveServerId(list[0]?.id || 'autoembed-mirror');
+      setActiveServerId(list[0]?.id || 'filmu-primary');
     } else {
       // If same movie (e.g. season or episode changed), preserve user's server if still valid
       setActiveServerId(prev => {
         const exists = list.some(s => s.id === prev);
-        return exists ? prev : (list[0]?.id || 'autoembed-mirror');
+        return exists ? prev : (list[0]?.id || 'filmu-primary');
       });
     }
     
@@ -254,7 +253,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 ) : s.id.includes('vidsrc') ? (
                   <Film className="w-3 h-3 text-indigo-400" />
                 ) : s.id.includes('filmu') ? (
-                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span className="flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                  </span>
                 ) : s.id.includes('cinesrc') ? (
                   <Play className="w-3 h-3 text-cyan-400" />
                 ) : s.id.includes('codespecters') ? (
@@ -363,24 +365,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 </div>
 
                 <div className="space-y-2 text-[11px] text-gray-300 leading-relaxed">
+                  <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/20 text-red-200">
+                    <span className="text-red-400 font-bold block mb-0.5">🔥 Filmy Server (Active & Working):</span>
+                    Multi-audio server with Hindi Dubbed, South Indian, and original audio streams in 4K.
+                  </div>
+
                   <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed 4K VIP (1st Priority):</span>
+                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed 4K VIP:</span>
                     Ultra-fast 4K verified player with instant playback for movies and TV shows.
                   </div>
 
                   <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-200">
-                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Pro (2nd Priority):</span>
+                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Pro:</span>
                     High-speed global stream mirror with zero buffering and multi-resolution.
                   </div>
 
                   <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
-                    <span className="text-amber-300 font-bold block mb-0.5">🎬 CineSrc 4K (3rd Priority):</span>
-                    Fast 4K playback mirror with multi-audio and episodic TV support.
-                  </div>
-
-                  <div className="p-2 bg-zinc-800/80 rounded-xl border border-white/10 text-gray-400">
-                    <span className="text-gray-300 font-bold block mb-0.5">⚠️ Filmy Server (Temporarily Down / Deprioritized):</span>
-                    Undergoing temporary server maintenance. Deprioritized until further notice.
+                    <span className="text-amber-300 font-bold block mb-0.5">🎬 CineSrc 4K:</span>
+                    Fast 4K playback mirror with multi-server and episodic TV support.
                   </div>
                 </div>
               </div>

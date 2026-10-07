@@ -277,11 +277,20 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const [activeCategory, setActiveCategory] = useState<string>('All Categories');
+
   const handleCategoryScroll = (categoryName: string) => {
-    const targetId = `row-${categoryName.replace(/\s+/g, '-').toLowerCase()}`;
+    setActiveCategory(categoryName);
+    if (categoryName === 'All Categories') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const targetId = categoryName === 'Top 10' 
+      ? 'row-top-10' 
+      : `row-${categoryName.replace(/\s+/g, '-').toLowerCase()}`;
     const element = document.getElementById(targetId);
     if (element) {
-      const headerOffset = 150;
+      const headerOffset = 130;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
@@ -398,10 +407,14 @@ const App: React.FC = () => {
     ];
   }, [filteredMovies]);
 
-  // Featured Hero movie: always verified cinema title (never community upload)
-  const heroMovie = useMemo(() => {
-    return movies.find(m => !m.isUserUploaded && (m.backdrop || m.thumbnail)) || INITIAL_MOVIES[0];
+  // Featured Hero movie and spotlight carousel playlist (Bingr style)
+  const featuredSpotlightMovies = useMemo(() => {
+    return movies.filter(m => !m.isUserUploaded && (m.backdrop || m.thumbnail)).slice(0, 6);
   }, [movies]);
+
+  const heroMovie = useMemo(() => {
+    return featuredSpotlightMovies[0] || movies.find(m => !m.isUserUploaded) || INITIAL_MOVIES[0];
+  }, [featuredSpotlightMovies, movies]);
 
   // Real-time Watchmode Database API search when user types in search bar
   useEffect(() => {
@@ -598,6 +611,7 @@ const App: React.FC = () => {
             <>
               <Hero 
                 movie={heroMovie} 
+                featuredMovies={featuredSpotlightMovies}
                 onInfoClick={handleSelectMovie} 
                 onPlay={handlePlay} 
               />
@@ -605,7 +619,10 @@ const App: React.FC = () => {
               {/* Single clean Streaming Platform Logos Bar (only logos, only once on homepage, no instructions) */}
               <StreamingPlatformLogosBar onSelectPlatform={handleSelectPlatform} />
 
-              <CategoryShareBar onCategoryClick={handleCategoryScroll} />
+              <CategoryShareBar 
+                onCategoryClick={handleCategoryScroll} 
+                activeCategory={activeCategory} 
+              />
 
               <div className="relative z-20 space-y-4">
                 {isSyncing && (
@@ -643,29 +660,32 @@ const App: React.FC = () => {
 
                 {/* Normal Homepage Feed */}
                 <div className="space-y-4">
-                  {/* Top 10 on Netflix India Today (According to Netflix Tudum) */}
-                  {netflixTop10.length > 0 && (
-                    <MovieRow 
-                      title="Top 10 on Netflix India Today" 
-                      movies={netflixTop10} 
-                      onMovieClick={handleSelectMovie} 
-                      onPlay={handlePlay} 
-                      isTop10={true}
-                      sourceUrl="https://www.netflix.com/tudum/top10/india"
-                    />
-                  )}
+                  {/* Top 10 Section on Netflix & Prime Video India */}
+                  <div id="row-top-10" className="space-y-4 scroll-mt-28">
+                    {/* Top 10 on Netflix India Today (According to Netflix Tudum) */}
+                    {netflixTop10.length > 0 && (
+                      <MovieRow 
+                        title="Top 10 on Netflix India Today" 
+                        movies={netflixTop10} 
+                        onMovieClick={handleSelectMovie} 
+                        onPlay={handlePlay} 
+                        isTop10={true}
+                        sourceUrl="https://www.netflix.com/tudum/top10/india"
+                      />
+                    )}
 
-                  {/* Top 10 on Prime Video India Today (According to FlixPatrol) */}
-                  {primeTop10.length > 0 && (
-                    <MovieRow 
-                      title="Top 10 on Prime Video India Today" 
-                      movies={primeTop10} 
-                      onMovieClick={handleSelectMovie} 
-                      onPlay={handlePlay} 
-                      isTop10={true}
-                      sourceUrl="https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/"
-                    />
-                  )}
+                    {/* Top 10 on Prime Video India Today (According to FlixPatrol) */}
+                    {primeTop10.length > 0 && (
+                      <MovieRow 
+                        title="Top 10 on Prime Video India Today" 
+                        movies={primeTop10} 
+                        onMovieClick={handleSelectMovie} 
+                        onPlay={handlePlay} 
+                        isTop10={true}
+                        sourceUrl="https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/"
+                      />
+                    )}
+                  </div>
 
                   {rows.map((row, idx) => (
                     row.movies.length > 0 && (

@@ -700,12 +700,12 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
 
   const filmuServer: StreamServer = {
     id: 'filmu-primary',
-    name: 'Filmy Server',
-    badge: 'Temporarily Down',
+    name: 'Filmu Server (Working Now)',
+    badge: 'Active VIP 4K',
     url: filmuUrl,
     type: 'iframe',
-    quality: 'Backup / Down',
-    description: 'Filmy Server (temporarily down / maintenance - deprioritized to bottom of list)',
+    quality: '4K Ultra HD',
+    description: 'Filmu Server - Verified Active & Working (Multi-Audio: Hindi Dub, English & South Indian Languages)',
     isHindi: true,
     isFilmu: true,
     isTv: isSeries
@@ -790,20 +790,19 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // User specification:
-  // Filmy Server is temporarily down, so deprioritize it temporarily (moved to end of server list)
-  // Priority #1 is AutoEmbed 4K VIP, Priority #2 is VidSrc Pro, Priority #3 is CineSrc 4K
+  // Server Priority:
+  // Filmy Server is active and working (prime source for multi-audio/Hindi/South & foreign)
+  // Priority order: Filmy Server, AutoEmbed 4K VIP, VidSrc Pro, CineSrc 4K
   const orderedServers: StreamServer[] = isSeries
-    ? [autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer, filmuServer]
-    : [autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer, filmuServer];
+    ? [filmuServer, autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
+    : [filmuServer, autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer];
 
   const servers: StreamServer[] = [...orderedServers];
 
   // If user reported an issue and streamFixService fixed it with a preferred server, prioritize it immediately
-  // (unless it points to filmu-primary which is temporarily down)
   if (movie.id) {
     const override = getMovieOverride(movie.id);
-    if (override && override.preferredServer && override.preferredServer !== 'filmu-primary') {
+    if (override && override.preferredServer) {
       const preferredIdx = servers.findIndex(s => s.id === override.preferredServer);
       if (preferredIdx > 0) {
         const [promoted] = servers.splice(preferredIdx, 1);

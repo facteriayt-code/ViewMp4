@@ -61,14 +61,14 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   if (movies.length === 0) return null;
 
   return (
-    <div id={`row-${title.replace(/\s+/g, '-').toLowerCase()}`} className="space-y-4 mb-10 group/row">
+    <div id={`row-${title.replace(/\s+/g, '-').toLowerCase()}`} className="space-y-3 sm:space-y-4 mb-8 sm:mb-12 group/row">
       <div className="flex items-center px-4 md:px-12 justify-between">
         <div className="flex items-center space-x-3">
-          <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter italic">
-            {title}
+          <h3 className="font-cinema text-2xl sm:text-3xl md:text-4xl text-white uppercase tracking-wider flex items-center gap-2">
+            <span>{title}</span>
           </h3>
           {isTop10 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>Refreshes in 24h</span>
             </span>
@@ -78,7 +78,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
               href={sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[10px] text-gray-300 hover:text-white underline inline-flex items-center gap-1 transition bg-white/5 px-2 py-0.5 rounded-full border border-white/10"
+              className="text-[10px] text-gray-300 hover:text-white underline inline-flex items-center gap-1 transition bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-full border border-white/10"
               title={`Source: ${sourceUrl}`}
             >
               <span>Source: {sourceUrl.includes('netflix.com') ? 'Netflix Tudum' : 'FlixPatrol'}</span>
@@ -87,98 +87,118 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           )}
           <button 
             onClick={handleShareCategory}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-all duration-500 shadow-xl ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-md ${
               copiedCategory 
-                ? 'bg-green-600 border-green-500 scale-105 shadow-green-500/20' 
-                : 'bg-red-600/10 border-red-600/40 hover:bg-red-600 hover:border-red-500 shadow-red-600/10'
+                ? 'bg-emerald-600 border-emerald-500 scale-105 shadow-emerald-500/20' 
+                : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
             }`}
-            title="Share Entire Category"
+            title="Share Category"
           >
             {copiedCategory ? (
-              <Check className="w-3.5 h-3.5 text-white" />
+              <Check className="w-3 h-3 text-white" />
             ) : (
-              <Share2 className="w-3.5 h-3.5 text-white" />
+              <Share2 className="w-3 h-3 text-gray-400" />
             )}
-            <span className={`text-[10px] font-black uppercase tracking-widest text-white`}>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300">
               {copiedCategory ? 'Copied' : 'Share'}
             </span>
           </button>
         </div>
         
-        <div className="hidden md:flex items-center space-x-1 opacity-0 group-hover/row:opacity-100 transition-opacity duration-500">
-           <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Explore all</span>
-           <ChevronRight className="w-4 h-4 text-gray-500" />
+        <div className="hidden md:flex items-center space-x-1 opacity-0 group-hover/row:opacity-100 transition-opacity duration-300">
+           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Scroll</span>
+           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
         </div>
       </div>
 
       <div className="group relative flex items-center">
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4 active:scale-90"
+          className="absolute left-0 z-30 p-2 bg-[#0f1014]/90 backdrop-blur-md h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-105 md:px-3 text-white border-r border-white/10"
         >
-          <ChevronLeft className="w-8 h-8" />
+          <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
         </button>
 
         <div 
           ref={rowRef}
-          className="row-container flex space-x-2 md:space-x-5 overflow-x-auto px-4 md:px-12 scroll-smooth py-4 no-scrollbar scroll-snap-x-mandatory"
+          className={`row-container flex ${isTop10 ? 'items-end space-x-3 md:space-x-5' : 'items-center space-x-3 md:space-x-4'} overflow-x-auto px-4 md:px-12 scroll-smooth py-3 no-scrollbar scroll-snap-x-mandatory`}
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((movie, idx) => (
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none flex items-center cursor-pointer transition-all duration-500 hover:scale-105 hover:z-20 scroll-snap-align-start group/card"
+              className={`relative flex-none ${isTop10 ? 'flex items-end' : 'flex items-center'} cursor-pointer transition-transform duration-300 hover:scale-[1.03] hover:z-20 scroll-snap-align-start group/card`}
             >
               {isTop10 && (
-                <span 
-                  className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter select-none font-sans mr-[-14px] md:mr-[-20px] z-10 drop-shadow-2xl"
-                  style={{
-                    WebkitTextStroke: '2px rgba(255,255,255,0.4)',
-                    color: '#000000',
-                    opacity: 0.95
-                  }}
-                >
-                  {idx + 1}
-                </span>
+                <div className="w-12 sm:w-16 md:w-20 flex items-end justify-end shrink-0 z-10 pointer-events-none -mr-3 sm:-mr-5 md:-mr-7 select-none">
+                  <span 
+                    className="font-black tracking-tighter leading-none select-none drop-shadow-[0_10px_25px_rgba(0,0,0,0.95)]"
+                    style={{
+                      fontSize: 'clamp(5rem, 8vw, 8rem)',
+                      WebkitTextStroke: '2.5px rgba(255,255,255,0.45)',
+                      color: '#0a0a0a',
+                      lineHeight: '0.8',
+                      letterSpacing: '-0.07em'
+                    }}
+                  >
+                    {movie.rank || (idx + 1)}
+                  </span>
+                </div>
               )}
 
-              <div className="w-48 h-28 md:w-80 md:h-44 rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl hover:shadow-red-600/30 border border-white/5 relative">
+              <div className={`${isTop10 ? 'w-32 sm:w-36 md:w-44 aspect-[2/3]' : 'w-44 sm:w-52 md:w-64 aspect-[16/10]'} rounded-xl overflow-hidden bg-[#12141c] shadow-xl hover:shadow-2xl border border-white/[0.08] group-hover/card:border-white/30 relative shrink-0 transition-all duration-300`}>
               <img 
-                src={movie.thumbnail} 
+                src={movie.thumbnail || movie.poster || movie.backdrop} 
                 alt={movie.title} 
-                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 transition-all duration-500 pointer-events-none"
+                className="w-full h-full object-cover brightness-[0.9] group-hover/card:brightness-75 group-hover/card:scale-105 transition-all duration-500 pointer-events-none"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (movie.backdrop && target.src !== movie.backdrop) {
+                    target.src = movie.backdrop;
+                  } else if (movie.poster && target.src !== movie.poster) {
+                    target.src = movie.poster;
+                  } else {
+                    target.src = "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
+                  }
+                }}
               />
               
-              <div className="absolute top-2 right-2 z-30 flex flex-col space-y-1.5 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 translate-y-2 group-hover/card:translate-y-0">
+              {/* Card Actions Overlay (Report & Share) */}
+              <div className="absolute top-2 right-2 z-30 flex items-center space-x-1.5 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
                 <button 
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setReportingMovie(movie);
                   }}
-                  className="p-1.5 md:p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-amber-600 text-amber-300 hover:text-white transition-colors shadow-lg active:scale-90"
-                  title="Report if this movie is not playing or wrong movie"
+                  className="p-1.5 bg-black/70 backdrop-blur-md rounded-lg border border-white/10 hover:bg-amber-600 text-amber-300 hover:text-white transition shadow-lg"
+                  title="Report stream or wrong title"
                 >
-                  <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <AlertTriangle className="w-3 h-3" />
                 </button>
 
                 <button 
                   type="button"
                   onClick={(e) => handleShareMovie(e, movie)}
-                  className="p-1.5 md:p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-red-600 transition-colors shadow-lg active:scale-90"
-                  title="Share movie link"
+                  className="p-1.5 bg-black/70 backdrop-blur-md rounded-lg border border-white/10 hover:bg-red-600 transition shadow-lg text-white"
+                  title="Share link"
                 >
-                  {copiedId === movie.id ? <Check className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" /> : <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />}
+                  {copiedId === movie.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Share2 className="w-3 h-3" />}
                 </button>
               </div>
 
-              <div className="absolute top-3 left-3 z-30 flex items-center bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-black text-white border border-white/5">
-                <Eye className="w-3.5 h-3.5 mr-1 text-red-500 fill-red-500" />
-                <span>{formatViews(movie.views)}</span>
+              {/* Rating & Quality Badges */}
+              <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5">
+                <div className="flex items-center bg-black/70 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[10px] font-bold text-amber-300 border border-amber-400/20">
+                  <span>★ {typeof movie.userRating === 'number' ? movie.userRating.toFixed(1) : '8.0'}</span>
+                </div>
+                <div className="bg-black/70 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] font-bold text-gray-300 border border-white/10 hidden sm:block">
+                  <span>{movie.isTv ? 'SERIES' : 'HD'}</span>
+                </div>
               </div>
 
-              {/* Direct Play Button on Card Hover */}
+              {/* Direct Play Button on Hover */}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-300 z-30 pointer-events-none">
                 <button
                   type="button"
@@ -186,20 +206,20 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                     e.stopPropagation();
                     onPlay(movie);
                   }}
-                  className="pointer-events-auto bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(229,9,20,0.7)] hover:scale-110 active:scale-95 transition border-2 border-white/30"
+                  className="pointer-events-auto bg-[#E50914] hover:bg-[#b80710] text-white w-11 h-11 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition"
                   title={`Watch ${movie.title} now`}
                 >
-                  <Play className="w-5 h-5 fill-white ml-0.5" />
+                  <Play className="w-4 h-4 fill-white ml-0.5" />
                 </button>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/90 to-transparent p-4 md:p-6 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300 transform translate-y-4 group-hover/card:translate-y-0">
-                 <p className="text-xs md:text-lg font-black text-white truncate pr-8 uppercase italic leading-tight tracking-tight">{movie.title}</p>
-                 <div className="flex items-center space-x-2 text-[8px] md:text-[11px] text-green-400 font-black mt-1 uppercase tracking-widest">
-                    <span className="border border-green-500/30 px-1 rounded-sm">{movie.rating}</span>
-                    <span className="text-gray-500">•</span>
-                    <span>{movie.year}</span>
-                    {movie.isUserUploaded && <span className="bg-red-600 text-white px-2 py-0.5 rounded-sm text-[8px] md:text-[10px] ml-auto">UGC</span>}
+              {/* Bottom Card Title Info */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-3 sm:p-4 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-all duration-300">
+                 <p className="text-xs sm:text-sm font-bold text-white truncate leading-tight">{movie.title}</p>
+                 <div className="flex items-center space-x-2 text-[10px] text-gray-400 font-medium mt-0.5">
+                    <span className="text-gray-300">{movie.year || '2026'}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="truncate">{movie.genre}</span>
                  </div>
               </div>
             </div>
@@ -209,9 +229,9 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 z-30 p-2 bg-black/70 h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 md:px-4 active:scale-90"
+          className="absolute right-0 z-30 p-2 bg-[#0f1014]/90 backdrop-blur-md h-full opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-105 md:px-3 text-white border-l border-white/10"
         >
-          <ChevronRight className="w-8 h-8" />
+          <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
         </button>
       </div>
       <style>{`

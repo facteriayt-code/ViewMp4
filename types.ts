@@ -40,6 +40,9 @@ export interface Movie {
   isTv?: boolean;
   tmdbId?: number;
   imdbId?: string;
+  rank?: number;
+  poster?: string;
+  weeksInTop10?: number;
 }
 
 export interface UserUpload {

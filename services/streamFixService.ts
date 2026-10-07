@@ -78,16 +78,11 @@ export function getAllMovieOverrides(): Record<string, MovieOverride> {
   }
 
   // Sanitize bug: if any override mapped Dark (tmdb_70523) to 155 (The Dark Knight), repair it immediately
-  // Also migrate any legacy overrides pointing to temporarily down Filmy server
   let modified = false;
   for (const [k, v] of Object.entries(overrides)) {
     if ((k.includes('70523') || v.fixedTitle?.toLowerCase() === 'dark') && (v.tmdbId === 155 || v.tmdbId === 49026)) {
       v.tmdbId = 70523;
       v.fixedTitle = 'Dark';
-      modified = true;
-    }
-    if (v.preferredServer === 'filmu-primary') {
-      v.preferredServer = 'autoembed-mirror';
       modified = true;
     }
   }
@@ -325,13 +320,13 @@ export async function diagnoseAndFixMovie(
         console.warn("TMDb API lookup during fix failed, falling back to mirror re-routing:", err);
       }
 
-      // Select a fresh server not in failedServers (excluding temporarily down filmy server)
+      // Select a fresh server not in failedServers
       const eligibleServers = currentServers.filter(s => 
-        !failedServers.has(s.id) && s.type !== 'video' && s.id !== 'trailer-stream' && s.id !== 'filmu-primary'
+        !failedServers.has(s.id) && s.type !== 'video' && s.id !== 'trailer-stream'
       );
 
       targetServer = eligibleServers[0] || 
-                     currentServers.find(s => s.id !== currentServerId && s.id !== 'filmu-primary') || 
+                     currentServers.find(s => s.id !== currentServerId) || 
                      currentServers[0];
 
       actionTaken = isRepeatReport
@@ -346,9 +341,9 @@ export async function diagnoseAndFixMovie(
       fixedTmdbId = verification.verifiedTmdbId;
     }
 
-    // Filter available mirrors to find the highest-priority server that has NOT failed (excluding temporarily down filmy server)
+    // Filter available mirrors to find the highest-priority server that has NOT failed
     const eligibleServers = currentServers.filter(s => 
-      !failedServers.has(s.id) && s.type !== 'video' && s.id !== 'trailer-stream' && s.id !== 'filmu-primary'
+      !failedServers.has(s.id) && s.type !== 'video' && s.id !== 'trailer-stream'
     );
 
     if (eligibleServers.length > 0) {
@@ -357,7 +352,7 @@ export async function diagnoseAndFixMovie(
       // If all servers have been marked as failed, reset the cycle and select the server furthest from currentServerId
       failedServers.clear();
       failedServers.add(currentServerId);
-      const otherServers = currentServers.filter(s => s.id !== currentServerId && s.type !== 'video' && s.id !== 'trailer-stream' && s.id !== 'filmu-primary');
+      const otherServers = currentServers.filter(s => s.id !== currentServerId && s.type !== 'video' && s.id !== 'trailer-stream');
       targetServer = otherServers[0] || currentServers[0];
     }
 

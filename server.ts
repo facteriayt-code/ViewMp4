@@ -563,32 +563,32 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   const top10ServerCache: Record<string, Top10CacheEntry> = {};
 
   const DEFAULT_NETFLIX_TITLES = [
-    { rank: 1, title: "Vishwanath & Sons", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABfvQFbWsoPXd9XGIGAoX0CyoV2AjCeTZAa2bMEKhtsWSzXoHVopnlcE2XnZ55SCRe3ZxZeqQi18dRf9vfh0ABWIIMbocO5PzteQ.jpg?r=746", weeks: 4 },
-    { rank: 2, title: "Irumudi", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABZlQdThgROiwMSguGCIQt_DtaNuUYq8ILvUxkabWwy0C2rqxac5dptxD2PbDIuzlkMoOfFV4l4c7kuaIKSB0yZ68oxPxY6EawWA.jpg?r=8b4", weeks: 3 },
-    { rank: 3, title: "Modha Rathri", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABaHXtOSzdAvD_NJ8RQXDQIDD9U-7_vbSKXCjm-IDFGefXSkrg1x_B9Jtw5LZSi03gw3h0lYQFpRjj18CXSDPbNIpA9IibuyVOAQ.jpg?r=81f", weeks: 3 },
-    { rank: 4, title: "Baby Do Die Do", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABbZnLIh6aJR4sFLsUcDb1GdF9fj4G_C_ISdNdQ1X-JGUgiTaC2OHrtTpJRYEjLVcyDc5aKcJx1XZVPn3ZeBdVG1ziG1q_KYn4mE.jpg?r=72d", weeks: 2 },
-    { rank: 5, title: "Romancham", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABUKB2J1A0apIhpQIpE5az8zccpgEjut0uh4pj_XhsF-xaO5iG45FPf4IKYwk2V5bPRUMX3UpX_uD2wf-Na8r5fNVh8LTOJgDP4E.jpg?r=2bb", weeks: 1 },
-    { rank: 6, title: "Demon Slayer: Kimetsu no Yaiba Infinity Castle I", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABRjjhjugpCf8NRlW3ZwlteIvUc9496SPqOCT3vZLHdoT9QlhH5cjivKoSzE1H25vbaBEUVo3XbrD9F9cFWd-n3R0-v-Xu8sVDWA.jpg?r=5df", weeks: 1 },
-    { rank: 7, title: "Lust Stories 3", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABRcbwnWNXQUMc4_U2qe8_zEOgS7PEuzLRN--KBicImox95C4lA3LfIzbtViVMzlQnmICjwZ41zlLrXDO3XXH4d1LC_N8nNyHGjo.jpg?r=f27", weeks: 3 },
-    { rank: 8, title: "UNABOMBER", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABcUMewqWNZdWveqIsRkDvZLP-o0RoVn68O0UfrQq6gYkb3g4tI0GbftOiaFjroT6uDydW7WXzQmG2spEhzXHM5h0-yrbCgLxHm4.jpg?r=286", weeks: 1 },
-    { rank: 9, title: "Ohh My Dog", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABQplZYpuIfvmHsP4SErvMWzW0PsMvI22V5MbQBgsbfNeDs02mi__6_UIauZkv10N9Ww6zfDi9kVs06j0fcfUuJQUfrBmN-CpEtY.jpg?r=838", weeks: 1 },
-    { rank: 10, title: "Dhamaal 4", img: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABZkNtKirLpFaVh0y42nXzH5h_lymseuUXSrrMFzjLSArWlM6rYWZpIqwcAiZ6dbKZDEHiqna3hP07-0-pPg02h7o4jiLnMX296Q.jpg?r=152", weeks: 5 }
+    { rank: 1, title: "Vishwanath & Sons", poster: "https://image.tmdb.org/t/p/w780/mLsvCffzpxxDwC7yVLJSLLjgzoq.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABfvQFbWsoPXd9XGIGAoX0CyoV2AjCeTZAa2bMEKhtsWSzXoHVopnlcE2XnZ55SCRe3ZxZeqQi18dRf9vfh0ABWIIMbocO5PzteQ.jpg?r=746", weeks: 4 },
+    { rank: 2, title: "Irumudi", poster: "https://image.tmdb.org/t/p/w780/dVFtTKMWW1aq7aWq30wjwOP6W3J.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABZlQdThgROiwMSguGCIQt_DtaNuUYq8ILvUxkabWwy0C2rqxac5dptxD2PbDIuzlkMoOfFV4l4c7kuaIKSB0yZ68oxPxY6EawWA.jpg?r=8b4", weeks: 3 },
+    { rank: 3, title: "Modha Rathri", poster: "https://image.tmdb.org/t/p/w780/3VuNFeniljhEe9MDW12MnDbETgH.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABaHXtOSzdAvD_NJ8RQXDQIDD9U-7_vbSKXCjm-IDFGefXSkrg1x_B9Jtw5LZSi03gw3h0lYQFpRjj18CXSDPbNIpA9IibuyVOAQ.jpg?r=81f", weeks: 3 },
+    { rank: 4, title: "Baby Do Die Do", poster: "https://image.tmdb.org/t/p/w780/jvfqp6gMlvHODYnBXoogqRyIs0k.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABbZnLIh6aJR4sFLsUcDb1GdF9fj4G_C_ISdNdQ1X-JGUgiTaC2OHrtTpJRYEjLVcyDc5aKcJx1XZVPn3ZeBdVG1ziG1q_KYn4mE.jpg?r=72d", weeks: 2 },
+    { rank: 5, title: "Romancham", poster: "https://image.tmdb.org/t/p/w780/9p8ux2AGYn3U2mEAbKmizAh6PL1.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABUKB2J1A0apIhpQIpE5az8zccpgEjut0uh4pj_XhsF-xaO5iG45FPf4IKYwk2V5bPRUMX3UpX_uD2wf-Na8r5fNVh8LTOJgDP4E.jpg?r=2bb", weeks: 1 },
+    { rank: 6, title: "Demon Slayer: Kimetsu no Yaiba Infinity Castle I", poster: "https://image.tmdb.org/t/p/w780/fWVSwgjpT2D78VUh6X8UBd2rorW.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABRjjhjugpCf8NRlW3ZwlteIvUc9496SPqOCT3vZLHdoT9QlhH5cjivKoSzE1H25vbaBEUVo3XbrD9F9cFWd-n3R0-v-Xu8sVDWA.jpg?r=5df", weeks: 1 },
+    { rank: 7, title: "Lust Stories 3", poster: "https://image.tmdb.org/t/p/w780/cLA83DD1qMEBwbRIYXf29RKjMja.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABRcbwnWNXQUMc4_U2qe8_zEOgS7PEuzLRN--KBicImox95C4lA3LfIzbtViVMzlQnmICjwZ41zlLrXDO3XXH4d1LC_N8nNyHGjo.jpg?r=f27", weeks: 3 },
+    { rank: 8, title: "UNABOMBER", poster: "https://image.tmdb.org/t/p/w780/39aMkR8Y5vhCG9dTkjiqRl8AVqp.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABcUMewqWNZdWveqIsRkDvZLP-o0RoVn68O0UfrQq6gYkb3g4tI0GbftOiaFjroT6uDydW7WXzQmG2spEhzXHM5h0-yrbCgLxHm4.jpg?r=286", weeks: 1 },
+    { rank: 9, title: "Ohh My Dog", poster: "https://image.tmdb.org/t/p/w780/9mRbPM6EzzfIKSD7PVdwKWFTibF.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABQplZYpuIfvmHsP4SErvMWzW0PsMvI22V5MbQBgsbfNeDs02mi__6_UIauZkv10N9Ww6zfDi9kVs06j0fcfUuJQUfrBmN-CpEtY.jpg?r=838", weeks: 1 },
+    { rank: 10, title: "Dhamaal 4", poster: "https://image.tmdb.org/t/p/w780/oVij5aEEE6iI4PxB4i0CgKp8h0m.jpg", backdrop: "https://dnm.nflximg.net/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABZkNtKirLpFaVh0y42nXzH5h_lymseuUXSrrMFzjLSArWlM6rYWZpIqwcAiZ6dbKZDEHiqna3hP07-0-pPg02h7o4jiLnMX296Q.jpg?r=152", weeks: 5 }
   ];
 
   const DEFAULT_PRIME_TITLES = [
-    { rank: 1, title: "Dupahiya", isTv: true },
-    { rank: 2, title: "Sardar 2", isTv: false },
-    { rank: 3, title: "Rise and Fall", isTv: true },
-    { rank: 4, title: "Mahendragiri Vaaraahi", isTv: false },
-    { rank: 5, title: "Waiting Hai", isTv: true },
-    { rank: 6, title: "Drishyam 2", isTv: false },
-    { rank: 7, title: "The Love Hypothesis", isTv: false },
-    { rank: 8, title: "Neagley", isTv: true },
-    { rank: 9, title: "Ramba Oorvasi Menaka", isTv: false },
-    { rank: 10, title: "Ram and Leela", isTv: false }
+    { rank: 1, title: "Dupahiya", isTv: true, poster: "https://image.tmdb.org/t/p/w780/9qxeUZGHNxCgaiM601VYnhJnZMh.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/rmZh9TkQIZ9XfTjniUyLGIIACLG.jpg" },
+    { rank: 2, title: "Sardar 2", isTv: false, poster: "https://image.tmdb.org/t/p/w780/muGsRtsNrG1gnlF2fPYrBa4TGlr.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/i39M5xz57fEkPLtuiAXqWwMNMyN.jpg" },
+    { rank: 3, title: "Rise and Fall", isTv: true, poster: "https://image.tmdb.org/t/p/w780/nKBHSZpzeHIFZ6Qab6tA7oFT12J.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/oE2X7HuKpCJE5hCzTMPKdxJY5vW.jpg" },
+    { rank: 4, title: "Mahendragiri Vaaraahi", isTv: false, poster: "https://image.tmdb.org/t/p/w780/hYfu1SIE1wViNVPT0zdlqTwpPeb.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/qfZSKbfit41qcjBOvUDWV2v9WEz.jpg" },
+    { rank: 5, title: "Waiting Hai", isTv: true, poster: "https://image.tmdb.org/t/p/w780/6jBdFWwgKgkcrAGaDfTC9bpudaN.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/uzcQT7vywQd7owQvX7lNbwd00vU.jpg" },
+    { rank: 6, title: "Drishyam 2", isTv: false, poster: "https://image.tmdb.org/t/p/w780/wk8Vu0DI0MiNLaXXiVqAwjLRKL5.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/498aYGlnvjvoiqXYhCNHrZERi4l.jpg" },
+    { rank: 7, title: "The Love Hypothesis", isTv: false, poster: "https://image.tmdb.org/t/p/w780/vfZxVHextAGC70zrNhS8lsROqP1.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/o7Oy9Gbx1CCyaweL8xUhtMW4Puq.jpg" },
+    { rank: 8, title: "Neagley", isTv: true, poster: "https://image.tmdb.org/t/p/w780/tEPDFIa21VK0Q2YLuzhTt2xrw5W.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/uYOYLFQ4q7asuhdiKXCqGaeAQUH.jpg" },
+    { rank: 9, title: "Ramba Oorvasi Menaka", isTv: false, poster: "https://image.tmdb.org/t/p/w780/tPkKq60dSC12I3ARollNuZsY4Jv.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/47l089ZSyxNXgNdMWXrcAVcTwRm.jpg" },
+    { rank: 10, title: "Ram and Leela", isTv: false, poster: "https://image.tmdb.org/t/p/w780/j1X0t57PguWBcaa8LAOaAHGyjcK.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/w0hg42XRWiaWlGPvQI8Defwn5En.jpg" }
   ];
 
-  async function enrichTop10Item(title: string, rank: number, platform: string, isTvHint?: boolean, posterOverride?: string, weeksInTop10?: number) {
+  async function enrichTop10Item(title: string, rank: number, platform: string, isTvHint?: boolean, posterOverride?: string, weeksInTop10?: number, backdropOverride?: string) {
     const clean = title.replace(/&amp;/g, "&").replace(/<[^>]+>/g, "").trim();
     const searchType = isTvHint ? "tv" : "multi";
     try {
@@ -603,12 +603,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
       }
       if (hit) {
         const isTv = hit.media_type === "tv" || Boolean(isTvHint);
+        const resolvedThumb = hit.poster_path ? `${TMDB_IMG_POSTER}${hit.poster_path}` : (posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop");
         return {
           id: `${platform}-top10-${rank}-${hit.id}`,
+          rank,
           title: hit.title || hit.name || clean,
           description: hit.overview || `Rank #${rank} in Top 10 on ${platform === "netflix" ? "Netflix" : "Prime Video"} India today.`,
-          thumbnail: hit.poster_path ? `${TMDB_IMG_POSTER}${hit.poster_path}` : (posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop"),
-          backdrop: hit.backdrop_path ? `${TMDB_IMG_BACKDROP}${hit.backdrop_path}` : undefined,
+          thumbnail: resolvedThumb,
+          poster: resolvedThumb,
+          backdrop: hit.backdrop_path ? `${TMDB_IMG_BACKDROP}${hit.backdrop_path}` : (backdropOverride || undefined),
           genre: isTv ? "TV Series" : "Feature Film",
           year: parseInt((hit.release_date || hit.first_air_date || "2026").slice(0, 4), 10) || 2026,
           rating: hit.adult ? "18+" : "PG-13",
@@ -624,11 +627,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     } catch (err) {
       console.warn(`TMDb enrichment failed for ${title}:`, err);
     }
+    const fallbackThumb = posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
     return {
       id: `${platform}-top10-${rank}`,
+      rank,
       title: clean,
       description: `Rank #${rank} in Top 10 on ${platform === "netflix" ? "Netflix" : "Prime Video"} India today.`,
-      thumbnail: posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop",
+      thumbnail: fallbackThumb,
+      poster: fallbackThumb,
+      backdrop: backdropOverride || undefined,
       genre: isTvHint ? "TV Series" : "Movie",
       year: 2026,
       rating: "PG-13",
@@ -675,14 +682,17 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         }
         if (parsed.length >= 8) {
           parsed.sort((a, b) => a.rank - b.rank);
-          const enriched = await Promise.all(parsed.slice(0, 10).map(p => enrichTop10Item(p.title, p.rank, "netflix", false, p.img, p.weeks)));
+          const enriched = await Promise.all(parsed.slice(0, 10).map(p => {
+            const fallbackDef = DEFAULT_NETFLIX_TITLES.find(d => d.rank === p.rank);
+            return enrichTop10Item(p.title, p.rank, "netflix", false, fallbackDef?.poster, p.weeks, p.img || fallbackDef?.backdrop);
+          }));
           return enriched;
         }
       }
     } catch (err: any) {
       console.warn("Live scrape of Netflix Tudum failed, using verified snapshot:", err.message);
     }
-    return Promise.all(DEFAULT_NETFLIX_TITLES.map(p => enrichTop10Item(p.title, p.rank, "netflix", false, p.img, p.weeks)));
+    return Promise.all(DEFAULT_NETFLIX_TITLES.map(p => enrichTop10Item(p.title, p.rank, "netflix", false, p.poster, p.weeks, p.backdrop)));
   }
 
   async function scrapePrimeTop10(): Promise<any[]> {
@@ -714,13 +724,16 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         }
         if (parsed.length >= 8) {
           parsed.sort((a, b) => a.rank - b.rank);
-          return Promise.all(parsed.slice(0, 10).map(p => enrichTop10Item(p.title, p.rank, "prime", p.isTv)));
+          return Promise.all(parsed.slice(0, 10).map(p => {
+            const fallbackDef = DEFAULT_PRIME_TITLES.find(d => d.rank === p.rank);
+            return enrichTop10Item(p.title, p.rank, "prime", p.isTv, fallbackDef?.poster, undefined, fallbackDef?.backdrop);
+          }));
         }
       }
     } catch (err: any) {
       console.warn("Live scrape of FlixPatrol Prime failed, using verified snapshot:", err.message);
     }
-    return Promise.all(DEFAULT_PRIME_TITLES.map(p => enrichTop10Item(p.title, p.rank, "prime", p.isTv)));
+    return Promise.all(DEFAULT_PRIME_TITLES.map(p => enrichTop10Item(p.title, p.rank, "prime", p.isTv, p.poster, undefined, p.backdrop)));
   }
 
   async function getOrRefreshTop10(platform: 'netflix' | 'prime', forceRefresh: boolean = false) {
