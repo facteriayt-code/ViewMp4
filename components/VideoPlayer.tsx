@@ -73,7 +73,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     });
   };
 
-  // Intercept window.open calls while player is open to block any popup ads or redirect attempts
+  // Intercept window.open calls and top-level redirects while player is open to block popup ads
   useEffect(() => {
     if (!blockPopups) return;
 
@@ -83,8 +83,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       return null;
     };
 
+    // Prevent rogue ad scripts from navigating the top window away from playback
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      return (e.returnValue = '');
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       window.open = originalOpen;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [blockPopups]);
 
@@ -668,14 +676,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           />
         ) : (
           <iframe 
-            key={`${activeServer.url}-${iframeKey}-${blockPopups ? 'shield-active' : 'shield-off'}`}
+            key={`${activeServer.url}-${iframeKey}`}
             src={activeServer.url}
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
             allowFullScreen
             referrerPolicy="origin"
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media; display-capture; clipboard-write;"
-            sandbox={blockPopups ? "allow-forms allow-scripts allow-same-origin allow-presentation" : undefined}
             onLoad={() => setIsLoading(false)}
           />
         )}
