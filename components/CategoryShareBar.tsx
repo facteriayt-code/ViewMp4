@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Share2, Check, Flame, Star, Tv, Sparkles, Film, Compass, Trophy } from 'lucide-react';
+import { Share2, Check, Flame, Star, Tv, Sparkles, Film, Compass, Trophy, Dices, Heart } from 'lucide-react';
 
 interface CategoryShareBarProps {
   onCategoryClick: (category: string) => void;
   activeCategory?: string;
+  onOpenRandom?: () => void;
+  onOpenRecommendations?: () => void;
 }
 
 const CATEGORIES = [
@@ -16,7 +18,12 @@ const CATEGORIES = [
   { name: 'Action & Adventure Hits', label: 'Action', icon: <Film className="w-3.5 h-3.5" />, color: 'text-red-400' },
 ];
 
-const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick, activeCategory }) => {
+const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ 
+  onCategoryClick, 
+  activeCategory,
+  onOpenRandom,
+  onOpenRecommendations
+}) => {
   const [copiedName, setCopiedName] = useState<string | null>(null);
 
   const handleShare = async (e: React.MouseEvent, name: string) => {
@@ -40,6 +47,32 @@ const CategoryShareBar: React.FC<CategoryShareBarProps> = ({ onCategoryClick, ac
         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap mr-1 hidden sm:inline">
           Explore:
         </span>
+
+        {/* Random Movie Selector Action */}
+        {onOpenRandom && (
+          <button
+            type="button"
+            onClick={onOpenRandom}
+            className="flex items-center space-x-1.5 px-3 py-1.5 sm:py-2 rounded-full bg-red-600/20 hover:bg-red-600/35 border border-red-500/35 text-red-300 hover:text-white transition-all text-xs font-bold shrink-0 active:scale-95 shadow-[0_0_15px_rgba(229,9,20,0.2)]"
+            title="Random Movie Selector - Spin & Pick"
+          >
+            <Dices className="w-3.5 h-3.5 text-red-400" />
+            <span className="tracking-tight whitespace-nowrap">Random Pick</span>
+          </button>
+        )}
+
+        {/* Personalized Recommendations Action */}
+        {onOpenRecommendations && (
+          <button
+            type="button"
+            onClick={onOpenRecommendations}
+            className="flex items-center space-x-1.5 px-3 py-1.5 sm:py-2 rounded-full bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/35 text-amber-300 hover:text-white transition-all text-xs font-bold shrink-0 active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+            title="Personalized Recommendations - Curated For You"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span className="tracking-tight whitespace-nowrap">For You</span>
+          </button>
+        )}
         {CATEGORIES.map((cat) => {
           const isActive = activeCategory === cat.name;
           return (

@@ -17,7 +17,7 @@ import { Movie, User, ContinueWatchingItem } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
-import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
+import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink, Dices } from 'lucide-react';
 import { 
   searchWatchmode, 
   getWatchmodeDetails, 
@@ -33,6 +33,10 @@ import { getContinueWatchingList, removeContinueWatching, subscribeToContinueWat
 import { PlatformId } from './services/platformCatalog.ts';
 import { AdGuardDnsModal } from './components/AdGuardDnsModal.tsx';
 import { getPlatformTop10, initTop10AutoRefresh, NETFLIX_TUDUM_SNAPSHOT, PRIME_FLIXPATROL_SNAPSHOT } from './services/top10Service.ts';
+import { BingrNavigation, BingrNavTab } from './components/BingrNavigation.tsx';
+import { RandomMovieSelectorModal } from './components/RandomMovieSelectorModal.tsx';
+import { PersonalizedRecommendationsModal } from './components/PersonalizedRecommendationsModal.tsx';
+import { AccountInfoModal } from './components/AccountInfoModal.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -60,6 +64,10 @@ const App: React.FC = () => {
   const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
   const [netflixTop10, setNetflixTop10] = useState<Movie[]>(NETFLIX_TUDUM_SNAPSHOT);
   const [primeTop10, setPrimeTop10] = useState<Movie[]>(PRIME_FLIXPATROL_SNAPSHOT);
+  const [showRandomModal, setShowRandomModal] = useState(false);
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [bingrActiveTab, setBingrActiveTab] = useState<BingrNavTab>('home');
   const [tmdbSpotlightMovies, setTmdbSpotlightMovies] = useState<Movie[]>(() => {
     try {
       const cached = localStorage.getItem('tmdb_popular_spotlight_v1');
@@ -418,7 +426,25 @@ const App: React.FC = () => {
     const tvShows = pool.filter(m => m.isTv || /tv|series/i.test(m.genre || ''));
     const moviesOnly = pool.filter(m => !m.isTv && !/tv|series/i.test(m.genre || ''));
 
+    // Personalized recommendations based on watch history and high-rated matches (Bingr algorithm)
+    const watchedIds = new Set(continueWatchingItems.map(item => item.movie.id));
+    const preferredGenres = new Set(
+      continueWatchingItems.map(item => item.movie.genre?.toLowerCase()).filter(Boolean)
+    );
+    const personalizedPool = pool.filter(m => !watchedIds.has(m.id));
+    const personalizedMatches = personalizedPool.filter(m => {
+      if (preferredGenres.size > 0 && m.genre) {
+        return preferredGenres.has(m.genre.toLowerCase());
+      }
+      return (m.userRating && m.userRating >= 7.2) || /spider|batman|avengers|dune|interstellar|inception|deadpool/i.test(m.title);
+    });
+    const personalizedList = (personalizedMatches.length >= 4 ? personalizedMatches : personalizedPool).slice(0, 20);
+
     return [
+      { 
+        title: 'Personalized For You (Bingr Algorithm)', 
+        movies: personalizedList 
+      },
       { 
         title: 'Trending Now (Blockbusters & Hits)', 
         movies: pool.slice(0, 20) 
@@ -592,19 +618,64 @@ const App: React.FC = () => {
     setShowUploadModal(true);
   };
 
+  const handleBingrGoHome = () => {
+    setBingrActiveTab('home');
+    if (activePlatform) {
+      handleExitPlatform();
+    }
+    setSearchTerm('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBingrOpenSearch = () => {
+    setBingrActiveTab('search');
+    if (activePlatform) {
+      handleExitPlatform();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      document.getElementById('main-search-input')?.focus();
+    }, 100);
+  };
+
+  const handleBingrOpenRandom = () => {
+    setShowRandomModal(true);
+  };
+
+  const handleBingrOpenRecommendations = () => {
+    setShowRecommendationsModal(true);
+  };
+
+  const handleBingrOpenAccount = () => {
+    setShowAccountModal(true);
+  };
+
   return (
     <div className="min-h-screen pb-20 overflow-x-hidden">
       {!isAgeVerified && <AgeDisclaimer onVerify={() => {
         setIsAgeVerified(true);
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
       }} />}
+
+      {/* Bingr Unified Navigation: Left Sidebar on Desktop & Floating Dock on Mobile */}
+      <BingrNavigation
+        activeTab={bingrActiveTab}
+        onTabChange={setBingrActiveTab}
+        user={user}
+        onOpenSearch={handleBingrOpenSearch}
+        onOpenRandom={handleBingrOpenRandom}
+        onOpenRecommendations={handleBingrOpenRecommendations}
+        onOpenAccount={handleBingrOpenAccount}
+        onSelectPlatform={handleSelectPlatform}
+        onGoHome={handleBingrGoHome}
+      />
       
       {isPlatformSwitching && (
         <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-amber-400 to-red-600 z-[300] animate-pulse pointer-events-none" />
       )}
       
       {activePlatform ? (
-        <div key={activePlatform} className="animate-platform-fade">
+        <div key={activePlatform} className="animate-platform-fade md:pl-20">
           <StreamingPlatformReplica
             platformId={activePlatform}
             movies={movies}
@@ -615,7 +686,7 @@ const App: React.FC = () => {
           />
         </div>
       ) : (
-        <div key="geministream-main-site" className="animate-platform-fade">
+        <div key="geministream-main-site" className="animate-platform-fade md:pl-20">
           <Navbar 
             user={user} 
             onUploadClick={() => {
@@ -670,6 +741,8 @@ const App: React.FC = () => {
               <CategoryShareBar 
                 onCategoryClick={handleCategoryScroll} 
                 activeCategory={activeCategory} 
+                onOpenRandom={() => setShowRandomModal(true)}
+                onOpenRecommendations={() => setShowRecommendationsModal(true)}
               />
 
               <div className="relative z-20 space-y-4">
@@ -831,6 +904,35 @@ const App: React.FC = () => {
           onClose={() => setShowAdGuardModal(false)} 
         />
       )}
+
+      {/* Bingr Random Movie Selector Modal */}
+      <RandomMovieSelectorModal
+        isOpen={showRandomModal}
+        onClose={() => setShowRandomModal(false)}
+        movies={movies}
+        onSelectMovie={handleSelectMovie}
+        onPlay={handlePlay}
+      />
+
+      {/* Bingr Personalized Recommendations Modal */}
+      <PersonalizedRecommendationsModal
+        isOpen={showRecommendationsModal}
+        onClose={() => setShowRecommendationsModal(false)}
+        movies={movies}
+        continueWatchingItems={continueWatchingItems}
+        onSelectMovie={handleSelectMovie}
+        onPlay={handlePlay}
+      />
+
+      {/* Bingr Account & Profile Modal */}
+      <AccountInfoModal
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        user={user}
+        onLoginClick={() => setShowLoginModal(true)}
+        onLogout={handleLogout}
+        continueWatchingCount={continueWatchingItems.length}
+      />
     </div>
   );
 };

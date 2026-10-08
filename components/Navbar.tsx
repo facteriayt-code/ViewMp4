@@ -77,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-4 sm:px-8 md:px-12 lg:px-16 py-3 sm:py-3.5 md:py-4 flex items-center justify-between ${
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 px-4 sm:px-8 md:px-12 lg:px-16 md:pl-24 py-3 sm:py-3.5 md:py-4 flex items-center justify-between ${
       isScrolled || searchTerm.trim().length > 0 
         ? 'bg-[#090b10]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.7)]' 
         : 'bg-gradient-to-b from-[#090b10]/95 via-[#090b10]/60 to-transparent'
@@ -171,6 +171,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/70 focus-within:bg-black/95 shadow-inner">
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
             <input 
+              id="main-search-input"
               type="text" 
               placeholder="Search movies & shows..."
               className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-1.5 sm:ml-2 w-24 xs:w-36 sm:w-52 md:w-64 lg:w-72 placeholder:text-gray-500 text-white font-medium truncate"
