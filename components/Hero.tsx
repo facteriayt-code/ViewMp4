@@ -195,26 +195,69 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
               </div>
             </div>
           </div>
+
+          {/* Clean Under-Poster Carousel Switcher (Non-overlapping) */}
+          {playlist.length > 1 && (
+            <div className="mt-2.5 flex items-center space-x-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 shadow-lg">
+              <button 
+                type="button"
+                onClick={handlePrev} 
+                className="p-1 text-gray-400 hover:text-white transition active:scale-90"
+                title="Previous Spotlight Title"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] font-mono font-bold text-gray-300">
+                0{currentIndex + 1} / 0{playlist.length}
+              </span>
+              <button 
+                type="button"
+                onClick={handleNext} 
+                className="p-1 text-gray-400 hover:text-white transition active:scale-90"
+                title="Next Spotlight Title"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Royal Carousel Controls (Right Side / Pagination) */}
+      {/* Floating Side Nav Chevrons (Never overlaps with action buttons) */}
       {playlist.length > 1 && (
-        <div className="absolute bottom-8 sm:bottom-12 md:bottom-16 right-4 sm:right-8 md:right-12 lg:right-16 z-20 flex items-center space-x-3.5">
-          <div className="hidden sm:flex items-center text-xs font-mono font-bold text-gray-400 mr-2 tracking-widest bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+        <>
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
+            title="Previous Featured Title"
+            aria-label="Previous Spotlight Title"
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
+            title="Next Featured Title"
+            aria-label="Next Spotlight Title"
+          >
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </>
+      )}
+
+      {/* Top-Right Spotlight Pagination Pill (Safe from Details & Report buttons) */}
+      {playlist.length > 1 && (
+        <div className="absolute top-20 sm:top-24 md:top-28 right-4 sm:right-8 md:right-12 lg:right-16 z-30 flex items-center space-x-2.5 bg-black/60 hover:bg-black/80 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full shadow-2xl">
+          <div className="flex items-center text-xs font-mono font-bold text-gray-300 tracking-wider">
             <span className="text-white">0{currentIndex + 1}</span>
             <span className="mx-1 text-gray-600">/</span>
             <span>0{playlist.length}</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePrev}
-            className="p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/15 hover:border-amber-400/40 backdrop-blur-md transition-all active:scale-90 shadow-xl"
-            title="Previous Featured Title"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+          <div className="h-3 w-px bg-white/20 mx-0.5" />
 
           {/* Dots Indicator */}
           <div className="flex items-center space-x-1.5">
@@ -224,21 +267,12 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
                 className={`h-1.5 transition-all duration-300 rounded-full ${
-                  currentIndex === idx ? 'w-6 bg-gradient-to-r from-red-600 to-amber-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'w-1.5 bg-white/30 hover:bg-white/60'
+                  currentIndex === idx ? 'w-5 bg-gradient-to-r from-red-600 to-amber-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'w-1.5 bg-white/30 hover:bg-white/60'
                 }`}
                 title={`Slide ${idx + 1}`}
               />
             ))}
           </div>
-
-          <button
-            type="button"
-            onClick={handleNext}
-            className="p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/15 hover:border-amber-400/40 backdrop-blur-md transition-all active:scale-90 shadow-xl"
-            title="Next Featured Title"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       )}
 

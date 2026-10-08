@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Sparkles, Play, Info, X, Heart, Star, Flame, RotateCw, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Sparkles, Play, Info, X, Heart, Star, Flame, RotateCw, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Movie, ContinueWatchingItem } from '../types.ts';
 
 interface PersonalizedRecommendationsModalProps {
@@ -94,35 +94,61 @@ export const PersonalizedRecommendationsModal: React.FC<PersonalizedRecommendati
     return scored.sort((a, b) => b.matchScore - a.matchScore).slice(0, 12);
   }, [movies, continueWatchingItems, activeMood, refreshKey]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-2.5 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div 
-        className="relative w-full max-w-4xl max-h-[90vh] bg-gradient-to-b from-[#141622] via-[#0c0d14] to-[#08080c] rounded-2xl border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-4xl max-h-[92vh] bg-gradient-to-b from-[#141622] via-[#0c0d14] to-[#08080c] rounded-2xl border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/10 bg-white/[0.02]">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 text-amber-400">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-white flex items-center space-x-2">
-                <span>Personalized Recommendations</span>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  Smart Match
-                </span>
-              </h3>
-              <p className="text-xs text-gray-400">
-                {continueWatchingItems.length > 0 
-                  ? `Tailored using your viewing habits & favorite genres`
-                  : `Curated selections based on global trending ratings & cinema quality`}
-              </p>
+        {/* Top Header with Prominent Back Option */}
+        <div className="flex items-center justify-between px-3.5 sm:px-6 py-3.5 border-b border-white/10 bg-white/[0.02]">
+          <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
+            {/* Prominent Back Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center space-x-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-bold transition-all active:scale-95 border border-white/15 shadow-sm group shrink-0"
+              title="Back to Browse"
+            >
+              <ArrowLeft className="w-4 h-4 text-gray-300 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back</span>
+            </button>
+
+            <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 text-amber-400 shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-lg font-black text-white flex items-center space-x-2 truncate">
+                  <span>For You</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 hidden xs:inline-block">
+                    Smart Match
+                  </span>
+                </h3>
+                <p className="text-[11px] text-gray-400 truncate hidden md:block">
+                  {continueWatchingItems.length > 0 
+                    ? `Tailored using your viewing habits & favorite genres`
+                    : `Curated selections based on global trending ratings & cinema quality`}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+
+          <div className="flex items-center space-x-2 shrink-0">
             <button
               onClick={() => setRefreshKey(prev => prev + 1)}
               className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition active:rotate-180"
@@ -132,10 +158,12 @@ export const PersonalizedRecommendationsModal: React.FC<PersonalizedRecommendati
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition"
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 transition active:scale-95 flex items-center space-x-1 text-xs font-bold"
               aria-label="Close"
+              title="Close and return to home"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Close</span>
             </button>
           </div>
         </div>
@@ -241,16 +269,27 @@ export const PersonalizedRecommendationsModal: React.FC<PersonalizedRecommendati
           </div>
         </div>
 
-        {/* Footer info bar */}
-        <div className="px-5 py-3 border-t border-white/10 bg-black/40 flex items-center justify-between text-xs text-gray-400">
-          <span>Updated dynamically with live TMDb ratings & preferences</span>
+        {/* Footer info bar with Return to Home button */}
+        <div className="px-5 py-3 border-t border-white/10 bg-black/60 flex flex-wrap gap-2.5 items-center justify-between text-xs text-gray-400">
           <button
-            onClick={() => setRefreshKey(prev => prev + 1)}
-            className="text-amber-400 hover:text-amber-300 font-semibold text-xs flex items-center space-x-1"
+            type="button"
+            onClick={onClose}
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition active:scale-95 text-xs border border-white/15 shadow-sm"
           >
-            <RotateCw className="w-3 h-3 mr-1" />
-            <span>Shuffle Matches</span>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Home</span>
           </button>
+
+          <div className="flex items-center space-x-4">
+            <span className="hidden md:inline text-[11px] text-gray-400">TMDb algorithm recommendation matrix</span>
+            <button
+              onClick={() => setRefreshKey(prev => prev + 1)}
+              className="text-amber-400 hover:text-amber-300 font-semibold text-xs flex items-center space-x-1"
+            >
+              <RotateCw className="w-3.5 h-3.5 mr-1" />
+              <span>Shuffle Matches</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

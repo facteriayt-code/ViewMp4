@@ -16,7 +16,7 @@ import { INITIAL_MOVIES } from './constants.ts';
 import { Movie, User, ContinueWatchingItem } from './types.ts';
 import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
-import { signOut } from './services/authService.ts';
+import { signOut, subscribeToAuth, getStoredUser } from './services/authService.ts';
 import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink, Dices } from 'lucide-react';
 import { 
   searchWatchmode, 
@@ -44,7 +44,7 @@ const STORAGE_KEYS = {
 };
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => getStoredUser());
   const [movies, setMovies] = useState<Movie[]>(INITIAL_MOVIES);
   const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
     getContinueWatchingList()
@@ -229,28 +229,13 @@ const App: React.FC = () => {
     const verified = localStorage.getItem(STORAGE_KEYS.AGE_VERIFIED);
     setIsAgeVerified(verified === 'true');
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
-        });
-      }
-    });
+    const initialStoredUser = getStoredUser();
+    if (initialStoredUser) {
+      setUser(initialStoredUser);
+    }
 
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=User&background=E50914&color=fff`
-        });
-      } else {
-        setUser(null);
-      }
+    const unsubAuth = subscribeToAuth((currentUser) => {
+      setUser(currentUser);
     });
 
     const syncCloudData = async () => {
@@ -319,7 +304,7 @@ const App: React.FC = () => {
       .subscribe();
 
     return () => {
-      authSub.unsubscribe();
+      unsubAuth();
       supabase.removeChannel(moviesChannel);
     };
   }, []);
@@ -894,7 +879,10 @@ const App: React.FC = () => {
             setUser(u);
             setShowLoginModal(false);
           }}
-          onClose={() => setShowLoginModal(false)}
+          onClose={() => {
+            setShowLoginModal(false);
+            setBingrActiveTab('home');
+          }}
         />
       )}
 
@@ -908,7 +896,10 @@ const App: React.FC = () => {
       {/* Bingr Random Movie Selector Modal */}
       <RandomMovieSelectorModal
         isOpen={showRandomModal}
-        onClose={() => setShowRandomModal(false)}
+        onClose={() => {
+          setShowRandomModal(false);
+          setBingrActiveTab('home');
+        }}
         movies={movies}
         onSelectMovie={handleSelectMovie}
         onPlay={handlePlay}
@@ -917,7 +908,10 @@ const App: React.FC = () => {
       {/* Bingr Personalized Recommendations Modal */}
       <PersonalizedRecommendationsModal
         isOpen={showRecommendationsModal}
-        onClose={() => setShowRecommendationsModal(false)}
+        onClose={() => {
+          setShowRecommendationsModal(false);
+          setBingrActiveTab('home');
+        }}
         movies={movies}
         continueWatchingItems={continueWatchingItems}
         onSelectMovie={handleSelectMovie}
@@ -927,7 +921,10 @@ const App: React.FC = () => {
       {/* Bingr Account & Profile Modal */}
       <AccountInfoModal
         isOpen={showAccountModal}
-        onClose={() => setShowAccountModal(false)}
+        onClose={() => {
+          setShowAccountModal(false);
+          setBingrActiveTab('home');
+        }}
         user={user}
         onLoginClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
