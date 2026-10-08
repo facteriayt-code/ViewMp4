@@ -183,16 +183,16 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                     </div>
                   </div>
 
-                  {/* Direct Play Button on Hover */}
+                  {/* Direct Action on Hover - Opens Movie Details */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-300 z-30 pointer-events-none">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPlay(movie);
+                        onMovieClick(movie);
                       }}
                       className="pointer-events-auto bg-[#E50914] hover:bg-[#b80710] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition"
-                      title={`Watch ${movie.title} now`}
+                      title={`View details for ${movie.title}`}
                     >
                       <Play className="w-4 h-4 fill-white ml-0.5" />
                     </button>

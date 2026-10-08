@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, ArrowLeft, Maximize, Minimize, RotateCw, ExternalLink, 
-  ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers, HelpCircle,
-  AlertTriangle, RefreshCw, Check, Wrench
+  ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
+  AlertTriangle, RefreshCw, X, Check
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -24,7 +23,6 @@ interface VideoPlayerProps {
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [season, setSeason] = useState<number>(movie.initialSeason || 1);
   const [episode, setEpisode] = useState<number>(movie.initialEpisode || 1);
@@ -47,7 +45,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [showGuidePopover, setShowGuidePopover] = useState<boolean>(false);
   const [showEpisodesModal, setShowEpisodesModal] = useState<boolean>(false);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [showAdGuardModal, setShowAdGuardModal] = useState<boolean>(false);
@@ -141,18 +138,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
     setTimeout(() => setFailoverNotice(null), 4000);
   };
 
-  const handleReload = () => {
-    setIsLoading(true);
-    setIframeKey(k => k + 1);
-  };
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.().catch(console.error);
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen?.().catch(console.error);
-      setIsFullscreen(false);
     }
   };
 
@@ -277,22 +267,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           })}
         </div>
 
-        {/* Right: Next Server, Episodes, Guide, Fullscreen, Close */}
+        {/* Right: Next Server, Episodes */}
         <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-          {/* Ad Block Option (Step-by-step AdGuard DNS Instructions) */}
-          <button
-            type="button"
-            onClick={() => setShowAdGuardModal(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all shadow-sm active:scale-95 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 ring-1 ring-emerald-500/30"
-            title="Step-by-step instructions to block all ads using AdGuard DNS"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden xs:inline">Ad Block</span>
-            <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded font-mono font-bold uppercase bg-emerald-500/30 text-emerald-200">
-              DNS
-            </span>
-          </button>
-
           {/* Quick Switch Server Button */}
           <button
             type="button"
@@ -302,17 +278,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           >
             <RefreshCw className="w-3 h-3" />
             <span className="hidden xs:inline">Next Server</span>
-          </button>
-
-          {/* Instant Stream Fix / Report Button */}
-          <button
-            type="button"
-            onClick={() => setShowReportModal(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 transition shadow-sm active:scale-95"
-            title="Report if this movie is not playing or wrong movie, and fix immediately"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-            <span className="hidden xs:inline">Report / Fix</span>
           </button>
 
           {/* TV Episodes Toggle */}
@@ -336,87 +301,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
                 S{season}:E{episode}
               </span>
             )}
-          </button>
-
-          {/* Guide Popover */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowGuidePopover(!showGuidePopover)}
-              className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
-              title="Stream server info"
-            >
-              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-            </button>
-
-            {showGuidePopover && (
-              <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-84 bg-zinc-950/98 border border-white/15 rounded-2xl shadow-2xl p-4 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 text-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                  <div className="flex items-center space-x-1.5 font-black text-white">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>Stream Servers Available</span>
-                  </div>
-                  <button 
-                    onClick={() => setShowGuidePopover(false)} 
-                    className="p-1 text-gray-400 hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="space-y-2 text-[11px] text-gray-300 leading-relaxed">
-                  <div className="p-2 bg-red-600/10 rounded-xl border border-red-500/20 text-red-200">
-                    <span className="text-red-400 font-bold block mb-0.5">🔥 Filmy Server (Active & Working):</span>
-                    Multi-audio server with Hindi Dubbed, South Indian, and original audio streams in 4K.
-                  </div>
-
-                  <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-200">
-                    <span className="text-emerald-300 font-bold block mb-0.5">⚡ AutoEmbed 4K VIP:</span>
-                    Ultra-fast 4K verified player with instant playback for movies and TV shows.
-                  </div>
-
-                  <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-200">
-                    <span className="text-indigo-300 font-bold block mb-0.5">🌐 VidSrc Pro:</span>
-                    High-speed global stream mirror with zero buffering and multi-resolution.
-                  </div>
-
-                  <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-200">
-                    <span className="text-amber-300 font-bold block mb-0.5">🎬 CineSrc 4K:</span>
-                    Fast 4K playback mirror with multi-server and episodic TV support.
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Reload Stream */}
-          <button
-            type="button"
-            onClick={handleReload}
-            className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
-            title="Reload stream"
-          >
-            <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-
-          {/* Fullscreen */}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
-            title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
-          >
-            {isFullscreen ? <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-          </button>
-
-          {/* Close Player */}
-          <button 
-            type="button"
-            onClick={onClose} 
-            className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-red-600 text-gray-300 hover:text-white transition"
-            title="Close Player"
-          >
-            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </header>
@@ -649,22 +533,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       </main>
 
       {/* 3. Bottom Information Bar */}
-      <footer className="w-full bg-zinc-950/95 px-3 sm:px-6 py-2 z-40 flex flex-wrap items-center justify-between text-[10px] sm:text-xs text-gray-400 border-t border-white/5">
+      <footer className="w-full bg-zinc-950/95 px-3 sm:px-6 py-2 z-40 flex items-center justify-between text-[10px] sm:text-xs text-gray-400 border-t border-white/5">
         <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-bold text-gray-200">
-            {activeServer.name}
-          </span>
-          <span className="text-gray-500">•</span>
-          <span className="text-emerald-400 font-semibold">{activeServer.quality}</span>
-          <span className="text-gray-500">•</span>
           <button
             type="button"
             onClick={() => setShowAdGuardModal(true)}
-            className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 font-bold text-[9px] sm:text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full transition active:scale-95"
+            className="flex items-center space-x-1.5 text-emerald-400 hover:text-emerald-300 font-bold text-[10px] sm:text-xs bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full transition active:scale-95"
             title="Step-by-step instructions to block all ads with AdGuard DNS"
           >
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Ad Block (AdGuard DNS)</span>
           </button>
           {isSeries && (
@@ -681,31 +558,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           <button
             type="button"
             onClick={() => setShowReportModal(true)}
-            className="text-red-400 hover:text-red-300 font-bold bg-red-600/10 hover:bg-red-600/20 px-2.5 py-1 rounded-full border border-red-500/20 flex items-center space-x-1 transition active:scale-95"
+            className="text-red-400 hover:text-red-300 font-bold bg-red-600/10 hover:bg-red-600/20 px-3 py-1 rounded-full border border-red-500/20 flex items-center space-x-1.5 transition active:scale-95"
             title="Report if this movie is not playing or wrong movie"
           >
-            <AlertTriangle className="w-3 h-3 text-red-400" />
-            <span>Report / Fix Stream</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+            <span>Report Stream</span>
           </button>
-
-          <button
-            type="button"
-            onClick={handleNextServer}
-            className="text-amber-400 hover:text-amber-300 font-bold underline flex items-center space-x-1"
-          >
-            <span>Not playing? Switch server</span>
-          </button>
-
-          <a 
-            href={activeServer.url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="hover:text-white flex items-center space-x-1 text-gray-300 underline underline-offset-2"
-            title="Open direct embed in a new browser tab"
-          >
-            <span>Open in Tab</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
         </div>
       </footer>
 

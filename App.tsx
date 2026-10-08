@@ -149,16 +149,22 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const [isPlatformSwitching, setIsPlatformSwitching] = useState<boolean>(false);
+
   const handleSelectPlatform = (platformId: PlatformId) => {
+    setIsPlatformSwitching(true);
     setActivePlatform(platformId);
     pushState({ platform: platformId });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    setTimeout(() => setIsPlatformSwitching(false), 250);
   };
 
   const handleExitPlatform = () => {
+    setIsPlatformSwitching(true);
     setActivePlatform(null);
     pushState({ platform: null });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    setTimeout(() => setIsPlatformSwitching(false), 250);
   };
 
   const pushState = (params: Record<string, string | null>) => {
@@ -557,17 +563,23 @@ const App: React.FC = () => {
         localStorage.setItem(STORAGE_KEYS.AGE_VERIFIED, 'true');
       }} />}
       
+      {isPlatformSwitching && (
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-amber-400 to-red-600 z-[300] animate-pulse pointer-events-none" />
+      )}
+      
       {activePlatform ? (
-        <StreamingPlatformReplica
-          platformId={activePlatform}
-          movies={movies}
-          onSelectPlatform={handleSelectPlatform}
-          onExit={handleExitPlatform}
-          onPlay={handlePlay}
-          onSelectMovie={handleSelectMovie}
-        />
+        <div key={activePlatform} className="animate-platform-fade">
+          <StreamingPlatformReplica
+            platformId={activePlatform}
+            movies={movies}
+            onSelectPlatform={handleSelectPlatform}
+            onExit={handleExitPlatform}
+            onPlay={handlePlay}
+            onSelectMovie={handleSelectMovie}
+          />
+        </div>
       ) : (
-        <>
+        <div key="geministream-main-site" className="animate-platform-fade">
           <Navbar 
             user={user} 
             onUploadClick={() => {
@@ -705,7 +717,7 @@ const App: React.FC = () => {
               </div>
             </>
           )}
-        </>
+        </div>
       )}
 
       {movieToUnlock && (

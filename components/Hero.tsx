@@ -37,19 +37,31 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
   };
 
   return (
-    <div className="relative min-h-[580px] sm:min-h-[640px] md:min-h-[720px] h-[82vh] lg:h-[88vh] w-full overflow-hidden bg-[#090b10]">
-      {/* Background Backdrop with Smooth Crossfade Effect */}
-      <img 
-        key={activeMovie.id}
-        src={activeMovie.backdrop || activeMovie.thumbnail} 
-        alt={activeMovie.title} 
-        className="w-full h-full object-cover brightness-[0.62] md:brightness-[0.74] scale-105 transition-all duration-1000 animate-in fade-in"
-        onError={(e) => {
-          if (activeMovie.thumbnail && e.currentTarget.src !== activeMovie.thumbnail) {
-            e.currentTarget.src = activeMovie.thumbnail;
-          }
-        }}
-      />
+    <div className="relative min-h-[580px] sm:min-h-[640px] md:min-h-[700px] h-[82vh] lg:h-[88vh] w-full overflow-hidden bg-[#090b10]">
+      {/* Background Backdrop with Ambient Cinema Lighting */}
+      {activeMovie.backdrop ? (
+        <img 
+          key={`backdrop-${activeMovie.id}`}
+          src={activeMovie.backdrop} 
+          alt={activeMovie.title} 
+          className="w-full h-full object-cover object-center md:object-[center_20%] brightness-[0.52] md:brightness-[0.65] transition-opacity duration-700 animate-in fade-in"
+          onError={(e) => {
+            if (activeMovie.thumbnail && e.currentTarget.src !== activeMovie.thumbnail) {
+              e.currentTarget.src = activeMovie.thumbnail;
+              e.currentTarget.className = "w-full h-full object-cover blur-2xl opacity-40 brightness-50";
+            }
+          }}
+        />
+      ) : (
+        <div className="w-full h-full relative overflow-hidden bg-gradient-to-br from-zinc-950 via-[#0d1117] to-zinc-950">
+          <img 
+            key={`ambient-${activeMovie.id}`}
+            src={activeMovie.thumbnail || activeMovie.poster} 
+            alt={activeMovie.title} 
+            className="w-full h-full object-cover blur-3xl opacity-35 scale-110 brightness-50"
+          />
+        </div>
+      )}
 
       {/* Atmospheric Royal Lighting Aura */}
       <div className="absolute -left-20 bottom-10 w-[500px] h-[500px] bg-red-600/15 rounded-full blur-[140px] pointer-events-none" />
@@ -57,80 +69,114 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
 
       {/* Bingr Cinematic Multi-layer Vignette - seamlessly blends under navigation bar */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#090b10] via-[#090b10]/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#090b10]/95 via-[#090b10]/50 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#090b10]/95 via-[#090b10]/60 to-transparent pointer-events-none" />
       <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#090b10] via-[#090b10]/60 to-transparent pointer-events-none z-10" />
       
-      {/* Content Overlay - Horizontally aligned with Navbar logo and container */}
-      <div className="absolute bottom-8 sm:bottom-12 md:bottom-16 left-4 sm:left-8 md:left-12 lg:left-16 max-w-3xl space-y-3 sm:space-y-4 pr-4 z-20">
-        {/* Spotlight & Quality Badges (Royal & Cinematic Style) */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold text-gray-300">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600/30 to-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <Sparkles className="w-3 h-3 text-amber-400" />
-            <span>Spotlight #{currentIndex + 1}</span>
-          </span>
+      {/* Content Overlay - Perfectly balanced layout with movie metadata and native 2:3 vertical poster */}
+      <div className="absolute inset-0 z-20 flex items-end justify-between px-4 sm:px-8 md:px-12 lg:px-16 pb-8 sm:pb-12 md:pb-16 pointer-events-none">
+        {/* Left Column: Metadata & CTAs */}
+        <div className="max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4 pr-4 pointer-events-auto">
+          {/* Spotlight & Quality Badges (Royal & Cinematic Style) */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600/30 to-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>Spotlight #{currentIndex + 1}</span>
+            </span>
 
-          <span className="inline-flex items-center gap-1 text-amber-300 font-extrabold bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30 text-[11px] backdrop-blur-md shadow-sm">
-            ★ {typeof activeMovie.userRating === 'number' ? activeMovie.userRating.toFixed(1) : '8.6'} IMDb
-          </span>
+            <span className="inline-flex items-center gap-1 text-amber-300 font-extrabold bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30 text-[11px] backdrop-blur-md shadow-sm">
+              ★ {typeof activeMovie.userRating === 'number' ? activeMovie.userRating.toFixed(1) : '8.6'} IMDb
+            </span>
 
-          <span className="text-gray-200 font-medium px-2.5 py-1 bg-white/10 rounded-full border border-white/15 text-[11px] backdrop-blur-md">
-            {activeMovie.year || '2026'}
-          </span>
+            <span className="text-gray-200 font-medium px-2.5 py-1 bg-white/10 rounded-full border border-white/15 text-[11px] backdrop-blur-md">
+              {activeMovie.year || '2026'}
+            </span>
 
-          <span className="border border-white/20 px-2.5 py-1 rounded-full text-[10px] text-gray-200 font-bold bg-black/50 backdrop-blur-md">
-            {activeMovie.rating || 'PG-13'}
-          </span>
+            <span className="border border-white/20 px-2.5 py-1 rounded-full text-[10px] text-gray-200 font-bold bg-black/50 backdrop-blur-md">
+              {activeMovie.rating || 'PG-13'}
+            </span>
 
-          <span className="border border-emerald-500/40 px-2.5 py-1 rounded-full text-[10px] text-emerald-400 font-bold bg-emerald-500/15 backdrop-blur-md">
-            4K ULTRA HD
-          </span>
+            <span className="border border-emerald-500/40 px-2.5 py-1 rounded-full text-[10px] text-emerald-400 font-bold bg-emerald-500/15 backdrop-blur-md">
+              4K ULTRA HD
+            </span>
 
-          <span className="border border-cyan-500/40 px-2.5 py-1 rounded-full text-[10px] text-cyan-300 font-bold bg-cyan-500/15 hidden sm:inline backdrop-blur-md">
-            DOLBY CINEMA
-          </span>
+            <span className="border border-cyan-500/40 px-2.5 py-1 rounded-full text-[10px] text-cyan-300 font-bold bg-cyan-500/15 hidden sm:inline backdrop-blur-md">
+              DOLBY CINEMA
+            </span>
 
-          <span aria-hidden="true" className="text-gray-500 hidden sm:inline">·</span>
-          <span className="text-gray-300 hidden sm:inline tracking-wide">{activeMovie.genre}</span>
+            <span aria-hidden="true" className="text-gray-500 hidden sm:inline">·</span>
+            <span className="text-gray-300 hidden sm:inline tracking-wide">{activeMovie.genre}</span>
+          </div>
+
+          {/* Display Title in Royal Cinematic Typography */}
+          <h1 
+            onClick={() => onInfoClick(activeMovie)}
+            className="font-royal text-3xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wider uppercase text-white leading-[0.98] drop-shadow-[0_15px_35px_rgba(0,0,0,0.98)] font-black cursor-pointer hover:text-amber-200 transition-colors"
+          >
+            {activeMovie.title}
+          </h1>
+
+          <p className="text-xs sm:text-sm md:text-base text-gray-200/90 drop-shadow-lg line-clamp-2 md:line-clamp-3 max-w-xl font-normal leading-relaxed">
+            {activeMovie.description}
+          </p>
+          
+          {/* Action Buttons - Clicking first opens the movie detail page */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 pt-2">
+            <button 
+              type="button"
+              onClick={() => onInfoClick(activeMovie)}
+              className="bg-gradient-to-r from-white via-zinc-100 to-amber-100 hover:from-white hover:to-white text-black px-7 sm:px-9 py-3.5 rounded-full flex items-center font-black text-xs sm:text-sm shadow-[0_0_25px_rgba(255,255,255,0.45)] hover:shadow-[0_0_35px_rgba(255,255,255,0.7)] hover:scale-105 active:scale-95 transition-all group"
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 fill-black group-hover:scale-110 transition-transform" /> 
+              <span>Watch Now</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => onInfoClick(activeMovie)}
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white px-6 sm:px-8 py-3.5 rounded-full border border-white/20 hover:border-white/40 flex items-center font-bold text-xs sm:text-sm transition-all active:scale-95 shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              <Info className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 text-gray-300" /> 
+              <span>Details</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setShowReportModal(true)}
+              className="bg-black/50 hover:bg-amber-600/20 text-gray-400 hover:text-amber-300 border border-white/10 hover:border-amber-500/30 backdrop-blur-md px-4 py-3.5 rounded-full flex items-center font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-lg"
+              title="Report playback or metadata issue"
+            >
+              <AlertTriangle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400/80 mr-1" />
+              <span className="hidden sm:inline">Report</span>
+            </button>
+          </div>
         </div>
 
-        {/* Display Title in Royal Cinematic Typography */}
-        <h1 className="font-royal text-3xl sm:text-5xl md:text-7xl lg:text-8xl tracking-wider uppercase text-white leading-[0.95] drop-shadow-[0_15px_35px_rgba(0,0,0,0.98)] font-black">
-          {activeMovie.title}
-        </h1>
-
-        <p className="text-xs sm:text-sm md:text-base text-gray-200/90 drop-shadow-lg line-clamp-2 md:line-clamp-3 max-w-xl font-normal leading-relaxed">
-          {activeMovie.description}
-        </p>
-        
-        {/* Play and Details Action Buttons */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 pt-2">
-          <button 
-            type="button"
-            onClick={() => onPlay(activeMovie)}
-            className="bg-gradient-to-r from-white via-zinc-100 to-amber-100 hover:from-white hover:to-white text-black px-7 sm:px-9 py-3.5 rounded-full flex items-center font-black text-xs sm:text-sm shadow-[0_0_25px_rgba(255,255,255,0.45)] hover:shadow-[0_0_35px_rgba(255,255,255,0.7)] hover:scale-105 active:scale-95 transition-all group"
-          >
-            <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 fill-black group-hover:scale-110 transition-transform" /> 
-            <span>Watch Now</span>
-          </button>
-
-          <button 
-            type="button"
+        {/* Right Column: Perfectly Fitted 2:3 Vertical Movie Poster Showcase */}
+        <div className="hidden lg:flex flex-col items-center shrink-0 pl-6 pointer-events-auto mb-1">
+          <div 
             onClick={() => onInfoClick(activeMovie)}
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white px-6 sm:px-8 py-3.5 rounded-full border border-white/20 hover:border-white/40 flex items-center font-bold text-xs sm:text-sm transition-all active:scale-95 shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            className="group/spotlight-poster relative cursor-pointer select-none transition-all duration-300 hover:scale-105"
+            title={`View details for ${activeMovie.title}`}
           >
-            <Info className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 text-gray-300" /> 
-            <span>Details</span>
-          </button>
+            {/* Ambient backlight glow */}
+            <div className="absolute -inset-2 bg-gradient-to-r from-red-600/25 to-amber-500/25 rounded-3xl blur-xl opacity-75 group-hover/spotlight-poster:opacity-100 transition-opacity" />
 
-          <button 
-            type="button"
-            onClick={() => setShowReportModal(true)}
-            className="bg-black/50 hover:bg-amber-600/20 text-gray-400 hover:text-amber-300 border border-white/10 hover:border-amber-500/30 backdrop-blur-md px-4 py-3.5 rounded-full flex items-center font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-lg"
-            title="Report playback or metadata issue"
-          >
-            <AlertTriangle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400/80 mr-1" />
-            <span className="hidden sm:inline">Report</span>
-          </button>
+            {/* Poster Frame: 100% exact 2:3 aspect ratio, never cropped or distorted */}
+            <div className="relative w-48 xl:w-56 aspect-[2/3] rounded-2xl overflow-hidden border border-white/20 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
+              <img
+                key={`poster-${activeMovie.id}`}
+                src={activeMovie.thumbnail || activeMovie.poster || activeMovie.backdrop}
+                alt={activeMovie.title}
+                className="w-full h-full object-cover object-center group-hover/spotlight-poster:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/spotlight-poster:opacity-100 transition-opacity flex items-end justify-center p-3">
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+                  <Info className="w-3.5 h-3.5 text-amber-400" />
+                  <span>View Details</span>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

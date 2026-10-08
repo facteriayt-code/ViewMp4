@@ -222,8 +222,9 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
         </div>
       </div>
 
-      {/* 2. Platform-Specific Header Bar */}
-      <header className={`sticky top-[41px] z-40 transition-all duration-300 px-4 md:px-12 py-3.5 flex items-center justify-between ${scrolled ? `${config.headerBg} backdrop-blur-lg shadow-2xl` : 'bg-gradient-to-b from-black/90 to-transparent'}`}>
+      {/* 2. Platform-Specific Header Bar & Dynamic Content */}
+      <div key={platformId} className="animate-platform-fade">
+        <header className={`sticky top-[41px] z-40 transition-all duration-300 px-4 md:px-12 py-3.5 flex items-center justify-between ${scrolled ? `${config.headerBg} backdrop-blur-lg shadow-2xl` : 'bg-gradient-to-b from-black/90 to-transparent'}`}>
         <div className="flex items-center space-x-6 md:space-x-10">
           <div className="cursor-pointer" onClick={() => { setSearchQuery(''); setSelectedBrandTile(null); }}>
             {renderLogo(platformId)}
@@ -395,7 +396,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                 {/* CTAs */}
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
-                    onClick={() => onPlay(heroMovie)}
+                    onClick={() => onSelectMovie(heroMovie)}
                     className="flex items-center space-x-2 px-6 sm:px-8 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all duration-300 shadow-2xl active:scale-95"
                     style={{
                       backgroundColor: config.id === 'prime' ? '#00A8E1' : config.id === 'hulu' ? '#1CE783' : '#FFFFFF',
@@ -522,7 +523,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onPlay(movie);
+                              onSelectMovie(movie);
                             }}
                             className="w-full py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center justify-center space-x-1 shadow-lg"
                             style={{
@@ -531,7 +532,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                             }}
                           >
                             <Play className="w-3 h-3 fill-current" />
-                            <span>Play</span>
+                            <span>Details</span>
                           </button>
                         </div>
                       </div>
@@ -608,6 +609,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
           </main>
         </>
       )}
+      </div>
 
       {/* 7. Platform Footer */}
       <footer className="border-t border-white/10 py-12 px-4 md:px-12 text-gray-500 text-xs space-y-6 bg-black/60">
@@ -733,10 +735,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onPlay();
+                onSelect();
               }}
               className="p-2.5 rounded-full bg-white text-black hover:scale-110 transition shadow-xl"
-              title="Stream Now"
+              title="View Details"
             >
               <Play className="w-4 h-4 fill-black" />
             </button>
