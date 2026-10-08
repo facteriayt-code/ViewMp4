@@ -152,7 +152,20 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-6 min-w-0">
+      <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0">
+        {/* Site Logo directly to the left of the search box */}
+        <button
+          type="button"
+          onClick={() => handleClearSearch()}
+          className="flex items-center space-x-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-full bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 transition-all duration-300 group shrink-0 active:scale-95 shadow-[0_0_12px_rgba(229,9,20,0.25)]"
+          title="GeminiStream - Go to Home"
+        >
+          <Film className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-500 fill-red-500 group-hover:scale-110 group-hover:rotate-6 transition-transform shrink-0" />
+          <span className="font-royal text-red-500 font-black text-xs tracking-wider uppercase hidden md:inline">
+            GS
+          </span>
+        </button>
+
         {/* Clean, Responsive Search Box (Dropdown underneath removed as requested) */}
         <div className="relative">
           <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/70 focus-within:bg-black/95 shadow-inner">

@@ -203,11 +203,33 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
 
       {/* 2. Results Container */}
       <div className={`space-y-4 ${isDropdown ? 'flex-1 overflow-y-auto p-2 sm:p-3 overscroll-contain' : ''}`}>
-        {/* Loading Indicator */}
+        {/* Loading Indicator & Animated Shimmer Skeleton Grid */}
         {isSearchingApi && (
-          <div className="flex items-center justify-center space-x-2 py-3 text-amber-400 bg-amber-500/10 rounded-xl border border-amber-500/20 text-xs font-bold">
-            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-            <span className="truncate">Searching TMDb Database for "{searchTerm}"...</span>
+          <div className="space-y-3 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between py-2.5 px-4 text-amber-300 bg-gradient-to-r from-amber-500/15 via-red-600/10 to-amber-500/15 rounded-xl border border-amber-500/30 text-xs font-bold shadow-lg">
+              <div className="flex items-center space-x-2.5">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+                <span className="truncate">Searching TMDb Cinema Catalog for "{searchTerm}"...</span>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider text-amber-400 font-black animate-pulse hidden xs:inline">
+                Live Query
+              </span>
+            </div>
+
+            {/* Skeleton Grid Animation */}
+            <div className={`grid ${isDropdown ? 'grid-cols-1 sm:grid-cols-2 gap-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3.5'}`}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={`skeleton-${i}`} className="bg-zinc-900/80 border border-white/5 rounded-xl overflow-hidden animate-pulse">
+                  <div className="aspect-[2/3] w-full bg-gradient-to-b from-zinc-800 to-zinc-900 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                  </div>
+                  <div className="p-2.5 space-y-2">
+                    <div className="h-3.5 bg-zinc-800 rounded w-3/4" />
+                    <div className="h-2.5 bg-zinc-800/60 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

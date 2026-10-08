@@ -75,7 +75,7 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
       {/* Content Overlay - Perfectly balanced layout with movie metadata and native 2:3 vertical poster */}
       <div className="absolute inset-0 z-20 flex items-end justify-between px-4 sm:px-8 md:px-12 lg:px-16 pb-8 sm:pb-12 md:pb-16 pointer-events-none">
         {/* Left Column: Metadata & CTAs */}
-        <div className="max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4 pr-4 pointer-events-auto">
+        <div className="max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4 pr-2 sm:pr-4 pointer-events-auto">
           {/* Spotlight & Quality Badges (Royal & Cinematic Style) */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold text-gray-300">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600/30 to-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)]">
@@ -105,6 +105,24 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
 
             <span aria-hidden="true" className="text-gray-500 hidden sm:inline">·</span>
             <span className="text-gray-300 hidden sm:inline tracking-wide">{activeMovie.genre}</span>
+          </div>
+
+          {/* Mobile-only compact poster badge (never misplaced, 100% exact 2:3 aspect ratio) */}
+          <div className="flex sm:hidden items-center space-x-3 pt-1">
+            <div 
+              onClick={() => onInfoClick(activeMovie)}
+              className="w-16 aspect-[2/3] rounded-xl overflow-hidden border border-white/25 shadow-xl bg-zinc-900 shrink-0 cursor-pointer active:scale-95 transition-transform"
+            >
+              <img
+                src={activeMovie.thumbnail || activeMovie.poster || activeMovie.backdrop}
+                alt={activeMovie.title}
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Spotlight Selection</span>
+              <p className="text-xs text-gray-300 line-clamp-2">{activeMovie.genre} · {activeMovie.year}</p>
+            </div>
           </div>
 
           {/* Display Title in Royal Cinematic Typography */}
@@ -151,18 +169,18 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
           </div>
         </div>
 
-        {/* Right Column: Perfectly Fitted 2:3 Vertical Movie Poster Showcase */}
-        <div className="hidden lg:flex flex-col items-center shrink-0 pl-6 pointer-events-auto mb-1">
+        {/* Right Column: Perfectly Fitted 2:3 Vertical Movie Poster Showcase (Visible across sm, md, lg, xl) */}
+        <div className="hidden sm:flex flex-col items-center shrink-0 pl-4 sm:pl-6 pointer-events-auto mb-1 self-end">
           <div 
             onClick={() => onInfoClick(activeMovie)}
             className="group/spotlight-poster relative cursor-pointer select-none transition-all duration-300 hover:scale-105"
             title={`View details for ${activeMovie.title}`}
           >
             {/* Ambient backlight glow */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-red-600/25 to-amber-500/25 rounded-3xl blur-xl opacity-75 group-hover/spotlight-poster:opacity-100 transition-opacity" />
+            <div className="absolute -inset-2 bg-gradient-to-r from-red-600/30 via-amber-500/30 to-purple-600/20 rounded-3xl blur-2xl opacity-75 group-hover/spotlight-poster:opacity-100 transition-opacity" />
 
             {/* Poster Frame: 100% exact 2:3 aspect ratio, never cropped or distorted */}
-            <div className="relative w-48 xl:w-56 aspect-[2/3] rounded-2xl overflow-hidden border border-white/20 bg-zinc-900 shadow-[0_20px_45px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
+            <div className="relative w-36 sm:w-44 md:w-48 lg:w-56 aspect-[2/3] rounded-2xl overflow-hidden border border-white/20 bg-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.95)] ring-1 ring-white/10">
               <img
                 key={`poster-${activeMovie.id}`}
                 src={activeMovie.thumbnail || activeMovie.poster || activeMovie.backdrop}

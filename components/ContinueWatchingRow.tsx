@@ -95,7 +95,7 @@ export const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({
             <div
               key={movie.id}
               className="relative shrink-0 w-56 sm:w-64 md:w-72 bg-zinc-900 rounded-xl overflow-hidden border border-white/10 hover:border-red-600/60 shadow-xl transition-all duration-300 hover:scale-[1.03] group/card cursor-pointer flex flex-col"
-              onClick={() => onPlay(movie, season, episode)}
+              onClick={() => onSelectMovie(movie)}
             >
               {/* Media Backdrop / Thumbnail (16:9 cinematic aspect) */}
               <div className="relative aspect-video w-full bg-zinc-950 overflow-hidden">

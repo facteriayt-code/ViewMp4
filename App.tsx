@@ -18,7 +18,13 @@ import { getAllVideosFromCloud } from './services/storageService.ts';
 import { supabase } from './services/supabaseClient.ts';
 import { signOut } from './services/authService.ts';
 import { Database, Wifi, WifiOff, Loader2, X, Search, Sparkles, Play, Info, Plus, Check, Film, Tv, ExternalLink } from 'lucide-react';
-import { searchWatchmode, getWatchmodeDetails, importMovieFromWatchmode, WatchmodeSearchResult } from './services/watchmodeService.ts';
+import { 
+  searchWatchmode, 
+  getWatchmodeDetails, 
+  importMovieFromWatchmode, 
+  WatchmodeSearchResult,
+  fetchTmdbPopularMoviesForSpotlight 
+} from './services/watchmodeService.ts';
 import { StreamingPlatformLogosBar } from './components/StreamingPlatformLogosBar.tsx';
 import { StreamingPlatformReplica } from './components/StreamingPlatformReplica.tsx';
 import { SearchBoxResults } from './components/SearchBoxResults.tsx';
@@ -54,6 +60,33 @@ const App: React.FC = () => {
   const [movieToUnlock, setMovieToUnlock] = useState<Movie | null>(null);
   const [netflixTop10, setNetflixTop10] = useState<Movie[]>(NETFLIX_TUDUM_SNAPSHOT);
   const [primeTop10, setPrimeTop10] = useState<Movie[]>(PRIME_FLIXPATROL_SNAPSHOT);
+  const [tmdbSpotlightMovies, setTmdbSpotlightMovies] = useState<Movie[]>(() => {
+    try {
+      const cached = localStorage.getItem('tmdb_popular_spotlight_v1');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      // ignore
+    }
+    return [];
+  });
+
+  // Load live TMDb popular movies for spotlight section (matches https://www.themoviedb.org/movie)
+  useEffect(() => {
+    let isMounted = true;
+    fetchTmdbPopularMoviesForSpotlight(10)
+      .then((popMovies) => {
+        if (isMounted && popMovies.length > 0) {
+          setTmdbSpotlightMovies(popMovies);
+          try {
+            localStorage.setItem('tmdb_popular_spotlight_v1', JSON.stringify(popMovies));
+          } catch (e) {
+            // ignore
+          }
+        }
+      })
+      .catch((err) => console.warn('Spotlight TMDb popular load error:', err));
+    return () => { isMounted = false; };
+  }, []);
 
   // Load and subscribe to 24-hour automatic refresh for Netflix and Prime Top 10
   useEffect(() => {
@@ -413,10 +446,13 @@ const App: React.FC = () => {
     ];
   }, [filteredMovies]);
 
-  // Featured Hero movie and spotlight carousel playlist (Bingr style)
+  // Featured Hero movie and spotlight carousel playlist (matches popular movies from TMDb / https://www.themoviedb.org/movie)
   const featuredSpotlightMovies = useMemo(() => {
+    if (tmdbSpotlightMovies && tmdbSpotlightMovies.length > 0) {
+      return tmdbSpotlightMovies.slice(0, 6);
+    }
     return movies.filter(m => !m.isUserUploaded && (m.backdrop || m.thumbnail)).slice(0, 6);
-  }, [movies]);
+  }, [tmdbSpotlightMovies, movies]);
 
   const heroMovie = useMemo(() => {
     return featuredSpotlightMovies[0] || movies.find(m => !m.isUserUploaded) || INITIAL_MOVIES[0];

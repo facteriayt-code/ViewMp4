@@ -171,7 +171,7 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
   }, [isTv, selectedSeason, movie.backdrop, movie.thumbnail]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black text-white font-sans overflow-y-auto bingr-movie-page selection:bg-white/30 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] bg-black text-white font-sans overflow-y-auto bingr-movie-page selection:bg-white/30 animate-movie-entrance">
       
       {/* ── 1. Sticky Transparent Glass Header (Bingr Style) ── */}
       <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-xl border-b border-white/[0.08] px-4 md:px-12 py-3 flex items-center justify-between shadow-2xl">
@@ -577,11 +577,11 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
           </section>
         )}
 
-        {/* ── 4. "Keep Bingring" Section (Bingr.one Recommendation Row) ── */}
+        {/* ── 4. "Keep Streaming" Section (Recommendation Row) ── */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span>Keep Bingring</span>
+              <span>Keep Streaming</span>
             </h3>
 
             <div className="flex items-center space-x-2">

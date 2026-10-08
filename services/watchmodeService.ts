@@ -614,6 +614,70 @@ export const fetchTmdbFullMovieDetails = async (movie: Movie): Promise<TmdbFullM
   }
 };
 
+// Fetch live popular movies directly from TMDb (matches https://www.themoviedb.org/movie)
+const TMDB_GENRES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi',
+  10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+};
+
+export const fetchTmdbPopularMoviesForSpotlight = async (limit = 10): Promise<Movie[]> => {
+  try {
+    const res = await fetch(`${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_CLIENT_KEY}&language=en-US&page=1`);
+    if (!res.ok) throw new Error(`TMDb popular fetch failed: ${res.status}`);
+    const data = await res.json();
+    const rawMovies = Array.isArray(data.results) ? data.results : [];
+
+    const formatted: Movie[] = rawMovies
+      .filter((m: any) => m && m.title && (m.backdrop_path || m.poster_path))
+      .slice(0, limit)
+      .map((m: any, idx: number) => {
+        const releaseYear = m.release_date ? parseInt(m.release_date.slice(0, 4), 10) : 2026;
+        const mainGenreId = Array.isArray(m.genre_ids) && m.genre_ids[0] ? m.genre_ids[0] : 28;
+        const genreName = TMDB_GENRES[mainGenreId] || 'Feature Film';
+        const streamUrl = SAMPLE_STREAMS[idx % SAMPLE_STREAMS.length];
+
+        const posterUrl = m.poster_path 
+          ? `https://image.tmdb.org/t/p/w780${m.poster_path}` 
+          : (m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : '');
+
+        const backdropUrl = m.backdrop_path 
+          ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` 
+          : (m.poster_path ? `https://image.tmdb.org/t/p/w1280${m.poster_path}` : '');
+
+        return {
+          id: `tmdb_pop_${m.id}`,
+          title: m.title,
+          description: m.overview || 'Trending blockbuster featured on The Movie Database.',
+          thumbnail: posterUrl,
+          backdrop: backdropUrl,
+          videoUrl: streamUrl,
+          genre: genreName,
+          year: releaseYear,
+          rating: m.adult ? 'R' : 'PG-13',
+          views: Math.floor(Math.random() * 2500000) + 750000,
+          isUserUploaded: false,
+          uploaderId: 'tmdb-popular',
+          uploaderName: 'The Movie Database (TMDb)',
+          watchmodeId: m.id,
+          userRating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : 8.6,
+          criticScore: m.vote_average ? Math.round(m.vote_average * 10) : 85,
+          streamingSources: [
+            { source_id: 8, name: 'Netflix', type: 'sub', region: 'US', web_url: `https://www.netflix.com/search?q=${encodeURIComponent(m.title)}`, format: '4K/HDR' },
+            { source_id: 9, name: 'Prime Video', type: 'sub', region: 'US', web_url: `https://www.amazon.com/s?k=${encodeURIComponent(m.title)}`, format: '4K UHD' },
+            { source_id: 337, name: 'Disney+', type: 'sub', region: 'US', web_url: `https://www.disneyplus.com/search?q=${encodeURIComponent(m.title)}`, format: '4K/Dolby' }
+          ]
+        };
+      });
+
+    return formatted;
+  } catch (err) {
+    console.warn('Could not fetch popular movies from TMDb API, falling back to curated movies:', err);
+    return [];
+  }
+};
+
 // Aliases
 export const searchTmdb = searchWatchmode;
 export const getTmdbDetails = getWatchmodeDetails;
@@ -621,3 +685,4 @@ export const importMovieFromTmdb = importMovieFromWatchmode;
 export const syncBlockbustersFromTmdb = syncBlockbustersFromWatchmode;
 export const getTmdbStatus = getWatchmodeStatus;
 export const getTmdbPopular = getWatchmodePopular;
+
