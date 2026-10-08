@@ -85,7 +85,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-8 shrink-0">
         <div className="flex items-center space-x-1.5 sm:space-x-2 cursor-pointer" onClick={() => handleClearSearch()}>
            <Film className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-red-600 fill-red-600 shrink-0" />
-           <h1 className="text-red-600 font-black text-sm sm:text-lg md:text-2xl tracking-tighter uppercase hidden xs:inline sm:block">GeminiStream</h1>
+           <h1 className="font-royal text-red-600 font-extrabold text-sm sm:text-lg md:text-xl tracking-wider uppercase hidden xs:inline sm:block">GeminiStream</h1>
         </div>
         
         {/* Desktop Links */}

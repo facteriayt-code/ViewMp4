@@ -36,9 +36,21 @@
     <script src="https://cdn.jsdelivr.net/npm/videojs-ima@2.1.0/dist/videojs.ima.min.js"></script>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              royal: ['Cinzel', 'Cinzel Decorative', 'Cormorant Garamond', 'Trajan Pro', 'Georgia', 'serif'],
+              cinema: ['Cinzel', 'Cinzel Decorative', 'Georgia', 'serif']
+            }
+          }
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
         body {
@@ -48,9 +60,13 @@
             margin: 0;
             overflow-x: hidden;
         }
-        .font-cinema {
-            font-family: 'Bebas Neue', Anton, Impact, sans-serif;
+        .font-cinema, .font-royal, .font-bold-royal {
+            font-family: 'Cinzel', 'Cinzel Decorative', 'Cormorant Garamond', 'Trajan Pro', Georgia, serif !important;
             letter-spacing: 0.04em;
+        }
+        .font-royal-title {
+            font-family: 'Cinzel Decorative', 'Cinzel', 'Cormorant Garamond', serif !important;
+            letter-spacing: 0.05em;
         }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #090b10; }

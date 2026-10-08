@@ -449,45 +449,13 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
             {/* Top 10 Styled Row */}
             <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-base md:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                  <h3 className="font-royal text-lg sm:text-xl md:text-2xl font-black tracking-wider uppercase text-white flex items-center gap-2">
                     <span>{config.top10Title}</span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </h3>
-                  {top10Data && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/10 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Refreshes in 24h</span>
-                    </span>
-                  )}
                 </div>
-
-                {top10Data && (
-                  <div className="flex items-center space-x-2 text-[11px] text-gray-400">
-                    <a
-                      href={top10Data.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-white underline flex items-center gap-1 transition text-[10px] sm:text-xs"
-                      title={`Official Chart Source: ${top10Data.sourceUrl}`}
-                    >
-                      <span>Source: {top10Data.sourceName}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={handleManualRefreshTop10}
-                      disabled={isRefreshingTop10}
-                      className="hover:text-white flex items-center gap-1 transition text-[10px] sm:text-xs text-amber-300 hover:text-amber-200 disabled:opacity-50"
-                      title="Force refresh chart data from website"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isRefreshingTop10 ? 'animate-spin text-emerald-400' : ''}`} />
-                      <span>{isRefreshingTop10 ? 'Refreshing...' : 'Refresh'}</span>
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Numbered Row (Authentic, Pixel-Perfect Netflix/Prime Style) */}

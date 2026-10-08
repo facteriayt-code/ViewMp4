@@ -62,32 +62,14 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
   return (
     <div id={`row-${title.replace(/\s+/g, '-').toLowerCase()}`} className="space-y-3 sm:space-y-4 mb-8 sm:mb-12 group/row">
-      <div className="flex items-center px-4 sm:px-8 md:px-12 lg:px-16 justify-between">
-        <div className="flex items-center space-x-3">
-          <h3 className="font-cinema text-2xl sm:text-3xl md:text-4xl text-white uppercase tracking-wider flex items-center gap-2">
+      <div className="flex items-center px-4 sm:px-8 md:px-12 lg:px-16 justify-between gap-4">
+        <div className="flex items-center space-x-3 min-w-0">
+          <h3 className="font-royal text-base sm:text-2xl md:text-3xl text-white tracking-wider uppercase flex items-center gap-2 whitespace-nowrap">
             <span>{title}</span>
           </h3>
-          {isTop10 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Refreshes in 24h</span>
-            </span>
-          )}
-          {sourceUrl && (
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-gray-300 hover:text-white underline inline-flex items-center gap-1 transition bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-full border border-white/10"
-              title={`Source: ${sourceUrl}`}
-            >
-              <span>Source: {sourceUrl.includes('netflix.com') ? 'Netflix Tudum' : 'FlixPatrol'}</span>
-              <ExternalLink className="w-2.5 h-2.5 text-gray-400" />
-            </a>
-          )}
           <button 
             onClick={handleShareCategory}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-md ${
+            className={`shrink-0 flex items-center space-x-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-md ${
               copiedCategory 
                 ? 'bg-emerald-600 border-emerald-500 scale-105 shadow-emerald-500/20' 
                 : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
@@ -105,7 +87,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
           </button>
         </div>
         
-        <div className="hidden md:flex items-center space-x-1 opacity-0 group-hover/row:opacity-100 transition-opacity duration-300">
+        <div className="hidden md:flex items-center space-x-1 opacity-0 group-hover/row:opacity-100 transition-opacity duration-300 shrink-0">
            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Scroll</span>
            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
         </div>
@@ -121,25 +103,25 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
         <div 
           ref={rowRef}
-          className="row-container flex items-end space-x-3.5 sm:space-x-4 md:space-x-5 overflow-x-auto px-4 sm:px-8 md:px-12 lg:px-16 scroll-smooth py-3 no-scrollbar scroll-snap-x-mandatory"
+          className="row-container flex items-start space-x-3 sm:space-x-4 md:space-x-5 overflow-x-auto px-4 sm:px-8 md:px-12 lg:px-16 scroll-smooth py-3 no-scrollbar scroll-snap-x-mandatory"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((movie, idx) => (
             <div 
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="relative flex-none flex items-end cursor-pointer scroll-snap-align-start group/card"
+              className="relative flex-none flex items-start cursor-pointer scroll-snap-align-start group/card"
             >
               {isTop10 && (
-                <div className="w-10 sm:w-12 md:w-16 flex items-end justify-end shrink-0 z-10 pointer-events-none -mr-2 sm:-mr-3 md:-mr-4 select-none pb-7">
+                <div className="w-10 sm:w-14 md:w-16 flex items-end justify-end shrink-0 z-10 pointer-events-none -mr-3 sm:-mr-5 md:-mr-6 select-none h-[195px] sm:h-[240px] md:h-[278px] lg:h-[300px] pb-1">
                   <span 
-                    className="font-black tracking-tighter leading-none select-none drop-shadow-[0_8px_20px_rgba(0,0,0,0.95)]"
+                    className="font-royal font-black tracking-tighter leading-none select-none drop-shadow-[0_12px_28px_rgba(0,0,0,0.95)]"
                     style={{
-                      fontSize: 'clamp(4.5rem, 7vw, 7.5rem)',
-                      WebkitTextStroke: '2px rgba(255,255,255,0.4)',
-                      color: '#0a0a0a',
-                      lineHeight: '0.8',
-                      letterSpacing: '-0.07em'
+                      fontSize: 'clamp(5rem, 8vw, 8rem)',
+                      WebkitTextStroke: '2px rgba(255,255,255,0.45)',
+                      color: '#07090e',
+                      lineHeight: '0.75',
+                      letterSpacing: '-0.08em'
                     }}
                   >
                     {movie.rank || (idx + 1)}
@@ -148,7 +130,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
               )}
 
               {/* Exact Bingr.one 2:3 Poster Card Size across All Rows */}
-              <div className="w-[130px] sm:w-[150px] md:w-[165px] lg:w-[185px] flex flex-col shrink-0">
+              <div className="w-[130px] sm:w-[160px] md:w-[185px] lg:w-[200px] flex flex-col shrink-0">
                 <div className="relative rounded-lg overflow-hidden aspect-[2/3] bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-300 group-hover/card:ring-white/20 group-hover/card:-translate-y-2 shadow-lg">
                   <img 
                     src={movie.thumbnail || movie.poster || movie.backdrop} 

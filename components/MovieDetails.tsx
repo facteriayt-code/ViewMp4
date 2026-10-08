@@ -610,7 +610,7 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
               <div
                 key={rec.id}
                 onClick={() => onMovieSelect(rec)}
-                className="group/card relative w-[130px] sm:w-[150px] md:w-[165px] lg:w-[185px] shrink-0 cursor-pointer flex flex-col"
+                className="group/card relative w-[130px] sm:w-[160px] md:w-[185px] lg:w-[200px] shrink-0 cursor-pointer flex flex-col"
               >
                 <div className="relative rounded-lg overflow-hidden aspect-[2/3] bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-300 group-hover/card:ring-white/20 group-hover/card:-translate-y-2 shadow-lg">
                   <img 

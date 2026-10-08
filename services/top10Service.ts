@@ -9,10 +9,29 @@ export interface Top10PlatformData {
   movies: Movie[];
 }
 
+const CACHE_VERSION = 'v7_bingr_perfect_posters';
 const STORAGE_KEYS = {
-  netflix: 'geministream_top10_netflix',
-  prime: 'geministream_top10_prime'
+  netflix: `geministream_top10_netflix_${CACHE_VERSION}`,
+  prime: `geministream_top10_prime_${CACHE_VERSION}`
 };
+
+// Purge legacy outdated cache keys so visiting the site always loads perfect posters
+if (typeof window !== 'undefined') {
+  try {
+    [
+      'geministream_top10_netflix',
+      'geministream_top10_prime',
+      'geministream_top10_netflix_v2',
+      'geministream_top10_prime_v2',
+      'geministream_top10_netflix_v3',
+      'geministream_top10_prime_v3',
+      'geministream_top10_netflix_v4',
+      'geministream_top10_prime_v4',
+      'geministream_top10_netflix_v5_royal_posters',
+      'geministream_top10_prime_v5_royal_posters'
+    ].forEach(k => localStorage.removeItem(k));
+  } catch {}
+}
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -405,11 +424,6 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
   const cached = getStoredTop10(platform);
   const now = Date.now();
 
-  // If cache exists and is less than 24 hours old, return it immediately
-  if (cached && !forceRefresh && (now - cached.lastUpdated < TWENTY_FOUR_HOURS_MS)) {
-    return cached;
-  }
-
   try {
     const res = await fetch(`/api/top10/${platform}${forceRefresh ? '?refresh=true' : ''}`);
     if (res.ok) {
@@ -431,9 +445,14 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
     console.warn(`Failed to fetch fresh top 10 for ${platform}, using fallback:`, err);
   }
 
+  // If network fetch fails, use cached if available and fresh
+  if (cached && (now - cached.lastUpdated < TWENTY_FOUR_HOURS_MS)) {
+    return cached;
+  }
+
   // Fallback if network or server is offline
   const fallbackMovies = platform === 'netflix' ? NETFLIX_TUDUM_SNAPSHOT : PRIME_FLIXPATROL_SNAPSHOT;
-  const fallbackData: Top10PlatformData = cached || {
+  const fallbackData: Top10PlatformData = {
     platform,
     sourceUrl: platform === 'netflix' ? 'https://www.netflix.com/tudum/top10/india' : 'https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/',
     sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'FlixPatrol India',

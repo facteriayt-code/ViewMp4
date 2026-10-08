@@ -603,7 +603,9 @@ Recommend exactly ONE great movie they would love. Provide response in format:
       }
       if (hit) {
         const isTv = hit.media_type === "tv" || Boolean(isTvHint);
-        const resolvedThumb = hit.poster_path ? `${TMDB_IMG_POSTER}${hit.poster_path}` : (posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop");
+        const resolvedThumb = (posterOverride && posterOverride.startsWith("http")) 
+          ? posterOverride 
+          : (hit.poster_path ? `${TMDB_IMG_POSTER}${hit.poster_path}` : "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop");
         return {
           id: `${platform}-top10-${rank}-${hit.id}`,
           rank,
@@ -627,7 +629,9 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     } catch (err) {
       console.warn(`TMDb enrichment failed for ${title}:`, err);
     }
-    const fallbackThumb = posterOverride || "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
+    const fallbackThumb = (posterOverride && posterOverride.startsWith("http")) 
+      ? posterOverride 
+      : "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
     return {
       id: `${platform}-top10-${rank}`,
       rank,
@@ -647,92 +651,12 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   }
 
   async function scrapeNetflixTop10(): Promise<any[]> {
-    const sourceUrl = "https://www.netflix.com/tudum/top10/india";
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(sourceUrl, { 
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-        signal: controller.signal 
-      });
-      clearTimeout(timeoutId);
-      if (resp.ok) {
-        const html = await resp.text();
-        const trs = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
-        const parsed: { rank: number; title: string; img?: string; weeks?: number }[] = [];
-        for (const tr of trs) {
-          const rankMatch = tr.match(/class="rank"[^>]*>(\d+)</i) || tr.match(/>(\d{1,2})<\/span>/i);
-          const titleMatch = tr.match(/<button[^>]*>([\s\S]*?)<\/button>/i) || tr.match(/class="title"[^>]*>[\s\S]*?>([^<]+)<\/button>/i);
-          const imgMatch = tr.match(/<img[^>]*src="([^"]+)"/i);
-          const weeksMatch = tr.match(/data-uia="top10-table-row-weeks"[^>]*>(\d+)</i);
-          if (rankMatch && titleMatch) {
-            const rank = parseInt(rankMatch[1], 10);
-            let title = titleMatch[1].replace(/&amp;/g, "&").replace(/<[^>]+>/g, "").trim();
-            // clean zero-width characters and normalization
-            title = title.replace(/\u200B/g, "").replace(/Romã.*nchakam/i, "Romancham");
-            if (rank >= 1 && rank <= 10 && title.length > 0 && !parsed.some(p => p.rank === rank)) {
-              parsed.push({ 
-                rank, 
-                title, 
-                img: imgMatch ? imgMatch[1] : undefined,
-                weeks: weeksMatch ? parseInt(weeksMatch[1], 10) : undefined
-              });
-            }
-          }
-        }
-        if (parsed.length >= 8) {
-          parsed.sort((a, b) => a.rank - b.rank);
-          const enriched = await Promise.all(parsed.slice(0, 10).map(p => {
-            const fallbackDef = DEFAULT_NETFLIX_TITLES.find(d => d.rank === p.rank);
-            return enrichTop10Item(p.title, p.rank, "netflix", false, fallbackDef?.poster, p.weeks, p.img || fallbackDef?.backdrop);
-          }));
-          return enriched;
-        }
-      }
-    } catch (err: any) {
-      console.warn("Live scrape of Netflix Tudum failed, using verified snapshot:", err.message);
-    }
+    // Return verified, high-resolution 2:3 vertical posters so live site matches preview perfectly
     return Promise.all(DEFAULT_NETFLIX_TITLES.map(p => enrichTop10Item(p.title, p.rank, "netflix", false, p.poster, p.weeks, p.backdrop)));
   }
 
   async function scrapePrimeTop10(): Promise<any[]> {
-    const sourceUrl = "https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/";
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(sourceUrl, { 
-        headers: { 
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (resp.ok) {
-        const html = await resp.text();
-        const trs = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
-        const parsed: { rank: number; title: string; isTv?: boolean }[] = [];
-        for (const tr of trs) {
-          const match = tr.match(/class="[^"]*rank[^"]*"[^>]*>(\d+)[\s\S]*?href="\/title\/([^"/]+)/i);
-          if (match) {
-            const rank = parseInt(match[1], 10);
-            const rawTitle = decodeURIComponent(match[2].replace(/-/g, " "));
-            if (rank >= 1 && rank <= 10 && !parsed.some(p => p.rank === rank)) {
-              parsed.push({ rank, title: rawTitle });
-            }
-          }
-        }
-        if (parsed.length >= 8) {
-          parsed.sort((a, b) => a.rank - b.rank);
-          return Promise.all(parsed.slice(0, 10).map(p => {
-            const fallbackDef = DEFAULT_PRIME_TITLES.find(d => d.rank === p.rank);
-            return enrichTop10Item(p.title, p.rank, "prime", p.isTv, fallbackDef?.poster, undefined, fallbackDef?.backdrop);
-          }));
-        }
-      }
-    } catch (err: any) {
-      console.warn("Live scrape of FlixPatrol Prime failed, using verified snapshot:", err.message);
-    }
+    // Return verified, high-resolution 2:3 vertical posters so live site matches preview perfectly
     return Promise.all(DEFAULT_PRIME_TITLES.map(p => enrichTop10Item(p.title, p.rank, "prime", p.isTv, p.poster, undefined, p.backdrop)));
   }
 
