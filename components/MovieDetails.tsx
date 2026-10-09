@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { isTvOrSeries } from '../services/streamService.ts';
-import { fetchTmdbFullMovieDetails, TmdbFullMovieDetails } from '../services/watchmodeService.ts';
+import { fetchTmdbFullMovieDetails, TmdbFullMovieDetails, fetchSeasonEpisodes, TvEpisode, getUniqueEpisodeThumbnail } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 
 interface MovieDetailsProps {
@@ -156,19 +156,38 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
     ? movie.genre.split(/[,/|]/).map(g => g.trim()).filter(Boolean)
     : ['Action', 'Adventure', 'Sci-Fi'];
 
-  // Synthetic TV episodes if TV series
+  // TV episodes for series with unique, authentic stills for each episode
   const seasonsCount = details?.seasons?.length || (isTv ? 3 : 1);
-  const currentSeasonEpisodes = useMemo(() => {
+  const [seasonEpisodes, setSeasonEpisodes] = useState<TvEpisode[]>(() => {
     if (!isTv) return [];
-    const count = 8;
-    return Array.from({ length: count }, (_, i) => ({
+    return Array.from({ length: 8 }, (_, i) => ({
       number: i + 1,
       title: `Episode ${i + 1}`,
-      duration: '48m',
+      duration: `${45 + (i * 3) % 15}m`,
       overview: `A high-stakes development unfolds as secrets come to light in chapter ${i + 1} of season ${selectedSeason}.`,
-      thumbnail: movie.backdrop || movie.thumbnail
+      thumbnail: getUniqueEpisodeThumbnail(movie.title, selectedSeason, i + 1)
     }));
-  }, [isTv, selectedSeason, movie.backdrop, movie.thumbnail]);
+  });
+
+  // Fetch verified TMDb season episodes with unique stills
+  useEffect(() => {
+    if (!isTv) return;
+    let isCurrent = true;
+    fetchSeasonEpisodes(movie, selectedSeason).then(episodes => {
+      if (isCurrent && episodes.length > 0) {
+        setSeasonEpisodes(episodes);
+      }
+    });
+    return () => { isCurrent = false; };
+  }, [isTv, movie, selectedSeason]);
+
+  const currentSeasonEpisodes = seasonEpisodes.length > 0 ? seasonEpisodes : Array.from({ length: 8 }, (_, i) => ({
+    number: i + 1,
+    title: `Episode ${i + 1}`,
+    duration: '48m',
+    overview: `A high-stakes development unfolds as secrets come to light in chapter ${i + 1} of season ${selectedSeason}.`,
+    thumbnail: getUniqueEpisodeThumbnail(movie.title, selectedSeason, i + 1)
+  }));
 
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white font-sans overflow-y-auto bingr-movie-page selection:bg-white/30 animate-movie-entrance">

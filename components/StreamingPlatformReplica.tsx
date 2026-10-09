@@ -9,6 +9,7 @@ import { SearchBoxResults } from './SearchBoxResults.tsx';
 import { searchWatchmode, WatchmodeSearchResult } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { getPlatformTop10, Top10PlatformData, NETFLIX_TUDUM_SNAPSHOT, PRIME_FLIXPATROL_SNAPSHOT } from '../services/top10Service.ts';
+import { PlatformMovieDetailsModal } from './PlatformMovieDetailsModal.tsx';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -40,6 +41,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
   const [top10Data, setTop10Data] = useState<Top10PlatformData | null>(null);
   const [isRefreshingTop10, setIsRefreshingTop10] = useState(false);
+  const [selectedReplicaMovie, setSelectedReplicaMovie] = useState<Movie | null>(null);
 
   // Fetch verified Top 10 data for Netflix (Tudum) and Prime (FlixPatrol) with 24-hour auto-refresh
   useEffect(() => {
@@ -333,7 +335,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
             catalogMovies={movies}
             apiSearchResults={apiSearchResults}
             isSearchingApi={isSearchingApi}
-            onSelectMovie={onSelectMovie}
+            onSelectMovie={(m) => setSelectedReplicaMovie(m)}
             onPlay={onPlay}
             onClose={() => setSearchQuery('')}
             isDropdown={false}
@@ -396,7 +398,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                 {/* CTAs */}
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
-                    onClick={() => onSelectMovie(heroMovie)}
+                    onClick={() => onPlay(heroMovie)}
                     className="flex items-center space-x-2 px-6 sm:px-8 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all duration-300 shadow-2xl active:scale-95"
                     style={{
                       backgroundColor: config.id === 'prime' ? '#00A8E1' : config.id === 'hulu' ? '#1CE783' : '#FFFFFF',
@@ -408,7 +410,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                   </button>
 
                   <button
-                    onClick={() => onSelectMovie(heroMovie)}
+                    onClick={() => setSelectedReplicaMovie(heroMovie)}
                     className="flex items-center space-x-2 px-6 sm:px-8 py-3 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-sm uppercase tracking-wider transition-all duration-300 border border-white/20 active:scale-95"
                   >
                     <Info className="w-5 h-5" />
@@ -442,7 +444,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                       initialEpisode: episode ?? movie.initialEpisode
                     });
                   }}
-                  onSelectMovie={onSelectMovie}
+                  onSelectMovie={(m) => setSelectedReplicaMovie(m)}
                   onRemove={(id) => removeContinueWatching(id)}
                 />
               </div>
@@ -466,7 +468,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                   return (
                     <div
                       key={movie.id}
-                      onClick={() => onSelectMovie(movie)}
+                      onClick={() => setSelectedReplicaMovie(movie)}
                       className="group cursor-pointer shrink-0 flex items-end relative transition-all duration-300 hover:scale-[1.04] hover:z-20 select-none"
                     >
                       {/* Fixed-width Rank Number Container ensuring posters never displace */}
@@ -523,7 +525,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSelectMovie(movie);
+                              setSelectedReplicaMovie(movie);
                             }}
                             className="w-full py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center justify-center space-x-1 shadow-lg"
                             style={{
@@ -568,7 +570,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                           isInMyList={myListIds.has(movie.id)}
                           onToggleList={(e) => toggleMyList(movie.id, e)}
                           onPlay={() => onPlay(movie)}
-                          onSelect={() => onSelectMovie(movie)}
+                          onSelect={() => setSelectedReplicaMovie(movie)}
                           onReport={() => setReportingMovie(movie)}
                         />
                       </div>
@@ -600,7 +602,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                     isInMyList={myListIds.has(movie.id)}
                     onToggleList={(e) => toggleMyList(movie.id, e)}
                     onPlay={() => onPlay(movie)}
-                    onSelect={() => onSelectMovie(movie)}
+                    onSelect={() => setSelectedReplicaMovie(movie)}
                     onReport={() => setReportingMovie(movie)}
                   />
                 ))}
@@ -652,6 +654,25 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
             setReportingMovie(null);
             onPlay(fixedMovie);
           }}
+        />
+      )}
+
+      {/* Platform-Specific Replica Movie Detail Page (Netflix, Prime, Disney+, etc.) */}
+      {selectedReplicaMovie && (
+        <PlatformMovieDetailsModal
+          movie={selectedReplicaMovie}
+          platformId={platformId}
+          allMovies={platformMovies}
+          onClose={() => setSelectedReplicaMovie(null)}
+          onPlay={(movieToPlay, s, ep) => {
+            setSelectedReplicaMovie(null);
+            onPlay({
+              ...movieToPlay,
+              initialSeason: s ?? movieToPlay.initialSeason,
+              initialEpisode: ep ?? movieToPlay.initialEpisode
+            });
+          }}
+          onSelectMovie={(nextMovie) => setSelectedReplicaMovie(nextMovie)}
         />
       )}
     </div>

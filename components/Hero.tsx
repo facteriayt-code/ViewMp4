@@ -78,10 +78,30 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
         <div className="max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-4 pr-2 sm:pr-4 pointer-events-auto">
           {/* Spotlight & Quality Badges (Royal & Cinematic Style) */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold text-gray-300">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600/30 to-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600/30 to-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)]">
               <Sparkles className="w-3 h-3 text-amber-400" />
               <span>Spotlight #{currentIndex + 1}</span>
-            </span>
+              {playlist.length > 1 && (
+                <div className="flex items-center ml-1 space-x-1 pl-1.5 border-l border-amber-400/30">
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    className="p-0.5 hover:text-white transition active:scale-90"
+                    title="Previous spotlight title"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="p-0.5 hover:text-white transition active:scale-90"
+                    title="Next spotlight title"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
 
             <span className="inline-flex items-center gap-1 text-amber-300 font-extrabold bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30 text-[11px] backdrop-blur-md shadow-sm">
               ★ {typeof activeMovie.userRating === 'number' ? activeMovie.userRating.toFixed(1) : '8.6'} IMDb
@@ -223,27 +243,27 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
         </div>
       </div>
 
-      {/* Floating Side Nav Chevrons (Never overlaps with action buttons) */}
+      {/* Floating Side Nav Chevrons (Positioned high at top-1/3 so they never overlap details or report buttons) */}
       {playlist.length > 1 && (
         <>
           <button
             type="button"
             onClick={handlePrev}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
+            className="hidden md:flex absolute left-4 top-1/3 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
             title="Previous Featured Title"
             aria-label="Previous Spotlight Title"
           >
-            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
           </button>
 
           <button
             type="button"
             onClick={handleNext}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
+            className="hidden md:flex absolute right-4 top-1/3 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/15 hover:border-amber-400/50 backdrop-blur-md transition-all active:scale-90 hover:scale-110 shadow-2xl group"
             title="Next Featured Title"
             aria-label="Next Spotlight Title"
           >
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </>
       )}
