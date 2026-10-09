@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, Play, Share2, Check, ArrowLeft, Star, Bookmark, Volume2, VolumeX,
-  AlertTriangle, ExternalLink, Sparkles, Film, Clock, Tv, ChevronLeft, ChevronRight
+  AlertTriangle, ExternalLink, Sparkles, Film, Clock, Tv, ChevronLeft, ChevronRight,
+  Heart, ThumbsUp
 } from 'lucide-react';
 import { Movie, User } from '../types.ts';
 import { isTvOrSeries } from '../services/streamService.ts';
 import { fetchTmdbFullMovieDetails, TmdbFullMovieDetails, fetchSeasonEpisodes, TvEpisode, getUniqueEpisodeThumbnail } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
 
 interface MovieDetailsProps {
   movie: Movie;
@@ -42,31 +44,31 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
   const castScrollRef = useRef<HTMLDivElement>(null);
   const recsScrollRef = useRef<HTMLDivElement>(null);
 
-  // Check watchlist storage
+  const [isLiked, setIsLiked] = useState(false);
+
+  // Check watchlist and like storage
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('gemini_watchlist') || '[]');
-      setIsBookmarked(saved.includes(movie.id));
-    } catch {
-      setIsBookmarked(false);
-    }
+    setIsBookmarked(isMovieSaved(movie.id));
+    setIsLiked(isMovieLiked(movie.id));
+
+    const handleSaved = () => setIsBookmarked(isMovieSaved(movie.id));
+    const handleLiked = () => setIsLiked(isMovieLiked(movie.id));
+    window.addEventListener('gemini_saved_movies_updated', handleSaved);
+    window.addEventListener('gemini_liked_movies_updated', handleLiked);
+    return () => {
+      window.removeEventListener('gemini_saved_movies_updated', handleSaved);
+      window.removeEventListener('gemini_liked_movies_updated', handleLiked);
+    };
   }, [movie.id]);
 
   const toggleBookmark = () => {
-    try {
-      const saved: string[] = JSON.parse(localStorage.getItem('gemini_watchlist') || '[]');
-      let updated: string[];
-      if (saved.includes(movie.id)) {
-        updated = saved.filter(id => id !== movie.id);
-        setIsBookmarked(false);
-      } else {
-        updated = [...saved, movie.id];
-        setIsBookmarked(true);
-      }
-      localStorage.setItem('gemini_watchlist', JSON.stringify(updated));
-    } catch (err) {
-      console.error("Watchlist error:", err);
-    }
+    const newState = toggleSaveMovie(movie);
+    setIsBookmarked(newState);
+  };
+
+  const handleToggleLike = () => {
+    const newState = toggleLikeMovie(movie);
+    setIsLiked(newState);
   };
 
   // Reset and fetch full TMDb details on movie change
@@ -230,11 +232,22 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
             type="button"
             onClick={toggleBookmark}
             className={`p-2 rounded-full border transition active:scale-95 ${
-              isBookmarked ? 'bg-red-600 border-red-500 text-white' : 'bg-white/10 border-white/15 text-gray-300 hover:text-white hover:bg-white/20'
+              isBookmarked ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-white/10 border-white/15 text-gray-300 hover:text-white hover:bg-white/20'
             }`}
-            title={isBookmarked ? "In Watchlist" : "Add to Watchlist"}
+            title={isBookmarked ? "Saved in Watchlist" : "Save Movie to Watchlist"}
           >
             <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggleLike}
+            className={`p-2 rounded-full border transition active:scale-95 ${
+              isLiked ? 'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30' : 'bg-white/10 border-white/15 text-gray-300 hover:text-white hover:bg-white/20'
+            }`}
+            title={isLiked ? "Liked (Saved in Account)" : "Like this title"}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
           </button>
 
           <button
@@ -384,11 +397,23 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
                 type="button"
                 onClick={toggleBookmark}
                 className={`w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border transition-all duration-300 active:scale-95 ${
-                  isBookmarked ? 'bg-red-600 border-red-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-md'
+                  isBookmarked ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/30' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-md'
                 }`}
-                title={isBookmarked ? "In Watchlist" : "Add to Watchlist"}
+                title={isBookmarked ? "Saved in Watchlist" : "Save to Watchlist"}
               >
                 <Bookmark className={`w-4 h-4 md:w-5 md:h-5 ${isBookmarked ? 'fill-current' : ''}`} />
+              </button>
+
+              {/* Like Button */}
+              <button
+                type="button"
+                onClick={handleToggleLike}
+                className={`w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border transition-all duration-300 active:scale-95 ${
+                  isLiked ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/30' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-md'
+                }`}
+                title={isLiked ? "Liked (Saved in Account)" : "Like this title"}
+              >
+                <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
               </button>
 
               {/* Share Button */}

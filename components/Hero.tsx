@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Info, AlertTriangle, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Play, Info, AlertTriangle, ChevronLeft, ChevronRight, Sparkles, Bookmark, Heart } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
 
 interface HeroProps {
   movie: Movie;
@@ -16,6 +17,30 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
 
   const playlist = (featuredMovies && featuredMovies.length > 0) ? featuredMovies.slice(0, 6) : [movie];
   const activeMovie = playlist[currentIndex] || movie;
+  const [isSaved, setIsSaved] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(isMovieSaved(activeMovie.id));
+    setIsLiked(isMovieLiked(activeMovie.id));
+
+    const handleSaved = () => setIsSaved(isMovieSaved(activeMovie.id));
+    const handleLiked = () => setIsLiked(isMovieLiked(activeMovie.id));
+    window.addEventListener('gemini_saved_movies_updated', handleSaved);
+    window.addEventListener('gemini_liked_movies_updated', handleLiked);
+    return () => {
+      window.removeEventListener('gemini_saved_movies_updated', handleSaved);
+      window.removeEventListener('gemini_liked_movies_updated', handleLiked);
+    };
+  }, [activeMovie.id]);
+
+  const handleToggleSave = () => {
+    toggleSaveMovie(activeMovie);
+  };
+
+  const handleToggleLike = () => {
+    toggleLikeMovie(activeMovie);
+  };
 
   // Auto-advance spotlight every 9 seconds
   useEffect(() => {
@@ -175,6 +200,32 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 text-gray-300" /> 
               <span>Details</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={handleToggleSave}
+              className={`p-3.5 rounded-full border transition-all active:scale-95 shadow-lg ${
+                isSaved 
+                  ? 'bg-red-600 border-red-500 text-white shadow-red-600/30' 
+                  : 'bg-white/10 hover:bg-white/20 border-white/20 text-gray-300 hover:text-white'
+              }`}
+              title={isSaved ? "Saved in Account Info" : "Save Movie to Watchlist"}
+            >
+              <Bookmark className={`w-4 h-4 sm:w-5 sm:h-5 ${isSaved ? 'fill-current' : ''}`} />
+            </button>
+
+            <button 
+              type="button"
+              onClick={handleToggleLike}
+              className={`p-3.5 rounded-full border transition-all active:scale-95 shadow-lg ${
+                isLiked 
+                  ? 'bg-red-600 border-red-500 text-white shadow-red-600/30' 
+                  : 'bg-white/10 hover:bg-white/20 border-white/20 text-gray-300 hover:text-white'
+              }`}
+              title={isLiked ? "Liked (Saved in Account Info)" : "Like this title"}
+            >
+              <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isLiked ? 'fill-current' : ''}`} />
             </button>
 
             <button 

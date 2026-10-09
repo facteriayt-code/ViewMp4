@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown, ShieldCheck } from 'lucide-react';
-import { User } from '../types.ts';
+import { User, Movie } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
+import { SearchBoxResults } from './SearchBoxResults.tsx';
 
 interface NavbarProps {
   user: User | null;
@@ -12,6 +13,9 @@ interface NavbarProps {
   onSelectPlatform?: (platform: PlatformId) => void;
   onAdBlockClick?: () => void;
   searchTerm?: string;
+  catalogMovies?: Movie[];
+  onSelectMovie?: (movie: Movie) => void;
+  onPlayMovie?: (movie: Movie) => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -22,14 +26,19 @@ const Navbar: React.FC<NavbarProps> = ({
   onSearch, 
   onSelectPlatform,
   onAdBlockClick,
-  searchTerm: parentSearchTerm = ''
+  searchTerm: parentSearchTerm = '',
+  catalogMovies = [],
+  onSelectMovie,
+  onPlayMovie
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState(parentSearchTerm);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showHubsDropdown, setShowHubsDropdown] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   const hubsRef = useRef<HTMLDivElement | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Sync internal search term when parent changes
   useEffect(() => {
@@ -49,11 +58,15 @@ const Navbar: React.FC<NavbarProps> = ({
       if (hubsRef.current && !hubsRef.current.contains(e.target as Node)) {
         setShowHubsDropdown(false);
       }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowHubsDropdown(false);
+        setIsSearchFocused(false);
       }
     };
 
@@ -166,8 +179,8 @@ const Navbar: React.FC<NavbarProps> = ({
           </span>
         </button>
 
-        {/* Clean, Responsive Search Box (Dropdown underneath removed as requested) */}
-        <div className="relative">
+        {/* Clean, Responsive Search Box with Real-time Trending Searches Dropdown */}
+        <div ref={searchContainerRef} className="relative">
           <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/70 focus-within:bg-black/95 shadow-inner">
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
             <input 
@@ -177,6 +190,7 @@ const Navbar: React.FC<NavbarProps> = ({
               className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-1.5 sm:ml-2 w-24 xs:w-36 sm:w-52 md:w-64 lg:w-72 placeholder:text-gray-500 text-white font-medium truncate"
               value={searchTerm}
               onChange={handleSearchChange}
+              onFocus={() => setIsSearchFocused(true)}
             />
             {searchTerm && (
               <button 
@@ -189,6 +203,32 @@ const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
           </div>
+
+          {/* Real-time Trending Searches Dropdown when search input is focused but empty */}
+          {isSearchFocused && !searchTerm.trim() && (
+            <div className="absolute right-0 sm:left-0 sm:right-auto w-[90vw] xs:w-80 sm:w-96 md:w-[480px] mt-2 top-full z-[120] bg-[#0e1017]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <SearchBoxResults
+                searchTerm=""
+                catalogMovies={catalogMovies}
+                onSelectMovie={(movie) => {
+                  setIsSearchFocused(false);
+                  onSelectMovie?.(movie);
+                }}
+                onPlay={(movie) => {
+                  setIsSearchFocused(false);
+                  onPlayMovie?.(movie);
+                }}
+                onClose={() => setIsSearchFocused(false)}
+                isDropdown={true}
+                isInputFocused={true}
+                onSelectQuery={(query) => {
+                  setSearchTerm(query);
+                  onSearch(query);
+                  setIsSearchFocused(false);
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Smart Link Ad Integration */}

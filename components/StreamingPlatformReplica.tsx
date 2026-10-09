@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Movie, ContinueWatchingItem } from '../types.ts';
 import { PLATFORMS, PlatformId, isMovieOnPlatform } from '../services/platformCatalog.ts';
 import { NetflixLogo, NetflixNIcon, PrimeVideoLogo, DisneyPlusLogo, AppleTvLogo, MaxLogo, HuluLogo } from './PlatformLogos.tsx';
@@ -9,6 +9,7 @@ import { SearchBoxResults } from './SearchBoxResults.tsx';
 import { searchWatchmode, WatchmodeSearchResult } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { getPlatformTop10, Top10PlatformData, NETFLIX_TUDUM_SNAPSHOT, PRIME_FLIXPATROL_SNAPSHOT } from '../services/top10Service.ts';
+import { toggleSaveMovie, isMovieSaved } from '../services/userLibraryService.ts';
 
 interface StreamingPlatformReplicaProps {
   platformId: PlatformId;
@@ -28,10 +29,39 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   onSelectMovie
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const replicaSearchRef = useRef<HTMLDivElement | null>(null);
   const [selectedBrandTile, setSelectedBrandTile] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Home');
   const [scrolled, setScrolled] = useState(false);
-  const [myListIds, setMyListIds] = useState<Set<string>>(new Set());
+  const [myListIds, setMyListIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (replicaSearchRef.current && !replicaSearchRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsSearchFocused(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateList = () => {
+      setMyListIds(new Set(movies.filter(m => isMovieSaved(m.id)).map(m => m.id)));
+    };
+    updateList();
+    window.addEventListener('gemini_saved_movies_updated', updateList);
+    return () => window.removeEventListener('gemini_saved_movies_updated', updateList);
+  }, [movies]);
+
   const [continueWatchingItems, setContinueWatchingItems] = useState<ContinueWatchingItem[]>(() => 
     getContinueWatchingList()
   );
@@ -144,12 +174,10 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
   const toggleMyList = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setMyListIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const movieToSave = movies.find(m => m.id === id);
+    if (movieToSave) {
+      toggleSaveMovie(movieToSave);
+    }
   };
 
   const renderLogo = (id: PlatformId) => {
@@ -245,19 +273,47 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
         <div className="flex items-center space-x-3 md:space-x-5">
           {/* In-Platform Search Bar */}
-          <div className="relative flex items-center bg-black/60 border border-white/15 rounded-full px-3 py-1.5 focus-within:border-white/50 focus-within:bg-black/90 transition-all">
-            <Search className="w-4 h-4 text-gray-400 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search all movies & ${config.shortName}...`}
-              className="bg-transparent border-none focus:outline-none text-xs ml-2 w-28 sm:w-44 md:w-56 text-white placeholder:text-gray-500 font-medium"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="p-0.5 text-gray-400 hover:text-white">
-                <X className="w-3.5 h-3.5" />
-              </button>
+          <div ref={replicaSearchRef} className="relative">
+            <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-3 py-1.5 focus-within:border-white/50 focus-within:bg-black/90 transition-all">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                placeholder={`Search all movies & ${config.shortName}...`}
+                className="bg-transparent border-none focus:outline-none text-xs ml-2 w-28 sm:w-44 md:w-56 text-white placeholder:text-gray-500 font-medium"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="p-0.5 text-gray-400 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* In-Platform Trending Searches Dropdown */}
+            {isSearchFocused && !searchQuery.trim() && (
+              <div className="absolute right-0 w-[90vw] xs:w-80 sm:w-96 md:w-[460px] mt-2 top-full z-[120] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <SearchBoxResults
+                  searchTerm=""
+                  catalogMovies={movies}
+                  onSelectMovie={(movie) => {
+                    setIsSearchFocused(false);
+                    onSelectMovie(movie);
+                  }}
+                  onPlay={(movie) => {
+                    setIsSearchFocused(false);
+                    onPlay(movie);
+                  }}
+                  onClose={() => setIsSearchFocused(false)}
+                  isDropdown={true}
+                  isInputFocused={true}
+                  onSelectQuery={(query) => {
+                    setSearchQuery(query);
+                    setIsSearchFocused(false);
+                  }}
+                />
+              </div>
             )}
           </div>
 
@@ -337,6 +393,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
             onPlay={onPlay}
             onClose={() => setSearchQuery('')}
             isDropdown={false}
+            onSelectQuery={(q) => setSearchQuery(q)}
           />
         </main>
       ) : (

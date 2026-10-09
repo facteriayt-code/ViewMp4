@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Play, Plus, Check, X, ArrowLeft, Star, Volume2, VolumeX, Share2, 
-  Sparkles, Clock, Tv, ThumbsUp, ChevronDown, CheckCircle2
+  Play, Plus, Check, X, Star, Share2, 
+  Sparkles, Clock, Tv, ThumbsUp, Heart, CheckCircle2, Volume2, Film
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { PlatformId, PLATFORMS } from '../services/platformCatalog.ts';
 import { isTvOrSeries } from '../services/streamService.ts';
 import { fetchSeasonEpisodes, TvEpisode, getUniqueEpisodeThumbnail } from '../services/watchmodeService.ts';
+import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
 
 interface PlatformMovieDetailsModalProps {
   movie: Movie;
@@ -25,7 +26,7 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   onPlay,
   onSelectMovie
 }) => {
-  const [isAddedToList, setIsAddedToList] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [copied, setCopied] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -37,38 +38,37 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
       number: i + 1,
       title: `Episode ${i + 1}`,
       duration: `${45 + (i * 3) % 15}m`,
-      overview: `A thrilling chapter unfolds with high stakes in season ${selectedSeason}, episode ${i + 1}.`,
+      overview: `A high-stakes development unfolds as secrets come to light in season ${selectedSeason}, episode ${i + 1}.`,
       thumbnail: getUniqueEpisodeThumbnail(movie.title, selectedSeason, i + 1)
     }));
   });
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
 
-  // Load watchlist state
+  // Sync saved and liked state with userLibraryService
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`watchlist_${platformId}`) || '[]');
-      setIsAddedToList(saved.includes(movie.id));
-    } catch {
-      setIsAddedToList(false);
-    }
-  }, [movie.id, platformId]);
+    setIsSaved(isMovieSaved(movie.id));
+    setIsLiked(isMovieLiked(movie.id));
 
-  const toggleWatchlist = () => {
-    try {
-      const key = `watchlist_${platformId}`;
-      const saved: string[] = JSON.parse(localStorage.getItem(key) || '[]');
-      let updated: string[];
-      if (saved.includes(movie.id)) {
-        updated = saved.filter(id => id !== movie.id);
-        setIsAddedToList(false);
-      } else {
-        updated = [...saved, movie.id];
-        setIsAddedToList(true);
-      }
-      localStorage.setItem(key, JSON.stringify(updated));
-    } catch (e) {
-      // ignore
-    }
+    const handleSaved = () => setIsSaved(isMovieSaved(movie.id));
+    const handleLiked = () => setIsLiked(isMovieLiked(movie.id));
+
+    window.addEventListener('gemini_saved_movies_updated', handleSaved);
+    window.addEventListener('gemini_liked_movies_updated', handleLiked);
+
+    return () => {
+      window.removeEventListener('gemini_saved_movies_updated', handleSaved);
+      window.removeEventListener('gemini_liked_movies_updated', handleLiked);
+    };
+  }, [movie.id]);
+
+  const handleToggleSave = () => {
+    const newState = toggleSaveMovie(movie);
+    setIsSaved(newState);
+  };
+
+  const handleToggleLike = () => {
+    const newState = toggleLikeMovie(movie);
+    setIsLiked(newState);
   };
 
   // Fetch verified TV episodes for this season with distinct thumbnails
@@ -87,7 +87,14 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
     return () => { isCurrent = false; };
   }, [movie, isTv, selectedSeason]);
 
-  // Handle ESC key
+  // Reset scroll on movie change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [movie.id]);
+
+  // Handle ESC key and lock body scroll
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -118,15 +125,10 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
     .filter(m => m.id !== movie.id)
     .slice(0, 6);
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
-  }, [movie.id]);
-
   const releaseYear = movie.year || 2024;
   const ratingText = movie.rating || (isTv ? 'TV-MA' : 'PG-13');
-  const matchPercentage = Math.min(99, Math.max(85, Math.round((movie.userRating || 8.0) * 10 + (movie.title.length % 8))));
+  const matchPercentage = Math.min(99, Math.max(86, Math.round((movie.userRating || 8.0) * 10 + (movie.title.length % 8))));
+  const platformConfig = PLATFORMS[platformId] || PLATFORMS.netflix;
 
   // ─────────────────────────────────────────────────────────────
   // 1. NETFLIX REPLICA MOVIE DETAIL MODAL
@@ -134,85 +136,87 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'netflix') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+        className="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 select-none"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#181818] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-white/10 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
+          className="relative w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] bg-[#181818] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.95)] border border-white/10 text-white flex flex-col my-auto animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button (Netflix round dark circle) */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-[#181818]/90 hover:bg-[#282828] border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#181818]/90 hover:bg-[#282828] border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
-            {/* Netflix Hero Banner Header with Preview Image */}
-            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
+            {/* Netflix Hero Banner Header: Compact & Perfectly Proportionate */}
+            <div className="relative w-full h-56 sm:h-64 md:h-72 bg-black shrink-0 overflow-hidden">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
                 className="w-full h-full object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-[#181818]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-[#181818]/50 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#181818]/80 via-transparent to-transparent" />
 
               {/* Top Netflix Original Ribbon */}
-              <div className="absolute top-4 left-4 sm:left-8 z-10 flex items-center space-x-2">
+              <div className="absolute top-3.5 left-4 sm:left-6 z-10 flex items-center space-x-2">
                 <span className="font-royal text-red-600 font-black text-2xl tracking-tighter">N</span>
-                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-gray-200">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em] text-gray-200">
                   {isTv ? 'SERIES' : 'FILM'}
                 </span>
               </div>
 
               {/* Title & Quick Actions on Hero Banner */}
-              <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 space-y-3 z-10">
-                <h1 className="font-royal text-2xl sm:text-4xl md:text-5xl font-black uppercase text-white drop-shadow-xl tracking-tight leading-none">
+              <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 space-y-2 sm:space-y-3 z-10">
+                <h1 className="font-royal text-2xl sm:text-3xl md:text-4xl font-black uppercase text-white drop-shadow-xl tracking-tight leading-none truncate">
                   {movie.title}
                 </h1>
 
-                <div className="flex items-center space-x-3 pt-1">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
                   <button
                     type="button"
                     onClick={() => onPlay(movie, selectedSeason, 1)}
-                    className="px-6 sm:px-8 py-2.5 sm:py-3 bg-white hover:bg-gray-200 text-black font-black text-sm sm:text-base rounded-md flex items-center transition active:scale-95 shadow-xl"
+                    className="px-5 sm:px-7 py-2 sm:py-2.5 bg-white hover:bg-gray-200 text-black font-black text-xs sm:text-sm rounded-md flex items-center transition active:scale-95 shadow-xl"
                   >
-                    <Play className="w-5 h-5 fill-black mr-2" />
+                    <Play className="w-4 h-4 fill-black mr-1.5" />
                     <span>Play</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={toggleWatchlist}
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-white/40 hover:border-white bg-black/40 text-white flex items-center justify-center transition active:scale-90"
-                    title={isAddedToList ? 'Remove from My List' : 'Add to My List'}
+                    onClick={handleToggleSave}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition active:scale-90 ${
+                      isSaved ? 'bg-red-600 border-red-500 text-white' : 'border-white/40 hover:border-white bg-black/40 text-white'
+                    }`}
+                    title={isSaved ? 'Saved in Account Info' : 'Add to My List'}
                   >
-                    {isAddedToList ? <Check className="w-5 h-5 text-green-400" /> : <Plus className="w-5 h-5" />}
+                    {isSaved ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <Plus className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setIsLiked(!isLiked)}
-                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-white/40 hover:border-white bg-black/40 flex items-center justify-center transition active:scale-90 ${
-                      isLiked ? 'text-red-500 border-red-500' : 'text-white'
+                    onClick={handleToggleLike}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition active:scale-90 ${
+                      isLiked ? 'bg-red-600 border-red-500 text-white' : 'border-white/40 hover:border-white bg-black/40 text-white'
                     }`}
-                    title="Rate this title"
+                    title={isLiked ? 'Liked (Saved in Account Info)' : 'Rate this title'}
                   >
-                    <ThumbsUp className={`w-5 h-5 ${isLiked ? 'fill-red-500' : ''}`} />
+                    <ThumbsUp className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isLiked ? 'fill-white' : ''}`} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-white/40 hover:border-white bg-black/40 text-white flex items-center justify-center transition active:scale-90"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-white/40 hover:border-white bg-black/40 text-white flex items-center justify-center transition active:scale-90"
                     title="Share title link"
                   >
-                    <Share2 className="w-5 h-5" />
+                    <Share2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                   </button>
                   {copied && (
                     <span className="text-xs text-green-400 font-bold animate-in fade-in">Link copied!</span>
@@ -221,12 +225,12 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
               </div>
             </div>
 
-            {/* Netflix Metadata & Synopsis Two-Column Body */}
-            <div className="p-4 sm:p-8 space-y-8 bg-[#181818]">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Netflix Metadata & Synopsis Immediately Visible */}
+            <div className="p-4 sm:p-6 space-y-6 bg-[#181818]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Left 2 cols: Badges & Description */}
-                <div className="md:col-span-2 space-y-4">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm font-semibold">
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-semibold">
                     <span className="text-emerald-400 font-black text-sm">
                       {matchPercentage}% Match
                     </span>
@@ -247,125 +251,114 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
                     </span>
                   </div>
 
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  <p className="text-gray-200 text-sm leading-relaxed">
                     {movie.description}
                   </p>
                 </div>
 
                 {/* Right col: Cast, Genres, Mood tags */}
-                <div className="space-y-3 text-xs text-gray-400">
+                <div className="space-y-2.5 text-xs text-gray-400 bg-white/[0.02] p-3 rounded-xl border border-white/5">
                   <div>
-                    <span className="text-gray-500">Cast: </span>
-                    <span className="text-gray-200">Top Hollywood Ensemble, Award-winning cast</span>
+                    <span className="text-gray-500 font-medium">Genre: </span>
+                    <span className="text-gray-200 font-semibold">{movie.genre || 'Action, Drama'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Genres: </span>
-                    <span className="text-gray-200">{movie.genre || 'Action, Thriller, Blockbuster'}</span>
+                    <span className="text-gray-500 font-medium">Audio: </span>
+                    <span className="text-gray-200">English [Original], Dolby Atmos 5.1</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">This show is: </span>
-                    <span className="text-gray-200">Suspenseful, Gritty, Mind-Bending</span>
+                    <span className="text-gray-500 font-medium">Subtitles: </span>
+                    <span className="text-gray-200">English, Spanish, French, German</span>
                   </div>
                 </div>
               </div>
 
-              {/* Netflix TV Series Episodes Section with Season Dropdown */}
+              {/* TV Episodes Section if Series */}
               {isTv && (
                 <div className="space-y-4 pt-4 border-t border-white/10">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg sm:text-xl font-black text-white">Episodes</h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-400 font-semibold">Season:</span>
-                      <select
-                        value={selectedSeason}
-                        onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                        className="bg-black/60 border border-white/20 text-white rounded-md px-3 py-1 text-xs font-bold focus:outline-none focus:border-red-600"
-                      >
-                        {[1, 2, 3].map(s => (
-                          <option key={s} value={s} className="bg-zinc-900 text-white">
-                            Season {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <h3 className="font-royal text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Tv className="w-4 h-4 text-red-500" />
+                      <span>Episodes (Season {selectedSeason})</span>
+                    </h3>
+                    <span className="text-xs text-gray-400 font-medium">
+                      {episodes.length} Episodes available
+                    </span>
                   </div>
 
-                  {isLoadingEpisodes ? (
-                    <div className="py-8 text-center text-gray-500 text-xs">Loading season episodes...</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {episodes.map((ep) => (
-                        <div
-                          key={ep.number}
-                          onClick={() => onPlay(movie, selectedSeason, ep.number)}
-                          className="flex items-center p-3 sm:p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition cursor-pointer group border border-transparent hover:border-white/15"
-                        >
-                          <span className="w-8 text-base font-black text-gray-400 group-hover:text-white shrink-0">
+                  <div className="space-y-2.5">
+                    {episodes.map(ep => (
+                      <div
+                        key={ep.number}
+                        onClick={() => onPlay(movie, selectedSeason, ep.number)}
+                        className="flex flex-col sm:flex-row sm:items-center p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/15 transition cursor-pointer group"
+                      >
+                        <div className="flex items-center space-x-3 sm:space-x-4">
+                          <span className="text-sm font-bold text-gray-400 w-5 text-center shrink-0">
                             {ep.number}
                           </span>
-
-                          <div className="relative w-28 sm:w-36 aspect-video rounded-lg overflow-hidden shrink-0 bg-zinc-900 mr-3 sm:mr-4 border border-white/10">
+                          <div className="relative w-28 sm:w-36 aspect-video rounded-lg overflow-hidden shrink-0 bg-zinc-900">
                             <img
                               src={ep.thumbnail}
                               alt={ep.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                             />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                              <Play className="w-6 h-6 fill-white text-white" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                              <Play className="w-6 h-6 fill-white text-white drop-shadow-md" />
                             </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0 pr-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-bold text-white group-hover:text-red-500 transition truncate">
-                                {ep.title}
-                              </h4>
-                              <span className="text-xs text-gray-400 shrink-0 ml-2">{ep.duration}</span>
-                            </div>
-                            <p className="text-xs text-gray-400 line-clamp-2 mt-1 leading-relaxed">
-                              {ep.overview}
-                            </p>
+                            <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] px-1 rounded text-gray-300 font-mono">
+                              {ep.duration}
+                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+
+                        <div className="mt-2 sm:mt-0 sm:ml-4 min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-red-400 transition truncate">
+                              {ep.title}
+                            </h4>
+                          </div>
+                          <p className="text-[11px] sm:text-xs text-gray-400 line-clamp-2 mt-1">
+                            {ep.overview}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* More Like This (Netflix 3-column cards) */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <h3 className="text-lg sm:text-xl font-black text-white">More Like This</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                  {recommendations.map((rec) => (
-                    <div
-                      key={rec.id}
-                      onClick={() => onSelectMovie(rec)}
-                      className="group cursor-pointer rounded-lg overflow-hidden bg-[#242424] border border-white/5 hover:border-white/20 transition flex flex-col"
-                    >
-                      <div className="relative aspect-video w-full bg-zinc-900">
-                        <img
-                          src={rec.backdrop || rec.thumbnail}
-                          alt={rec.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                        <div className="absolute top-2 right-2 text-[10px] font-bold text-white bg-black/70 px-2 py-0.5 rounded">
-                          {rec.year || 2024}
+              {/* Recommendations Section: More Like This */}
+              {recommendations.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-white/10">
+                  <h3 className="font-royal text-base sm:text-lg font-bold text-white uppercase tracking-wider">
+                    More Like This
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3">
+                    {recommendations.map(rec => (
+                      <div
+                        key={rec.id}
+                        onClick={() => onSelectMovie(rec)}
+                        className="group/rec cursor-pointer space-y-1.5"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 border border-white/10 shadow-md">
+                          <img
+                            src={rec.thumbnail || rec.backdrop}
+                            alt={rec.title}
+                            className="w-full h-full object-cover group-hover/rec:scale-105 transition duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/rec:opacity-100 transition flex items-center justify-center">
+                            <Play className="w-6 h-6 fill-white text-white drop-shadow-md" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-emerald-400 font-bold">96% Match</span>
-                          <span className="text-[10px] text-gray-400 border border-white/20 px-1 rounded">HD</span>
-                        </div>
-                        <h4 className="text-xs font-bold text-white group-hover:text-red-500 transition truncate">
+                        <h4 className="text-xs font-bold text-gray-200 group-hover/rec:text-white truncate">
                           {rec.title}
                         </h4>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -379,26 +372,26 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'prime') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200 font-sans"
+        className="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 font-sans select-none"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#0b121e] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-[#00a8e1]/30 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
+          className="relative w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] bg-[#0b121e] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.95)] border border-[#00a8e1]/30 text-white flex flex-col my-auto animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-[#0b121e]/90 hover:bg-[#00a8e1]/30 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0b121e]/90 hover:bg-[#00a8e1]/30 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
             {/* Prime Hero Backdrop with Cyan Lighting */}
-            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
+            <div className="relative w-full h-56 sm:h-64 md:h-72 bg-black shrink-0 overflow-hidden">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
@@ -408,44 +401,57 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
               <div className="absolute inset-0 bg-gradient-to-r from-[#0b121e]/90 via-transparent to-transparent" />
 
               {/* Prime Badge */}
-              <div className="absolute top-4 left-4 sm:left-8 z-10 flex items-center space-x-2">
-                <span className="bg-[#00a8e1] text-black text-[10px] font-black uppercase px-2.5 py-0.5 rounded tracking-wider">
+              <div className="absolute top-3.5 left-4 sm:left-6 z-10 flex items-center space-x-2">
+                <span className="bg-[#00a8e1] text-black text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
                   prime
                 </span>
-                <span className="text-[11px] font-bold text-gray-200 uppercase tracking-widest">
+                <span className="text-[10px] sm:text-[11px] font-bold text-gray-200 uppercase tracking-widest">
                   Included with Prime
                 </span>
               </div>
 
               {/* Title & Prime Actions */}
-              <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 space-y-3 z-10">
-                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-lg tracking-tight">
+              <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 space-y-2 sm:space-y-3 z-10">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight truncate">
                   {movie.title}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-3 pt-1">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
                   <button
                     type="button"
                     onClick={() => onPlay(movie, selectedSeason, 1)}
-                    className="px-6 sm:px-8 py-3 bg-[#00a8e1] hover:bg-[#0092c4] text-black font-black text-sm rounded-md flex items-center transition active:scale-95 shadow-xl shadow-[#00a8e1]/30"
+                    className="px-5 sm:px-7 py-2 sm:py-2.5 bg-[#00a8e1] hover:bg-[#0092c4] text-black font-black text-xs sm:text-sm rounded-md flex items-center transition active:scale-95 shadow-xl shadow-[#00a8e1]/30"
                   >
-                    <Play className="w-5 h-5 fill-black mr-2" />
+                    <Play className="w-4 h-4 fill-black mr-1.5" />
                     <span>Watch with Prime</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={toggleWatchlist}
-                    className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-md flex items-center transition active:scale-95 border border-white/20"
+                    onClick={handleToggleSave}
+                    className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold rounded-md flex items-center transition active:scale-95 border ${
+                      isSaved ? 'bg-[#00a8e1] border-[#00a8e1] text-black' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                    }`}
                   >
-                    {isAddedToList ? <Check className="w-4 h-4 mr-1.5 text-[#00a8e1]" /> : <Plus className="w-4 h-4 mr-1.5" />}
-                    <span>{isAddedToList ? 'In Watchlist' : 'Watchlist'}</span>
+                    {isSaved ? <Check className="w-3.5 h-3.5 mr-1" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+                    <span>{isSaved ? 'In Watchlist' : 'Watchlist'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleLike}
+                    className={`p-2 sm:p-2.5 rounded-md transition active:scale-90 border ${
+                      isLiked ? 'bg-[#00a8e1] border-[#00a8e1] text-black' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                    }`}
+                    title={isLiked ? 'Liked (Saved in Account Info)' : 'Like this title'}
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-black' : ''}`} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-md transition active:scale-90 border border-white/20"
+                    className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-md transition active:scale-90 border border-white/20"
                     title="Share title"
                   >
                     <Share2 className="w-4 h-4" />
@@ -454,107 +460,57 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
               </div>
             </div>
 
-            {/* Prime Details & X-Ray Row */}
-            <div className="p-4 sm:p-8 space-y-6 bg-[#0b121e]">
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
-                <span className="bg-amber-400 text-black px-2 py-0.5 rounded font-black text-[11px]">
-                  IMDb 8.5
-                </span>
-                <span>{releaseYear}</span>
-                <span className="border border-white/30 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold">
-                  {ratingText}
-                </span>
-                <span>{isTv ? `${selectedSeason} Seasons` : '2h 18m'}</span>
-                <span className="bg-[#00a8e1]/20 text-[#00a8e1] border border-[#00a8e1]/30 px-2 py-0.5 rounded font-bold text-[10px]">
-                  UHD · HDR
-                </span>
-                <span className="text-gray-400">Audio: English [Original], Hindi, Español</span>
+            {/* Prime Details Body Immediately Visible */}
+            <div className="p-4 sm:p-6 space-y-6 bg-[#0b121e]">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs text-gray-300">
+                <span className="font-bold text-[#00a8e1]">{matchPercentage}% Match</span>
+                <span className="text-gray-400">{releaseYear}</span>
+                <span className="border border-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-200">{ratingText}</span>
+                <span className="text-gray-400">{isTv ? `${selectedSeason} Seasons` : '2h 15m'}</span>
+                <span className="border border-[#00a8e1]/40 text-[#00a8e1] px-1.5 py-0.5 rounded text-[10px] font-bold">UHD</span>
+                <span className="border border-gray-700 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-300">HDR</span>
               </div>
 
-              {/* Prime X-Ray Feature Callout */}
-              <div className="p-3 bg-[#0f1b2d] rounded-xl border border-[#00a8e1]/20 flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-black text-[#00a8e1] tracking-wider uppercase">X-Ray</span>
-                  <span className="text-xs text-gray-300">Includes In-Scene Cast, Music trivia & Bonus Content</span>
-                </div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Prime Exclusive</span>
-              </div>
-
-              <p className="text-gray-300 text-sm leading-relaxed max-w-3xl">
+              <p className="text-gray-200 text-sm leading-relaxed max-w-3xl">
                 {movie.description}
               </p>
 
-              {/* Prime Episodes Section */}
+              {/* TV Episodes with Prime Styling */}
               {isTv && (
                 <div className="space-y-4 pt-4 border-t border-white/10">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-white">Episodes</h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-400">Season:</span>
-                      <select
-                        value={selectedSeason}
-                        onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                        className="bg-[#0f1b2d] border border-[#00a8e1]/30 text-white rounded px-3 py-1 text-xs font-bold focus:outline-none"
-                      >
-                        {[1, 2, 3].map(s => (
-                          <option key={s} value={s} className="bg-zinc-900 text-white">
-                            Season {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
+                      <span className="text-[#00a8e1]">Season {selectedSeason}</span>
+                      <span className="text-gray-500">•</span>
+                      <span className="text-xs text-gray-400 font-normal">{episodes.length} Episodes</span>
+                    </h3>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {episodes.map(ep => (
                       <div
                         key={ep.number}
                         onClick={() => onPlay(movie, selectedSeason, ep.number)}
-                        className="flex items-center p-3 rounded-xl bg-[#0f1b2d]/60 hover:bg-[#0f1b2d] border border-white/5 hover:border-[#00a8e1]/30 transition cursor-pointer group"
+                        className="flex p-3 rounded-lg bg-[#121c2d] hover:bg-[#19273f] border border-[#00a8e1]/20 transition cursor-pointer group"
                       >
-                        <div className="relative w-28 sm:w-36 aspect-video rounded-lg overflow-hidden shrink-0 bg-zinc-900 mr-4">
-                          <img src={ep.thumbnail} alt={ep.title} className="w-full h-full object-cover" />
+                        <div className="relative w-28 aspect-video rounded overflow-hidden shrink-0 bg-black mr-3">
+                          <img src={ep.thumbnail} alt={ep.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                            <Play className="w-6 h-6 fill-[#00a8e1] text-[#00a8e1]" />
+                            <Play className="w-5 h-5 fill-white text-white" />
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-white group-hover:text-[#00a8e1] transition truncate">
-                              {ep.number}. {ep.title}
-                            </h4>
-                            <span className="text-xs text-gray-400">{ep.duration}</span>
-                          </div>
-                          <p className="text-xs text-gray-400 line-clamp-2 mt-1">{ep.overview}</p>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-white group-hover:text-[#00a8e1] transition truncate">
+                            {ep.number}. {ep.title}
+                          </h4>
+                          <span className="text-[10px] text-gray-400 font-mono">{ep.duration}</span>
+                          <p className="text-[11px] text-gray-300 line-clamp-2 mt-1">{ep.overview}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* Prime Customers Also Watched */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                <h3 className="text-base font-bold text-white">Customers Also Watched</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {recommendations.slice(0, 4).map(rec => (
-                    <div
-                      key={rec.id}
-                      onClick={() => onSelectMovie(rec)}
-                      className="group cursor-pointer rounded-lg overflow-hidden bg-[#0f1b2d] border border-white/5 hover:border-[#00a8e1]/40 transition"
-                    >
-                      <div className="aspect-video w-full bg-zinc-900 relative">
-                        <img src={rec.backdrop || rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="p-2">
-                        <h4 className="text-xs font-bold text-white truncate group-hover:text-[#00a8e1] transition">
-                          {rec.title}
-                        </h4>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -568,97 +524,106 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'disney') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+        className="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 select-none"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#040714] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-blue-500/30 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
+          className="relative w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] bg-[#0f101e] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.95)] border border-[#113ccf]/40 text-white flex flex-col my-auto animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-black/75 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0f101e]/90 hover:bg-[#113ccf]/40 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
-            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
+            <div className="relative w-full h-56 sm:h-64 md:h-72 bg-black shrink-0 overflow-hidden">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
                 className="w-full h-full object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#040714] via-[#040714]/40 to-transparent" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#040714]/90 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0f101e] via-[#0f101e]/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0f101e]/90 via-transparent to-transparent" />
 
-              <div className="absolute top-4 left-4 sm:left-8 z-10">
-                <span className="bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[10px] font-black uppercase px-2.5 py-1 rounded-full tracking-wider">
-                  Disney+ Exclusive
-                </span>
+              <div className="absolute top-3.5 left-4 sm:left-6 z-10 flex items-center space-x-1.5">
+                <span className="font-serif font-black tracking-widest text-cyan-400 text-xs sm:text-sm uppercase">Disney+ Original</span>
               </div>
 
-              <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 space-y-3 z-10">
-                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-xl tracking-tight uppercase">
+              <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 space-y-2 sm:space-y-3 z-10">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white drop-shadow-xl tracking-tight uppercase truncate">
                   {movie.title}
                 </h1>
 
-                <div className="flex items-center space-x-3 pt-1">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
                   <button
                     type="button"
                     onClick={() => onPlay(movie, selectedSeason, 1)}
-                    className="px-7 sm:px-9 py-3 bg-white hover:bg-gray-200 text-black font-black text-sm uppercase tracking-wider rounded-md flex items-center transition active:scale-95 shadow-xl"
+                    className="px-6 sm:px-8 py-2 sm:py-2.5 bg-gradient-to-r from-[#0063e5] to-[#0483ee] hover:from-[#0483ee] hover:to-[#0063e5] text-white font-black text-xs sm:text-sm rounded-lg flex items-center transition active:scale-95 shadow-xl shadow-blue-600/30"
                   >
-                    <Play className="w-5 h-5 fill-black mr-2" />
-                    <span>Play</span>
+                    <Play className="w-4 h-4 fill-white mr-1.5" />
+                    <span>Watch Now</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={toggleWatchlist}
-                    className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 border border-white/30 text-white flex items-center justify-center transition active:scale-90"
-                    title={isAddedToList ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                    onClick={handleToggleSave}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition active:scale-90 ${
+                      isSaved ? 'bg-cyan-600 border-cyan-400 text-white' : 'border-white/40 hover:border-white bg-black/40 text-white'
+                    }`}
+                    title={isSaved ? 'Saved in Account Info' : 'Add to Watchlist'}
                   >
-                    {isAddedToList ? <Check className="w-5 h-5 text-blue-400" /> : <Plus className="w-5 h-5" />}
+                    {isSaved ? <Check className="w-4 h-4 text-white" /> : <Plus className="w-4 h-4" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleLike}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition active:scale-90 ${
+                      isLiked ? 'bg-cyan-600 border-cyan-400 text-white' : 'border-white/40 hover:border-white bg-black/40 text-white'
+                    }`}
+                    title={isLiked ? 'Liked (Saved in Account Info)' : 'Like'}
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 border border-white/30 text-white flex items-center justify-center transition active:scale-90"
-                    title="Share"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-white/40 hover:border-white bg-black/40 text-white flex items-center justify-center transition active:scale-90"
                   >
-                    <Share2 className="w-5 h-5" />
+                    <Share2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 sm:p-8 space-y-6 bg-[#040714]">
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+            <div className="p-4 sm:p-6 space-y-6 bg-[#0f101e]">
+              <div className="flex flex-wrap items-center gap-2.5 text-xs text-gray-300">
                 <span className="border border-white/30 px-1.5 py-0.5 rounded text-[10px] font-bold">{ratingText}</span>
                 <span>{releaseYear}</span>
-                <span>{isTv ? `${selectedSeason} Seasons` : '2h 10m'}</span>
-                <span className="border border-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">4K Ultra HD</span>
-                <span className="border border-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">IMAX Enhanced</span>
-                <span className="text-blue-400 font-bold">Dolby Vision</span>
+                <span>{isTv ? `${selectedSeason} Seasons` : '2h 18m'}</span>
+                <span className="border border-cyan-400/40 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-bold">IMAX Enhanced</span>
+                <span className="border border-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">Dolby Vision</span>
               </div>
 
-              <p className="text-gray-300 text-sm leading-relaxed max-w-3xl">
+              <p className="text-gray-200 text-sm leading-relaxed max-w-3xl">
                 {movie.description}
               </p>
 
               {isTv && (
                 <div className="space-y-4 pt-4 border-t border-white/10">
-                  <h3 className="text-lg font-bold text-white uppercase tracking-wider">Episodes</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider">Episodes</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {episodes.map(ep => (
                       <div
                         key={ep.number}
                         onClick={() => onPlay(movie, selectedSeason, ep.number)}
-                        className="flex items-center p-3 rounded-xl bg-white/[0.04] hover:bg-blue-600/15 border border-white/10 hover:border-blue-500/40 transition cursor-pointer group"
+                        className="flex p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 transition cursor-pointer group"
                       >
                         <div className="relative w-28 aspect-video rounded-lg overflow-hidden shrink-0 bg-zinc-900 mr-3">
                           <img src={ep.thumbnail} alt={ep.title} className="w-full h-full object-cover" />
@@ -667,10 +632,11 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
                           </div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate">
+                          <h4 className="text-xs font-bold text-white group-hover:text-cyan-400 transition truncate">
                             {ep.number}. {ep.title}
                           </h4>
-                          <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{ep.overview}</p>
+                          <span className="text-[10px] text-gray-400">{ep.duration}</span>
+                          <p className="text-[11px] text-gray-400 line-clamp-2 mt-1">{ep.overview}</p>
                         </div>
                       </div>
                     ))}
@@ -685,7 +651,7 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 4. APPLE TV+, MAX & HULU REPLICA DETAIL MODAL (Tailored Themes)
+  // 4. APPLE TV+, MAX, HULU REPLICA MOVIE DETAIL MODAL
   // ─────────────────────────────────────────────────────────────
   const isApple = platformId === 'appletv';
   const isMax = platformId === 'max';
@@ -694,8 +660,8 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   const brandAccentBg = isApple 
     ? 'bg-white hover:bg-gray-200 text-black' 
     : isMax 
-      ? 'bg-[#7b2cbf] hover:bg-[#6821a3] text-white shadow-[#7b2cbf]/40' 
-      : 'bg-[#1ce783] hover:bg-[#16bf6b] text-black shadow-[#1ce783]/30';
+      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white' 
+      : 'bg-[#1ce783] hover:bg-[#18cc74] text-black font-black';
 
   const brandPillBadge = isApple 
     ? 'Apple Original' 
@@ -705,78 +671,91 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
 
   return (
     <div 
-      className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200 font-sans"
+      className="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 font-sans select-none"
       onClick={onClose}
     >
       <div 
-        className={`relative w-full max-w-4xl h-[92vh] max-h-[860px] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-white/10 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col ${
-          isApple ? 'bg-[#161617]/95 backdrop-blur-3xl' : isMax ? 'bg-[#0d081f]' : 'bg-[#0b0c0e]'
+        className={`relative w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.95)] border border-white/10 text-white flex flex-col my-auto animate-in zoom-in-95 duration-200 ${
+          isApple ? 'bg-[#161617]' : isMax ? 'bg-[#0d081f]' : 'bg-[#0b0c0e]'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-black/75 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/75 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
           title="Close"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
-          <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
+          <div className="relative w-full h-56 sm:h-64 md:h-72 bg-black shrink-0 overflow-hidden">
             <img
               src={movie.backdrop || movie.thumbnail}
               alt={movie.title}
               className="w-full h-full object-cover object-center"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-transparent to-transparent" />
 
-            <div className="absolute top-4 left-4 sm:left-8 z-10">
-              <span className="bg-white/15 backdrop-blur-md text-white border border-white/25 text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider">
+            <div className="absolute top-3.5 left-4 sm:left-6 z-10">
+              <span className="bg-white/15 backdrop-blur-md text-white border border-white/25 text-[10px] font-bold uppercase px-3 py-0.5 rounded-full tracking-wider">
                 {brandPillBadge}
               </span>
             </div>
 
-            <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 space-y-3 z-10">
-              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white drop-shadow-lg tracking-tight">
+            <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 space-y-2 sm:space-y-3 z-10">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight truncate">
                 {movie.title}
               </h1>
 
-              <div className="flex items-center space-x-3 pt-1">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
                 <button
                   type="button"
                   onClick={() => onPlay(movie, selectedSeason, 1)}
-                  className={`px-7 sm:px-9 py-3 font-black text-sm rounded-full flex items-center transition active:scale-95 shadow-xl ${brandAccentBg}`}
+                  className={`px-6 sm:px-8 py-2 sm:py-2.5 font-black text-xs sm:text-sm rounded-full flex items-center transition active:scale-95 shadow-xl ${brandAccentBg}`}
                 >
-                  <Play className="w-5 h-5 fill-current mr-2" />
+                  <Play className="w-4 h-4 fill-current mr-1.5" />
                   <span>Stream Now</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={toggleWatchlist}
-                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
-                  title="Watchlist"
+                  onClick={handleToggleSave}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center transition active:scale-90 ${
+                    isSaved ? 'bg-red-600 border-red-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+                  }`}
+                  title={isSaved ? 'Saved in Account Info' : 'Watchlist'}
                 >
-                  {isAddedToList ? <Check className="w-5 h-5 text-emerald-400" /> : <Plus className="w-5 h-5" />}
+                  {isSaved ? <Check className="w-4 h-4 text-white" /> : <Plus className="w-4 h-4" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center transition active:scale-90 ${
+                    isLiked ? 'bg-red-600 border-red-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+                  }`}
+                  title={isLiked ? 'Liked (Saved in Account Info)' : 'Like'}
+                >
+                  <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
                 </button>
 
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
                   title="Share"
                 >
-                  <Share2 className="w-5 h-5" />
+                  <Share2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="p-4 sm:p-8 space-y-6">
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+          <div className="p-4 sm:p-6 space-y-6">
+            <div className="flex flex-wrap items-center gap-2.5 text-xs text-gray-300">
               <span className="border border-white/30 px-1.5 py-0.5 rounded text-[10px] font-bold">{ratingText}</span>
               <span>{releaseYear}</span>
               <span>{isTv ? `${selectedSeason} Seasons` : '2h 15m'}</span>
@@ -784,13 +763,13 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
               <span className="border border-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">Dolby Atmos</span>
             </div>
 
-            <p className="text-gray-300 text-sm leading-relaxed max-w-3xl">
+            <p className="text-gray-200 text-sm leading-relaxed max-w-3xl">
               {movie.description}
             </p>
 
             {isTv && (
               <div className="space-y-4 pt-4 border-t border-white/10">
-                <h3 className="text-lg font-bold text-white">Episodes</h3>
+                <h3 className="text-base sm:text-lg font-bold text-white">Episodes</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {episodes.map(ep => (
                     <div
@@ -808,6 +787,7 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
                         <h4 className="text-xs font-bold text-white transition truncate">
                           {ep.number}. {ep.title}
                         </h4>
+                        <span className="text-[10px] text-gray-400 font-mono">{ep.duration}</span>
                         <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{ep.overview}</p>
                       </div>
                     </div>
@@ -821,4 +801,5 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
     </div>
   );
 };
+
 export default PlatformMovieDetailsModal;

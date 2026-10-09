@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle, ExternalLink } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle, ExternalLink, Bookmark, Heart } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
 
 interface MovieRowProps {
   title: string;
@@ -23,6 +24,32 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedCategory, setCopiedCategory] = useState(false);
   const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const updateSets = () => {
+      setSavedIds(new Set(movies.filter(m => isMovieSaved(m.id)).map(m => m.id)));
+      setLikedIds(new Set(movies.filter(m => isMovieLiked(m.id)).map(m => m.id)));
+    };
+    updateSets();
+    window.addEventListener('gemini_saved_movies_updated', updateSets);
+    window.addEventListener('gemini_liked_movies_updated', updateSets);
+    return () => {
+      window.removeEventListener('gemini_saved_movies_updated', updateSets);
+      window.removeEventListener('gemini_liked_movies_updated', updateSets);
+    };
+  }, [movies]);
+
+  const handleToggleSave = (e: React.MouseEvent, movie: Movie) => {
+    e.stopPropagation();
+    toggleSaveMovie(movie);
+  };
+
+  const handleToggleLike = (e: React.MouseEvent, movie: Movie) => {
+    e.stopPropagation();
+    toggleLikeMovie(movie);
+  };
 
   const scroll = (direction: 'left' | 'right') => {
     if (rowRef.current) {
@@ -149,8 +176,34 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                     }}
                   />
                   
-                  {/* Card Actions Overlay (Report & Share) */}
+                  {/* Card Actions Overlay (Save, Like, Report & Share) */}
                   <div className="absolute top-2 right-2 z-30 flex items-center space-x-1 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleSave(e, movie)}
+                      className={`p-1.5 backdrop-blur-md rounded-md border transition shadow-lg ${
+                        savedIds.has(movie.id)
+                          ? 'bg-red-600 border-red-500 text-white'
+                          : 'bg-black/75 border-white/10 text-gray-300 hover:text-white hover:bg-white/20'
+                      }`}
+                      title={savedIds.has(movie.id) ? "Saved in Account Info" : "Save Movie"}
+                    >
+                      <Bookmark className={`w-3 h-3 ${savedIds.has(movie.id) ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleLike(e, movie)}
+                      className={`p-1.5 backdrop-blur-md rounded-md border transition shadow-lg ${
+                        likedIds.has(movie.id)
+                          ? 'bg-red-600 border-red-500 text-white'
+                          : 'bg-black/75 border-white/10 text-gray-300 hover:text-white hover:bg-white/20'
+                      }`}
+                      title={likedIds.has(movie.id) ? "Liked (Saved in Account Info)" : "Like Movie"}
+                    >
+                      <Heart className={`w-3 h-3 ${likedIds.has(movie.id) ? 'fill-current' : ''}`} />
+                    </button>
+
                     <button 
                       type="button"
                       onClick={(e) => {

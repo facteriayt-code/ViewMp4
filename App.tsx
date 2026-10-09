@@ -696,6 +696,9 @@ const App: React.FC = () => {
             onSelectPlatform={handleSelectPlatform}
             onAdBlockClick={() => setShowAdGuardModal(true)}
             searchTerm={searchTerm}
+            catalogMovies={movies}
+            onSelectMovie={handleSelectMovie}
+            onPlayMovie={handlePlay}
           />
 
           {searchTerm.trim().length > 0 ? (
@@ -710,6 +713,7 @@ const App: React.FC = () => {
                 onPlay={handlePlay}
                 onClose={() => setSearchTerm("")}
                 isDropdown={false}
+                onSelectQuery={setSearchTerm}
               />
             </div>
           ) : (
@@ -952,6 +956,9 @@ const App: React.FC = () => {
         onLoginClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         continueWatchingCount={continueWatchingItems.length}
+        continueWatchingItems={continueWatchingItems}
+        onPlayMovie={handlePlay}
+        onSelectMovie={handleSelectMovie}
       />
     </div>
   );
