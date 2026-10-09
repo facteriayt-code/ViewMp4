@@ -1341,13 +1341,16 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         expiresAt: now + CHAT_RETENTION_MS
       };
 
-      communityMessages.push(newMessage);
-      saveCommunityMessages();
+      if (!communityMessages.some(m => m.id === newMessage.id)) {
+        communityMessages.push(newMessage);
+        saveCommunityMessages();
+      }
 
       // Broadcast new message to all connected clients
       broadcastWs({
         type: 'chat:message',
-        message: newMessage
+        message: newMessage,
+        clientTempId: req.body.clientTempId
       });
 
       res.json({
@@ -1470,12 +1473,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
             expiresAt: now + CHAT_RETENTION_MS
           };
 
-          communityMessages.push(newMessage);
-          saveCommunityMessages();
+          if (!communityMessages.some(m => m.id === newMessage.id)) {
+            communityMessages.push(newMessage);
+            saveCommunityMessages();
+          }
 
           broadcastWs({
             type: "chat:message",
-            message: newMessage
+            message: newMessage,
+            clientTempId: payload.clientTempId
           });
         } else if (payload.type === "chat:ping") {
           ws.send(JSON.stringify({ type: "chat:pong" }));

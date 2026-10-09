@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   MessageSquare, Send, X, Clock, Users, ShieldAlert, Sparkles, 
   Trash2, LogIn, Flame, Film, Popcorn, Heart, ThumbsUp, 
@@ -56,12 +56,23 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
     };
   }, []);
 
+  // Strict deduplication by ID for rendering
+  const displayMessages = useMemo(() => {
+    const map = new Map<string, ChatMessage>();
+    for (const m of messages) {
+      if (m && m.id) {
+        map.set(m.id, m);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.createdAt - b.createdAt);
+  }, [messages]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (isOpen && !isMinimized) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isOpen, isMinimized]);
+  }, [displayMessages, isOpen, isMinimized]);
 
   // Focus input when opened
   useEffect(() => {
@@ -213,22 +224,23 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
 
       {/* 3. Messages Stream */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 no-scrollbar bg-[#08090e]/80">
-        {messages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400 space-y-2">
             <MessageSquare className="w-10 h-10 text-gray-600 animate-pulse" />
             <p className="text-xs font-bold text-gray-300">No active messages in the last 12 hours</p>
             <p className="text-[11px] text-gray-500">Be the first registered user to break the ice!</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          displayMessages.map((msg, index) => {
             const isMe = user?.id === msg.userId;
             const isSystem = msg.userId === 'system';
             const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const expiresIn = communityChatService.formatTimeUntilExpiration(msg.expiresAt);
+            const itemKey = msg.id || `msg_${msg.createdAt}_${index}`;
 
             if (isSystem) {
               return (
-                <div key={msg.id} className="p-2.5 rounded-xl bg-red-950/30 border border-red-500/20 text-center space-y-1">
+                <div key={itemKey} className="p-2.5 rounded-xl bg-red-950/30 border border-red-500/20 text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1 text-[10px] font-black uppercase tracking-wider text-red-400">
                     <Sparkles className="w-3 h-3 text-red-400" />
                     <span>GeminiStream System Notice</span>
@@ -241,7 +253,7 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
 
             return (
               <div 
-                key={msg.id}
+                key={itemKey}
                 className={`flex items-start space-x-2 group ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}
               >
                 {/* Avatar */}

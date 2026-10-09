@@ -141,7 +141,7 @@ class CommunityChatService {
 
       case 'chat:message':
         if (event.message && this.isMessageActive(event.message)) {
-          this.addMessage(event.message);
+          this.addMessage(event.message, event.clientTempId);
         }
         break;
 
@@ -226,8 +226,7 @@ class CommunityChatService {
     // Optimistically add to UI
     this.addMessage(optimisticMessage);
 
-    // Try WebSocket first
-    let sentViaWs = false;
+    // If WebSocket is open, send exclusively via WebSocket with clientTempId
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       try {
         this.socket.send(JSON.stringify({
@@ -236,15 +235,16 @@ class CommunityChatService {
           userName: user.name,
           userAvatar: user.avatar,
           userEmail: user.email,
-          text: trimmed
+          text: trimmed,
+          clientTempId: tempId
         }));
-        sentViaWs = true;
+        return optimisticMessage;
       } catch (err) {
         console.warn('WebSocket send failed, falling back to HTTP:', err);
       }
     }
 
-    // Always ensure REST API synchronization
+    // Fallback to REST API if WebSocket is not open
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
@@ -254,7 +254,8 @@ class CommunityChatService {
           userName: user.name,
           userAvatar: user.avatar,
           userEmail: user.email,
-          text: trimmed
+          text: trimmed,
+          clientTempId: tempId
         })
       });
 
@@ -265,17 +266,12 @@ class CommunityChatService {
 
       const resData = await response.json();
       if (resData.success && resData.message) {
-        // Replace optimistic message with server authoritative message
-        this.messages = this.messages.map(m => m.id === tempId ? resData.message : m);
-        this.notifyMessages();
+        this.addMessage(resData.message, tempId);
         return resData.message;
       }
     } catch (err: any) {
-      if (!sentViaWs) {
-        // Rollback optimistic message if both WS and HTTP failed
-        this.removeMessage(tempId);
-        throw err;
-      }
+      this.removeMessage(tempId);
+      throw err;
     }
 
     return optimisticMessage;
@@ -295,20 +291,32 @@ class CommunityChatService {
     }
   }
 
+  // Strictly deduplicates and sorts messages by timestamp
+  private deduplicateAndSort(msgs: ChatMessage[]): ChatMessage[] {
+    const map = new Map<string, ChatMessage>();
+    for (const m of msgs) {
+      if (m && m.id) {
+        map.set(m.id, m);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.createdAt - b.createdAt);
+  }
+
   // Internal state modifiers
   private setMessages(newMessages: ChatMessage[]) {
-    // Sort chronologically and deduplicate by ID
-    const map = new Map<string, ChatMessage>();
-    for (const m of newMessages) {
-      map.set(m.id, m);
-    }
-    this.messages = Array.from(map.values()).sort((a, b) => a.createdAt - b.createdAt);
+    this.messages = this.deduplicateAndSort(newMessages);
     this.notifyMessages();
   }
 
-  private addMessage(msg: ChatMessage) {
-    if (this.messages.some(m => m.id === msg.id)) return;
-    this.messages = [...this.messages, msg].sort((a, b) => a.createdAt - b.createdAt);
+  private addMessage(msg: ChatMessage, replaceTempId?: string) {
+    if (!msg || !msg.id) return;
+    let list = this.messages;
+    if (replaceTempId) {
+      list = list.filter(m => m.id !== replaceTempId);
+    }
+    list = list.filter(m => m.id !== msg.id);
+    list.push(msg);
+    this.messages = this.deduplicateAndSort(list);
     this.notifyMessages();
   }
 
