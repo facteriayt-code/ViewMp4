@@ -131,8 +131,8 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   const trendingQuickPicks = useMemo(() => {
     return [...catalogMovies]
       .sort((a, b) => (b.views || 0) - (a.views || 0))
-      .slice(0, 6);
-  }, [catalogMovies]);
+      .slice(0, isDropdown ? 3 : 6);
+  }, [catalogMovies, isDropdown]);
 
   const handlePlayApiItem = (item: WatchmodeSearchResult) => {
     const isTv = item.type === 'tv_series' || item.type === 'tv' || (item as any).is_tv;
@@ -220,7 +220,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
               <span className="text-red-400 font-medium">Real-Time Rank</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <div className={`grid ${isDropdown ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'} gap-1.5`}>
               {TRENDING_QUERIES.map((item, index) => (
                 <div
                   key={item.id}
@@ -276,7 +276,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                 <span className="text-[10px] text-gray-500">Instant stream</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5">
+              <div className={`grid ${isDropdown ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'} gap-2 sm:gap-2.5`}>
                 {trendingQuickPicks.map((m) => (
                   <div
                     key={m.id}

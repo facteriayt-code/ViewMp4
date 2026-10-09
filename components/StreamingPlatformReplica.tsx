@@ -274,18 +274,18 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
         <div className="flex items-center space-x-3 md:space-x-5">
           {/* In-Platform Search Bar */}
           <div ref={replicaSearchRef} className="relative">
-            <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-3 py-1.5 focus-within:border-white/50 focus-within:bg-black/90 transition-all">
+            <div className="flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/75 hover:bg-black/90 border border-white/15 rounded-full focus-within:border-white/50 focus-within:bg-black/95 transition-all shadow-inner">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                placeholder={`Search all movies & ${config.shortName}...`}
-                className="bg-transparent border-none focus:outline-none text-xs ml-2 w-28 sm:w-44 md:w-56 text-white placeholder:text-gray-500 font-medium"
+                placeholder={`Search movies & ${config.shortName}...`}
+                className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-32 xs:w-44 sm:w-56 md:w-64 text-white placeholder:text-gray-400 font-medium"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="p-0.5 text-gray-400 hover:text-white">
+                <button onClick={() => setSearchQuery('')} className="p-1 text-gray-400 hover:text-white transition active:scale-90 ml-1">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -293,7 +293,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
             {/* In-Platform Trending Searches Dropdown */}
             {isSearchFocused && !searchQuery.trim() && (
-              <div className="absolute right-0 w-[90vw] xs:w-80 sm:w-96 md:w-[460px] mt-2 top-full z-[120] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 w-[92vw] sm:w-[460px] md:w-[490px] max-w-[calc(100vw-1.5rem)] mt-2 top-full z-[120] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <SearchBoxResults
                   searchTerm=""
                   catalogMovies={movies}

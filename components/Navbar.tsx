@@ -166,28 +166,15 @@ const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0">
-        {/* Site Logo directly to the left of the search box */}
-        <button
-          type="button"
-          onClick={() => handleClearSearch()}
-          className="flex items-center space-x-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-full bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 transition-all duration-300 group shrink-0 active:scale-95 shadow-[0_0_12px_rgba(229,9,20,0.25)]"
-          title="GeminiStream - Go to Home"
-        >
-          <Film className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-500 fill-red-500 group-hover:scale-110 group-hover:rotate-6 transition-transform shrink-0" />
-          <span className="font-royal text-red-500 font-black text-xs tracking-wider uppercase hidden md:inline">
-            GS
-          </span>
-        </button>
-
-        {/* Clean, Responsive Search Box with Real-time Trending Searches Dropdown */}
+        {/* Perfectly Fitted Search Box with Real-time Trending Searches Dropdown */}
         <div ref={searchContainerRef} className="relative">
-          <div className="flex items-center bg-black/60 border border-white/15 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 hover:border-red-600/40 transition-colors focus-within:border-red-600/70 focus-within:bg-black/95 shadow-inner">
-            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
+          <div className="flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/75 hover:bg-black/90 focus-within:bg-black border border-white/15 hover:border-white/30 focus-within:border-red-600 rounded-full transition-all duration-200 shadow-inner focus-within:ring-2 focus-within:ring-red-600/25">
+            <Search className="w-4 h-4 text-gray-400 shrink-0 transition-colors" />
             <input 
               id="main-search-input"
               type="text" 
               placeholder="Search movies & shows..."
-              className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-1.5 sm:ml-2 w-24 xs:w-36 sm:w-52 md:w-64 lg:w-72 placeholder:text-gray-500 text-white font-medium truncate"
+              className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-28 xs:w-40 sm:w-56 md:w-64 lg:w-72 placeholder:text-gray-400 text-white font-medium"
               value={searchTerm}
               onChange={handleSearchChange}
               onFocus={() => setIsSearchFocused(true)}
@@ -196,17 +183,17 @@ const Navbar: React.FC<NavbarProps> = ({
               <button 
                 type="button"
                 onClick={handleClearSearch}
-                className="p-0.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition ml-1 shrink-0"
+                className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition ml-1 shrink-0 active:scale-90"
                 title="Clear search"
               >
-                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Real-time Trending Searches Dropdown when search input is focused but empty */}
+          {/* Real-time Trending Searches Dropdown - Anchored to right-0 so it fits within viewport without clipping */}
           {isSearchFocused && !searchTerm.trim() && (
-            <div className="absolute right-0 sm:left-0 sm:right-auto w-[90vw] xs:w-80 sm:w-96 md:w-[480px] mt-2 top-full z-[120] bg-[#0e1017]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 w-[92vw] sm:w-[460px] md:w-[490px] max-w-[calc(100vw-1.5rem)] mt-2 top-full z-[120] bg-[#0e1017]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
               <SearchBoxResults
                 searchTerm=""
                 catalogMovies={catalogMovies}
