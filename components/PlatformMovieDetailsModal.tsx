@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Plus, Check, X, ArrowLeft, Star, Volume2, VolumeX, Share2, 
   Sparkles, Clock, Tv, ThumbsUp, ChevronDown, CheckCircle2
@@ -28,6 +28,7 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   const [isAddedToList, setIsAddedToList] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [copied, setCopied] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isTv = isTvOrSeries(movie) || !!movie.isTv;
   const [selectedSeason, setSelectedSeason] = useState<number>(movie.initialSeason || 1);
   const [episodes, setEpisodes] = useState<TvEpisode[]>(() => {
@@ -88,11 +89,17 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
 
   // Handle ESC key
   useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose]);
 
   const handleShare = async () => {
@@ -111,6 +118,12 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
     .filter(m => m.id !== movie.id)
     .slice(0, 6);
 
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [movie.id]);
+
   const releaseYear = movie.year || 2024;
   const ratingText = movie.rating || (isTv ? 'TV-MA' : 'PG-13');
   const matchPercentage = Math.min(99, Math.max(85, Math.round((movie.userRating || 8.0) * 10 + (movie.title.length % 8))));
@@ -121,26 +134,26 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'netflix') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl bg-[#181818] rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-white/10 my-auto text-white select-none animate-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col"
+          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#181818] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-white/10 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button (Netflix round dark circle) */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-[#181818]/80 hover:bg-[#181818] border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-[#181818]/90 hover:bg-[#282828] border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="overflow-y-auto flex-1 no-scrollbar">
+          <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
             {/* Netflix Hero Banner Header with Preview Image */}
-            <div className="relative aspect-video w-full max-h-[440px] bg-black">
+            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
@@ -366,26 +379,26 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'prime') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200 font-sans"
+        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200 font-sans"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl bg-[#0b121e] rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-[#00a8e1]/20 my-auto text-white select-none animate-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col"
+          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#0b121e] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-[#00a8e1]/30 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-[#0b121e]/80 hover:bg-[#00a8e1]/30 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-[#0b121e]/90 hover:bg-[#00a8e1]/30 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="overflow-y-auto flex-1 no-scrollbar">
+          <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
             {/* Prime Hero Backdrop with Cyan Lighting */}
-            <div className="relative aspect-video w-full max-h-[420px] bg-black">
+            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
@@ -555,24 +568,24 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
   if (platformId === 'disney') {
     return (
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl bg-[#040714] rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-blue-500/20 my-auto text-white select-none animate-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col"
+          className="relative w-full max-w-4xl h-[92vh] max-h-[860px] bg-[#040714] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-blue-500/30 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-black/60 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+            className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-black/75 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
             title="Close"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="overflow-y-auto flex-1 no-scrollbar">
-            <div className="relative aspect-video w-full max-h-[420px] bg-black">
+          <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
+            <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
               <img
                 src={movie.backdrop || movie.thumbnail}
                 alt={movie.title}
@@ -692,11 +705,11 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
 
   return (
     <div 
-      className="fixed inset-0 z-[120] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200 font-sans"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 md:pl-24 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200 font-sans"
       onClick={onClose}
     >
       <div 
-        className={`relative w-full max-w-4xl rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-white/10 my-auto text-white select-none animate-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col ${
+        className={`relative w-full max-w-4xl h-[92vh] max-h-[860px] rounded-xl sm:rounded-2xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.95)] border border-white/10 text-white select-none animate-in zoom-in-95 duration-200 flex flex-col ${
           isApple ? 'bg-[#161617]/95 backdrop-blur-3xl' : isMax ? 'bg-[#0d081f]' : 'bg-[#0b0c0e]'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -704,14 +717,14 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-black/60 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+          className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-black/75 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition active:scale-90 shadow-xl"
           title="Close"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="overflow-y-auto flex-1 no-scrollbar">
-          <div className="relative aspect-video w-full max-h-[420px] bg-black">
+        <div ref={scrollContainerRef} className="overflow-y-auto flex-1 no-scrollbar overscroll-contain">
+          <div className="relative aspect-video w-full max-h-[380px] sm:max-h-[420px] bg-black shrink-0">
             <img
               src={movie.backdrop || movie.thumbnail}
               alt={movie.title}

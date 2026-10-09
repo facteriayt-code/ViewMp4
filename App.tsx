@@ -37,6 +37,7 @@ import { BingrNavigation, BingrNavTab } from './components/BingrNavigation.tsx';
 import { RandomMovieSelectorModal } from './components/RandomMovieSelectorModal.tsx';
 import { PersonalizedRecommendationsModal } from './components/PersonalizedRecommendationsModal.tsx';
 import { AccountInfoModal } from './components/AccountInfoModal.tsx';
+import { PlatformMovieDetailsModal } from './components/PlatformMovieDetailsModal.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -825,18 +826,40 @@ const App: React.FC = () => {
       )}
 
       {selectedMovie && (
-        <MovieDetails 
-          movie={selectedMovie} 
-          allMovies={movies} 
-          user={user}
-          onClose={() => {
-            setSelectedMovie(null);
-            clearModalUrl();
-          }} 
-          onPlay={handlePlay}
-          onMovieSelect={handleSelectMovie}
-          onEdit={handleEdit}
-        />
+        activePlatform ? (
+          <PlatformMovieDetailsModal
+            movie={selectedMovie}
+            platformId={activePlatform}
+            allMovies={movies}
+            onClose={() => {
+              setSelectedMovie(null);
+              clearModalUrl();
+            }}
+            onPlay={(movieToPlay, s, ep) => {
+              setSelectedMovie(null);
+              clearModalUrl();
+              handlePlay({
+                ...movieToPlay,
+                initialSeason: s ?? movieToPlay.initialSeason,
+                initialEpisode: ep ?? movieToPlay.initialEpisode
+              });
+            }}
+            onSelectMovie={handleSelectMovie}
+          />
+        ) : (
+          <MovieDetails 
+            movie={selectedMovie} 
+            allMovies={movies} 
+            user={user}
+            onClose={() => {
+              setSelectedMovie(null);
+              clearModalUrl();
+            }} 
+            onPlay={handlePlay}
+            onMovieSelect={handleSelectMovie}
+            onEdit={handleEdit}
+          />
+        )
       )}
 
       {playingMovie && (
