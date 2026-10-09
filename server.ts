@@ -1,13 +1,15 @@
 console.log("SERVER.TS LOADED - " + new Date().toISOString());
 
 import express from "express";
+import http from "http";
+import fs, { readFileSync } from "fs";
+import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import admin from 'firebase-admin';
-import { readFileSync } from 'fs';
 import { GoogleGenAI, Type } from "@google/genai";
 
 let aiClient: GoogleGenAI | null = null;
@@ -1181,6 +1183,212 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   });
 
+  // =========================================================================
+  // COMMUNITY CHAT SYSTEM (Connected for all users, auto-deletes in 12 hours)
+  // =========================================================================
+  interface CommunityChatMessage {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    userEmail?: string;
+    text: string;
+    createdAt: number;
+    expiresAt: number;
+  }
+
+  const CHAT_RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+  const CHAT_STORAGE_FILE = path.join(__dirname, 'community_chat_history.json');
+
+  let communityMessages: CommunityChatMessage[] = [];
+
+  // Load chat messages and purge any older than 12 hours
+  function loadCommunityMessages() {
+    try {
+      if (fs.existsSync(CHAT_STORAGE_FILE)) {
+        const raw = fs.readFileSync(CHAT_STORAGE_FILE, 'utf8');
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) {
+          const now = Date.now();
+          communityMessages = data.filter(m => (now - m.createdAt) < CHAT_RETENTION_MS);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load community chat history:", err);
+      communityMessages = [];
+    }
+
+    // Seed welcoming initial messages if empty
+    if (communityMessages.length === 0) {
+      const now = Date.now();
+      communityMessages = [
+        {
+          id: 'welcome-community-1',
+          userId: 'system',
+          userName: 'GeminiStream Community',
+          userAvatar: 'https://ui-avatars.com/api/?name=GS&background=E50914&color=fff',
+          text: '👋 Welcome to the GeminiStream Live Community Chat! Connect, share stream recommendations, and talk movies. All chats auto-delete after 12 hours.',
+          createdAt: now - 3600000,
+          expiresAt: now - 3600000 + CHAT_RETENTION_MS
+        },
+        {
+          id: 'welcome-community-2',
+          userId: 'mod-alex',
+          userName: 'Alex R. (Moderator)',
+          userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
+          text: '🍿 What is everyone binging tonight? The 4K streaming servers are flying fast today!',
+          createdAt: now - 1800000,
+          expiresAt: now - 1800000 + CHAT_RETENTION_MS
+        }
+      ];
+      saveCommunityMessages();
+    }
+  }
+
+  function saveCommunityMessages() {
+    try {
+      fs.writeFileSync(CHAT_STORAGE_FILE, JSON.stringify(communityMessages, null, 2), 'utf8');
+    } catch (err) {
+      console.error("Failed to persist community chat history:", err);
+    }
+  }
+
+  function pruneExpiredMessages(): boolean {
+    const now = Date.now();
+    const prevCount = communityMessages.length;
+    communityMessages = communityMessages.filter(m => (now - m.createdAt) < CHAT_RETENTION_MS);
+    const changed = communityMessages.length !== prevCount;
+    if (changed) {
+      saveCommunityMessages();
+    }
+    return changed;
+  }
+
+  loadCommunityMessages();
+
+  // Track connected WebSocket clients
+  const activeWsClients = new Set<WebSocket>();
+
+  function broadcastWs(payload: any) {
+    const msgString = JSON.stringify(payload);
+    for (const client of activeWsClients) {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(msgString);
+        } catch (e) {
+          // ignore broken socket
+        }
+      }
+    }
+  }
+
+  // Periodic 12-hour purge timer (every 30 seconds)
+  setInterval(() => {
+    const pruned = pruneExpiredMessages();
+    if (pruned) {
+      broadcastWs({ 
+        type: 'chat:pruned', 
+        messages: communityMessages,
+        timestamp: Date.now() 
+      });
+    }
+  }, 30000);
+
+  // REST API: GET all messages (< 12 hours old)
+  apiRouter.get("/chat/messages", (req, res) => {
+    pruneExpiredMessages();
+    res.json({
+      success: true,
+      messages: communityMessages,
+      onlineCount: Math.max(1, activeWsClients.size),
+      retentionHours: 12,
+      timestamp: Date.now()
+    });
+  });
+
+  // REST API: POST send message (Requires registered user)
+  apiRouter.post("/chat/send", (req, res) => {
+    try {
+      const { userId, userName, userAvatar, userEmail, text } = req.body;
+
+      if (!userId || !userName) {
+        return res.status(401).json({
+          success: false,
+          error: "Only registered users can participate in the community chat. Please sign in or register."
+        });
+      }
+
+      const trimmedText = (text || '').trim();
+      if (!trimmedText) {
+        return res.status(400).json({ success: false, error: "Message cannot be empty." });
+      }
+
+      if (trimmedText.length > 1000) {
+        return res.status(400).json({ success: false, error: "Message too long (max 1000 characters)." });
+      }
+
+      pruneExpiredMessages();
+
+      const now = Date.now();
+      const newMessage: CommunityChatMessage = {
+        id: `msg_${now}_${Math.random().toString(36).slice(2, 9)}`,
+        userId: String(userId),
+        userName: String(userName),
+        userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E50914&color=fff`,
+        userEmail: userEmail || '',
+        text: trimmedText,
+        createdAt: now,
+        expiresAt: now + CHAT_RETENTION_MS
+      };
+
+      communityMessages.push(newMessage);
+      saveCommunityMessages();
+
+      // Broadcast new message to all connected clients
+      broadcastWs({
+        type: 'chat:message',
+        message: newMessage
+      });
+
+      res.json({
+        success: true,
+        message: newMessage
+      });
+    } catch (err: any) {
+      console.error("Chat send error:", err);
+      res.status(500).json({ success: false, error: err.message || "Failed to post message" });
+    }
+  });
+
+  // REST API: DELETE own message
+  apiRouter.delete("/chat/messages/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+      const index = communityMessages.findIndex(m => m.id === id);
+      if (index === -1) {
+        return res.status(404).json({ success: false, error: "Message not found." });
+      }
+
+      const msg = communityMessages[index];
+      if (msg.userId !== userId && userId !== 'admin') {
+        return res.status(403).json({ success: false, error: "Unauthorized to delete this message." });
+      }
+
+      communityMessages.splice(index, 1);
+      saveCommunityMessages();
+
+      broadcastWs({
+        type: 'chat:deleted',
+        id
+      });
+
+      res.json({ success: true, messageId: id });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Mount API Router
   app.use("/api", apiRouter);
 
@@ -1215,8 +1423,85 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`>>> SERVER RUNNING ON PORT ${PORT} <<<`);
+  // Create HTTP Server & Attach WebSocket Server
+  const httpServer = http.createServer(app);
+
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: "/ws/chat"
+  });
+
+  wss.on("connection", (ws: WebSocket) => {
+    activeWsClients.add(ws);
+    console.log(`[WS] Client connected to chat. Total clients: ${activeWsClients.size}`);
+
+    // Send initial active messages & current online count
+    pruneExpiredMessages();
+    ws.send(JSON.stringify({
+      type: "chat:init",
+      messages: communityMessages,
+      onlineCount: Math.max(1, activeWsClients.size),
+      retentionHours: 12
+    }));
+
+    // Broadcast updated presence
+    broadcastWs({
+      type: "chat:presence",
+      onlineCount: Math.max(1, activeWsClients.size)
+    });
+
+    ws.on("message", (data: any) => {
+      try {
+        const payload = JSON.parse(data.toString());
+        if (payload.type === "chat:send") {
+          const { userId, userName, userAvatar, userEmail, text } = payload;
+          if (!userId || !userName || !text?.trim()) return;
+
+          pruneExpiredMessages();
+          const now = Date.now();
+          const newMessage: CommunityChatMessage = {
+            id: `msg_${now}_${Math.random().toString(36).slice(2, 9)}`,
+            userId: String(userId),
+            userName: String(userName),
+            userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E50914&color=fff`,
+            userEmail: userEmail || '',
+            text: String(text).trim().slice(0, 1000),
+            createdAt: now,
+            expiresAt: now + CHAT_RETENTION_MS
+          };
+
+          communityMessages.push(newMessage);
+          saveCommunityMessages();
+
+          broadcastWs({
+            type: "chat:message",
+            message: newMessage
+          });
+        } else if (payload.type === "chat:ping") {
+          ws.send(JSON.stringify({ type: "chat:pong" }));
+        }
+      } catch (err) {
+        console.error("[WS] Message parsing error:", err);
+      }
+    });
+
+    ws.on("close", () => {
+      activeWsClients.delete(ws);
+      console.log(`[WS] Client disconnected. Total clients: ${activeWsClients.size}`);
+      broadcastWs({
+        type: "chat:presence",
+        onlineCount: Math.max(1, activeWsClients.size)
+      });
+    });
+
+    ws.on("error", (err) => {
+      console.error("[WS] Error:", err);
+      activeWsClients.delete(ws);
+    });
+  });
+
+  httpServer.listen(PORT, "0.0.0.0", () => {
+    console.log(`>>> SERVER RUNNING ON PORT ${PORT} (HTTP + WEBSOCKET /ws/chat) <<<`);
     console.log(`>>> APP_URL: ${process.env.APP_URL || 'Not set'} <<<`);
     console.log(`>>> TELEGRAM_TOKEN: ${process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'} <<<`);
   });

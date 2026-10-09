@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, ChevronDown, ShieldCheck, MessageSquare } from 'lucide-react';
 import { User, Movie } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
 import { SearchBoxResults } from './SearchBoxResults.tsx';
@@ -12,6 +12,7 @@ interface NavbarProps {
   onSearch: (term: string) => void;
   onSelectPlatform?: (platform: PlatformId) => void;
   onAdBlockClick?: () => void;
+  onChatClick?: () => void;
   searchTerm?: string;
   catalogMovies?: Movie[];
   onSelectMovie?: (movie: Movie) => void;
@@ -26,6 +27,7 @@ const Navbar: React.FC<NavbarProps> = ({
   onSearch, 
   onSelectPlatform,
   onAdBlockClick,
+  onChatClick,
   searchTerm: parentSearchTerm = '',
   catalogMovies = [],
   onSelectMovie,
@@ -168,13 +170,15 @@ const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0">
         {/* Perfectly Fitted Search Box with Real-time Trending Searches Dropdown */}
         <div ref={searchContainerRef} className="relative">
-          <div className="flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/75 hover:bg-black/90 focus-within:bg-black border border-white/15 hover:border-white/30 focus-within:border-red-600 rounded-full transition-all duration-200 shadow-inner focus-within:ring-2 focus-within:ring-red-600/25">
+          <div className={`flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/80 hover:bg-black/95 focus-within:bg-black border border-white/20 hover:border-white/35 focus-within:border-red-600 rounded-full transition-all duration-300 shadow-inner focus-within:ring-2 focus-within:ring-red-600/30 ${
+            isSearchFocused ? 'w-44 xs:w-56 sm:w-64 md:w-72 lg:w-80 shadow-[0_0_20px_rgba(229,9,20,0.2)]' : 'w-32 xs:w-44 sm:w-56 md:w-64 lg:w-72'
+          }`}>
             <Search className="w-4 h-4 text-gray-400 shrink-0 transition-colors" />
             <input 
               id="main-search-input"
               type="text" 
-              placeholder="Search movies & shows..."
-              className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-28 xs:w-40 sm:w-56 md:w-64 lg:w-72 placeholder:text-gray-400 text-white font-medium"
+              placeholder={isSearchFocused ? "Search movies & shows..." : "Search..."}
+              className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-full min-w-0 placeholder:text-gray-400 text-white font-medium truncate"
               value={searchTerm}
               onChange={handleSearchChange}
               onFocus={() => setIsSearchFocused(true)}
@@ -191,9 +195,9 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Real-time Trending Searches Dropdown - Anchored to right-0 so it fits within viewport without clipping */}
+          {/* Real-time Trending Searches Dropdown - Fitted viewport bounds (fixed on mobile, absolute on desktop) */}
           {isSearchFocused && !searchTerm.trim() && (
-            <div className="absolute right-0 w-[92vw] sm:w-[460px] md:w-[490px] max-w-[calc(100vw-1.5rem)] mt-2 top-full z-[120] bg-[#0e1017]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[460px] sm:max-w-[min(460px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0e15]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
               <SearchBoxResults
                 searchTerm=""
                 catalogMovies={catalogMovies}
@@ -217,6 +221,20 @@ const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Community Live Chat Button (Registered users real-time chat, 12h auto-delete) */}
+        {onChatClick && (
+          <button
+            type="button"
+            onClick={onChatClick}
+            className="flex items-center space-x-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-white px-2 sm:px-2.5 py-1.5 rounded-lg transition text-xs font-semibold shrink-0 active:scale-95 shadow-sm group"
+            title="Community Live Chat (Connected for all users, 12h auto-delete)"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-red-500 fill-red-500/30 group-hover:scale-110 transition-transform" />
+            <span className="hidden xs:inline text-[10px] font-black uppercase tracking-wider">Chat</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          </button>
+        )}
 
         {/* Smart Link Ad Integration */}
         <a 

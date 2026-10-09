@@ -61,3 +61,14 @@ export interface ContinueWatchingItem {
   season?: number;
   episode?: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userEmail?: string;
+  text: string;
+  createdAt: number;
+  expiresAt: number;
+}

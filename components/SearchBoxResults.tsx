@@ -161,24 +161,24 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   // ─────────────────────────────────────────────────────────────
   if (isSearchEmpty) {
     return (
-      <div className={`w-full ${isDropdown ? 'text-white flex flex-col max-h-[80vh] overflow-hidden' : 'space-y-6 pt-2 pb-12'}`}>
+      <div className={`w-full ${isDropdown ? 'text-white flex flex-col max-h-[min(540px,76vh)] overflow-hidden' : 'space-y-6 pt-2 pb-12'}`}>
         {/* Trending Searches Header */}
-        <div className={`${isDropdown ? 'p-3.5 border-b border-white/10 bg-zinc-900/95 shrink-0' : 'bg-gradient-to-r from-red-950/40 via-zinc-900/80 to-zinc-950 border border-white/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl'}`}>
+        <div className={`${isDropdown ? 'p-3 sm:p-3.5 border-b border-white/10 bg-zinc-900/95 shrink-0' : 'bg-gradient-to-r from-red-950/40 via-zinc-900/80 to-zinc-950 border border-white/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl'}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-red-600/20 text-red-500 border border-red-500/30">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="p-1.5 rounded-lg bg-red-600/20 text-red-500 border border-red-500/30 shrink-0">
                 <Flame className="w-4 h-4 text-red-500 animate-pulse" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider truncate">
                     Trending Searches
                   </h3>
-                  <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded bg-red-600 text-white animate-pulse">
+                  <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded bg-red-600 text-white animate-pulse shrink-0">
                     Live
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[10px] sm:text-[11px] text-gray-400 truncate">
                   Most searched titles across GeminiStream today
                 </p>
               </div>
@@ -188,7 +188,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="p-1 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition shrink-0"
+                className="p-1 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition shrink-0 ml-2"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -197,13 +197,13 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
           </div>
 
           {/* Quick Search Tags Carousel */}
-          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-3">
+          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-2.5 pb-0.5">
             {POPULAR_SEARCH_TAGS.map((tag) => (
               <button
                 key={tag}
                 type="button"
                 onClick={() => handleQueryClick(tag)}
-                className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white border border-white/10 transition whitespace-nowrap active:scale-95"
+                className="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white border border-white/10 transition whitespace-nowrap active:scale-95 shrink-0"
               >
                 {tag}
               </button>
@@ -212,10 +212,10 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
         </div>
 
         {/* Scrollable Content: Ranked Trending Queries + Quick Picks */}
-        <div className={`${isDropdown ? 'overflow-y-auto flex-1 p-3 space-y-4 no-scrollbar' : 'space-y-6'}`}>
+        <div className={`${isDropdown ? 'overflow-y-auto flex-1 p-2.5 sm:p-3 space-y-3.5 no-scrollbar' : 'space-y-6'}`}>
           {/* Ranked Queries Grid */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between px-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between px-1 text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               <span>Popular Queries</span>
               <span className="text-red-400 font-medium">Real-Time Rank</span>
             </div>
@@ -225,9 +225,9 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                 <div
                   key={item.id}
                   onClick={() => handleQueryClick(item.query)}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-red-600/30 transition cursor-pointer group"
+                  className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-red-600/30 transition cursor-pointer group"
                 >
-                  <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 flex-1">
                     <span className={`w-5 h-5 rounded-md flex items-center justify-center font-black text-xs shrink-0 ${
                       index === 0 
                         ? 'bg-red-600 text-white shadow-md shadow-red-600/40' 
@@ -240,22 +240,22 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                       {index + 1}
                     </span>
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-1.5 truncate">
                         <span className="text-xs sm:text-sm font-bold text-white group-hover:text-red-400 transition truncate">
                           {item.query}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2 text-[10px] text-gray-400">
-                        <span>{item.category}</span>
+                      <div className="flex items-center space-x-1.5 text-[9px] sm:text-[10px] text-gray-400 truncate">
+                        <span className="truncate">{item.category}</span>
                         <span>•</span>
-                        <span className="text-gray-500">{item.searchesToday}</span>
+                        <span className="text-gray-500 shrink-0">{item.searchesToday}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-1 shrink-0 ml-2">
-                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-red-400 transition">
+                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-red-400 transition hidden xs:inline">
                       Search
                     </span>
                     <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
@@ -269,14 +269,14 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
           {trendingQuickPicks.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-white/10">
               <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Trending Movies Quick-Pick</span>
+                  <span>Trending Quick-Picks</span>
                 </span>
                 <span className="text-[10px] text-gray-500">Instant stream</span>
               </div>
 
-              <div className={`grid ${isDropdown ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'} gap-2 sm:gap-2.5`}>
+              <div className={`grid ${isDropdown ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'} gap-2`}>
                 {trendingQuickPicks.map((m) => (
                   <div
                     key={m.id}
@@ -284,7 +284,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                       onSelectMovie(m);
                       onClose?.();
                     }}
-                    className="group/pick cursor-pointer space-y-1.5 rounded-xl bg-white/[0.02] p-1.5 hover:bg-white/[0.06] border border-white/5 hover:border-white/15 transition"
+                    className="group/pick cursor-pointer space-y-1 rounded-xl bg-white/[0.02] p-1.5 hover:bg-white/[0.06] border border-white/5 hover:border-white/15 transition min-w-0"
                   >
                     <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-md">
                       <img
@@ -293,13 +293,13 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                         className="w-full h-full object-cover group-hover/pick:scale-105 transition duration-300"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/pick:opacity-100 transition flex items-center justify-center">
-                        <Play className="w-5 h-5 fill-white text-white drop-shadow-md" />
+                        <Play className="w-4 h-4 fill-white text-white drop-shadow-md" />
                       </div>
-                      <div className="absolute top-1 left-1 bg-black/70 px-1 rounded text-[9px] font-bold text-amber-300">
+                      <div className="absolute top-1 left-1 bg-black/75 px-1 py-0.2 rounded text-[8px] sm:text-[9px] font-bold text-amber-300">
                         ★ {typeof m.userRating === 'number' ? m.userRating.toFixed(1) : '8.2'}
                       </div>
                     </div>
-                    <h4 className="text-[11px] font-bold text-gray-200 group-hover/pick:text-white truncate">
+                    <h4 className="text-[10px] sm:text-[11px] font-bold text-gray-200 group-hover/pick:text-white truncate">
                       {m.title}
                     </h4>
                   </div>

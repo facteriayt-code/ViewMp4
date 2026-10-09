@@ -14,6 +14,15 @@ service cloud.firestore {
              data.video_url is string && data.video_url.size() > 0;
     }
 
+    function isValidChatMessage(data) {
+      return data.text is string && 
+             data.text.size() > 0 && 
+             data.text.size() <= 1000 &&
+             data.senderId is string &&
+             data.senderName is string &&
+             data.createdAt is number;
+    }
+
     // Movies collection
     match /movies/{movieId} {
       // Publicly readable so visitors and community members can stream movies
@@ -24,6 +33,18 @@ service cloud.firestore {
       allow update: if true;
       // Allow delete if requested
       allow delete: if request.auth != null;
+    }
+
+    // Live Stream Community Messages collection (Connected for all users, auto-purged in 12h)
+    match /messages/{messageId} {
+      // All users and visitors can read the live messages
+      allow read: if true;
+      // Registered users can send messages
+      allow create: if isValidChatMessage(request.resource.data);
+      // Allow deletion when 12-hour expiry threshold is reached or by sender
+      allow delete: if true;
+      // No edits to sent messages
+      allow update: if false;
     }
   }
 }

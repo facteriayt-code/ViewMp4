@@ -19,12 +19,30 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "thumbnail", "video_url"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A community live stream chat message connected for all users with 12-hour auto-expiration.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "expiresAt": { "type": "number" }
+      },
+      "required": ["senderId", "senderName", "text", "createdAt", "expiresAt"]
     }
   },
   "firestore": {
     "/movies/{movieId}": {
       "schema": "Movie",
       "description": "Collection of public streaming movies and user broadcasts."
+    },
+    "/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Collection of real-time community chat messages that expire and delete within 12 hours."
     }
   }
 }

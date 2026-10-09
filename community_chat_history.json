@@ -1,0 +1,30 @@
+[
+  {
+    "id": "welcome-community-1",
+    "userId": "system",
+    "userName": "GeminiStream Community",
+    "userAvatar": "https://ui-avatars.com/api/?name=GS&background=E50914&color=fff",
+    "text": "👋 Welcome to the GeminiStream Live Community Chat! Connect, share stream recommendations, and talk movies. All chats auto-delete after 12 hours.",
+    "createdAt": 1791545260616,
+    "expiresAt": 1791588460616
+  },
+  {
+    "id": "welcome-community-2",
+    "userId": "mod-alex",
+    "userName": "Alex R. (Moderator)",
+    "userAvatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop",
+    "text": "🍿 What is everyone binging tonight? The 4K streaming servers are flying fast today!",
+    "createdAt": 1791547060616,
+    "expiresAt": 1791590260616
+  },
+  {
+    "id": "msg_1791548873940_fevezxj",
+    "userId": "test-user-1",
+    "userName": "Sarah Connor",
+    "userAvatar": "https://ui-avatars.com/api/?name=Sarah%20Connor&background=E50914&color=fff",
+    "userEmail": "sarah@example.com",
+    "text": "Can anyone recommend a good sci-fi movie?",
+    "createdAt": 1791548873940,
+    "expiresAt": 1791592073940
+  }
+]

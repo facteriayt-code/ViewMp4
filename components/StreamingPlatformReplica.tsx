@@ -274,15 +274,17 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
         <div className="flex items-center space-x-3 md:space-x-5">
           {/* In-Platform Search Bar */}
           <div ref={replicaSearchRef} className="relative">
-            <div className="flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/75 hover:bg-black/90 border border-white/15 rounded-full focus-within:border-white/50 focus-within:bg-black/95 transition-all shadow-inner">
+            <div className={`flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/80 hover:bg-black/95 border border-white/20 rounded-full focus-within:border-white/50 focus-within:bg-black/95 transition-all duration-300 shadow-inner ${
+              isSearchFocused ? 'w-44 xs:w-56 sm:w-64 md:w-72' : 'w-32 xs:w-44 sm:w-56 md:w-64'
+            }`}>
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                placeholder={`Search movies & ${config.shortName}...`}
-                className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-32 xs:w-44 sm:w-56 md:w-64 text-white placeholder:text-gray-400 font-medium"
+                placeholder={isSearchFocused ? `Search movies & ${config.shortName}...` : `Search...`}
+                className="bg-transparent border-none focus:outline-none text-xs sm:text-sm ml-2 w-full min-w-0 text-white placeholder:text-gray-400 font-medium truncate"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="p-1 text-gray-400 hover:text-white transition active:scale-90 ml-1">
@@ -291,9 +293,9 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
               )}
             </div>
 
-            {/* In-Platform Trending Searches Dropdown */}
+            {/* In-Platform Trending Searches Dropdown - Fitted viewport bounds */}
             {isSearchFocused && !searchQuery.trim() && (
-              <div className="absolute right-0 w-[92vw] sm:w-[460px] md:w-[490px] max-w-[calc(100vw-1.5rem)] mt-2 top-full z-[120] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[460px] sm:max-w-[min(460px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <SearchBoxResults
                   searchTerm=""
                   catalogMovies={movies}

@@ -38,6 +38,8 @@ import { RandomMovieSelectorModal } from './components/RandomMovieSelectorModal.
 import { PersonalizedRecommendationsModal } from './components/PersonalizedRecommendationsModal.tsx';
 import { AccountInfoModal } from './components/AccountInfoModal.tsx';
 import { PlatformMovieDetailsModal } from './components/PlatformMovieDetailsModal.tsx';
+import { CommunityChatModal } from './components/CommunityChatModal.tsx';
+import { CommunityChatWidget } from './components/CommunityChatWidget.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -68,6 +70,7 @@ const App: React.FC = () => {
   const [showRandomModal, setShowRandomModal] = useState(false);
   const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [bingrActiveTab, setBingrActiveTab] = useState<BingrNavTab>('home');
   const [tmdbSpotlightMovies, setTmdbSpotlightMovies] = useState<Movie[]>(() => {
     try {
@@ -692,6 +695,7 @@ const App: React.FC = () => {
             }} 
             onLoginClick={() => setShowLoginModal(true)} 
             onLogout={handleLogout}
+            onChatClick={() => setShowChatModal(true)}
             onSearch={setSearchTerm}
             onSelectPlatform={handleSelectPlatform}
             onAdBlockClick={() => setShowAdGuardModal(true)}
@@ -959,6 +963,20 @@ const App: React.FC = () => {
         continueWatchingItems={continueWatchingItems}
         onPlayMovie={handlePlay}
         onSelectMovie={handleSelectMovie}
+      />
+
+      {/* Community Live Chat Floating Widget (All users connected, 12h auto-delete) */}
+      <CommunityChatWidget
+        isOpen={showChatModal}
+        onOpenChat={() => setShowChatModal(true)}
+      />
+
+      {/* Community Live Chat Window */}
+      <CommunityChatModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+        user={user}
+        onLoginClick={() => setShowLoginModal(true)}
       />
     </div>
   );
