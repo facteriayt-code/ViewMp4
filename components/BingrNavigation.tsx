@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Search, Dices, Sparkles, Tv, User as UserIcon, Film } from 'lucide-react';
+import { Home, Search, Dices, Sparkles, Tv, User as UserIcon, Film, MessageSquare } from 'lucide-react';
 import { User } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
 
@@ -13,6 +13,7 @@ interface BingrNavigationProps {
   onOpenRandom: () => void;
   onOpenRecommendations: () => void;
   onOpenAccount: () => void;
+  onOpenChat?: () => void;
   onSelectPlatform?: (platform: PlatformId) => void;
   onGoHome: () => void;
 }
@@ -25,6 +26,7 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
   onOpenRandom,
   onOpenRecommendations,
   onOpenAccount,
+  onOpenChat,
   onSelectPlatform,
   onGoHome,
 }) => {
@@ -39,15 +41,6 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
       onClick: () => {
         onTabChange('home');
         onGoHome();
-      }
-    },
-    {
-      id: 'search' as BingrNavTab,
-      label: 'Search',
-      icon: Search,
-      onClick: () => {
-        onTabChange('search');
-        onOpenSearch();
       }
     },
     {
@@ -220,6 +213,35 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
           </div>
         )}
 
+        {/* Dedicated Desktop Sidebar Community Chat Action */}
+        {onOpenChat && (
+          <div className="px-3 pb-2 w-full shrink-0">
+            <button
+              type="button"
+              onClick={onOpenChat}
+              className="w-full flex items-center h-10 rounded-xl px-2.5 transition-all duration-300 relative text-gray-400 hover:text-white hover:bg-white/10 group"
+              title="Community Live Chat (Connected for all users, 12h auto-delete)"
+            >
+              <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-red-600/15 group-hover:bg-red-600/30 text-red-500 transition-colors relative">
+                <MessageSquare className="w-4 h-4 fill-red-500/20" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              </span>
+              <div
+                className={`ml-3 flex items-center justify-between flex-1 overflow-hidden transition-all duration-300 ${
+                  isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-3 pointer-events-none'
+                }`}
+              >
+                <span className="text-xs font-bold tracking-wide whitespace-nowrap text-gray-300 group-hover:text-white">
+                  Live Chat
+                </span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap ml-2">
+                  12h
+                </span>
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* Bottom User Quick Info / Version */}
         <div className="p-3 w-20 flex flex-col items-center justify-center shrink-0 border-t border-white/5">
           <div className="text-[9px] font-black tracking-widest text-gray-500 uppercase text-center">
@@ -228,7 +250,7 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
         </div>
       </aside>
 
-      {/* ── MOBILE: Floating Bottom Dock Bar (Bingr exact mobile dock with transition effect) ── */}
+      {/* ── MOBILE: Floating Bottom Dock Bar (Clean 4-item dock: Home, Dice, For You, Account) ── */}
       <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[60] w-[94%] max-w-md">
         <div className="relative flex items-center justify-around h-14 bg-[#0d0f17]/90 backdrop-blur-2xl border border-white/15 px-2 py-1 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.85)]">
           {navItems.filter(item => item.id !== 'hubs').map((item) => {
@@ -240,7 +262,7 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
                 key={item.id}
                 type="button"
                 onClick={item.onClick}
-                className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-full transition-all duration-300 active:scale-90 ${
+                className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-full transition-all duration-300 active:scale-90 ${
                   isActive ? 'text-white' : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title={item.label}
@@ -264,7 +286,7 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
                 </span>
 
                 {/* Subtitle / Tiny Label */}
-                <span className={`relative z-10 text-[9px] font-bold tracking-tight mt-0.5 leading-none transition-colors ${
+                <span className={`relative z-10 text-[10px] font-bold tracking-tight mt-0.5 leading-none transition-colors ${
                   isActive ? 'text-white font-black' : 'text-gray-400'
                 }`}>
                   {item.id === 'random' ? 'Dice' : item.id === 'recommendations' ? 'For You' : item.label}

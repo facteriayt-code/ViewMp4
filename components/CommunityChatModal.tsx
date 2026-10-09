@@ -88,7 +88,6 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
     if (!inputText.trim()) return;
 
     if (!user) {
-      setErrorMsg('Please sign in to send messages.');
       onLoginClick();
       return;
     }
@@ -113,6 +112,7 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
       onLoginClick();
       return;
     }
+    setErrorMsg(null);
     setInputText(prev => prev + emoji);
     inputRef.current?.focus();
   };
@@ -128,10 +128,10 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Minimized Floating Widget
+  // Minimized Floating Widget - Positioned cleanly above bottom dock so it never blocks navigation
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 z-[999] flex items-center bg-[#0d0f17] border border-white/20 text-white px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in">
+      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[80] flex items-center bg-[#0d0f17]/95 border border-white/20 text-white px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in">
         <button 
           onClick={() => setIsMinimized(false)}
           className="flex items-center space-x-2 text-xs font-bold hover:text-red-400 transition"
@@ -145,6 +145,7 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
         <button 
           onClick={onClose}
           className="ml-3 p-1 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition"
+          title="Close chat"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -153,9 +154,23 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 sm:inset-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:h-[640px] max-h-[100vh] sm:max-h-[calc(100vh-2rem)] z-[999] flex flex-col bg-[#0b0d14]/98 backdrop-blur-2xl border border-white/15 sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.9)] overflow-hidden animate-in fade-in slide-in-from-bottom-3">
-      {/* 1. Header */}
-      <div className="p-3.5 sm:p-4 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-white/10 flex items-center justify-between shrink-0">
+    <>
+      {/* Mobile backdrop ONLY - never block desktop screen! */}
+      <div 
+        className="sm:hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs animate-in fade-in"
+        onClick={onClose}
+      />
+
+      {/* Floating Corner Chat Window (Desktop: Non-blocking bottom-right corner; Mobile: Bottom sheet) */}
+      <div 
+        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[85] flex justify-end pointer-events-none p-0 sm:p-0"
+      >
+        <div 
+          className="pointer-events-auto w-full sm:w-[410px] h-[82vh] sm:h-[600px] max-h-[85vh] sm:max-h-[620px] flex flex-col bg-[#0b0d14]/98 backdrop-blur-2xl border border-white/15 rounded-t-3xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in slide-in-from-bottom-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+        {/* 1. Header */}
+        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center text-white shadow-md shadow-red-600/30 shrink-0">
             <MessageSquare className="w-4 h-4 fill-white" />
@@ -236,7 +251,7 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
             const isSystem = msg.userId === 'system';
             const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const expiresIn = communityChatService.formatTimeUntilExpiration(msg.expiresAt);
-            const itemKey = msg.id || `msg_${msg.createdAt}_${index}`;
+            const itemKey = `${msg.id || 'msg'}_${msg.createdAt}_${index}`;
 
             if (isSystem) {
               return (
@@ -384,6 +399,8 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
         )}
       </div>
     </div>
+  </div>
+  </>
   );
 };
 

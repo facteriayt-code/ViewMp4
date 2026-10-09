@@ -655,6 +655,7 @@ const App: React.FC = () => {
         onOpenRandom={handleBingrOpenRandom}
         onOpenRecommendations={handleBingrOpenRecommendations}
         onOpenAccount={handleBingrOpenAccount}
+        onOpenChat={() => setShowChatModal(true)}
         onSelectPlatform={handleSelectPlatform}
         onGoHome={handleBingrGoHome}
       />

@@ -45,7 +45,7 @@ export const CommunityChatWidget: React.FC<CommunityChatWidgetProps> = ({
   if (isOpen) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[90]">
+    <div className="hidden md:block fixed bottom-6 right-6 z-[40]">
       <button
         type="button"
         onClick={onOpenChat}

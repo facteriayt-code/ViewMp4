@@ -38,16 +38,6 @@
     "expiresAt": 1791592882469
   },
   {
-    "id": "msg_1791549682506_s29wp2u",
-    "userId": "google-1791548353575",
-    "userName": "Facteriayt",
-    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
-    "userEmail": "facteriayt@gmail.com",
-    "text": "Stranger things",
-    "createdAt": 1791549682506,
-    "expiresAt": 1791592882506
-  },
-  {
     "id": "msg_1791550028274_hum7flj",
     "userId": "google-1791548353575",
     "userName": "Facteriayt",
@@ -66,5 +56,45 @@
     "text": "Hu",
     "createdAt": 1791550028295,
     "expiresAt": 1791593228295
+  },
+  {
+    "id": "msg_1791550567609_vje4ige",
+    "userId": "google-1791548353575",
+    "userName": "Facteriayt",
+    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
+    "userEmail": "facteriayt@gmail.com",
+    "text": "👏",
+    "createdAt": 1791550567609,
+    "expiresAt": 1791593767609
+  },
+  {
+    "id": "msg_1791550839395_rs4trt1",
+    "userId": "test",
+    "userName": "Test User",
+    "userAvatar": "https://ui-avatars.com/api/?name=Test%20User&background=E50914&color=fff",
+    "userEmail": "",
+    "text": "Hello world",
+    "createdAt": 1791550839395,
+    "expiresAt": 1791594039395
+  },
+  {
+    "id": "msg_1791551009957_u1v4xi1",
+    "userId": "google-1791548353575",
+    "userName": "Facteriayt",
+    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
+    "userEmail": "facteriayt@gmail.com",
+    "text": "Hi",
+    "createdAt": 1791551009957,
+    "expiresAt": 1791594209957
+  },
+  {
+    "id": "msg_1791551506728_e2gpomxng45",
+    "userId": "test-user",
+    "userName": "Test User",
+    "userAvatar": "https://ui-avatars.com/api/?name=Test%20User&background=E50914&color=fff",
+    "userEmail": "",
+    "text": "Testing chat sending fix",
+    "createdAt": 1791551506728,
+    "expiresAt": 1791594706728
   }
 ]

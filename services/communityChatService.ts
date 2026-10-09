@@ -14,6 +14,7 @@ class CommunityChatService {
   private reconnectTimer: any = null;
   private pingInterval: any = null;
   private purgeInterval: any = null;
+  private pollInterval: any = null;
 
   private messageListeners: Set<MessageListener> = new Set();
   private presenceListeners: Set<PresenceListener> = new Set();
@@ -41,16 +42,25 @@ class CommunityChatService {
     return `Expires in ${Math.max(1, minutes)}m`;
   }
 
-  // Starts the WebSocket connection and fetches initial history
+  // Starts the WebSocket connection and fetches initial history with resilient background polling
   public connect() {
     this.fetchInitialMessages();
     this.initWebSocket();
+    if (!this.pollInterval) {
+      this.pollInterval = setInterval(() => {
+        this.fetchInitialMessages();
+      }, 4000);
+    }
   }
 
   // Disconnects
   public disconnect() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.pingInterval) clearInterval(this.pingInterval);
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -204,74 +214,85 @@ class CommunityChatService {
     }, 20000);
   }
 
-  // Send a message (Requires registered user)
-  public async sendMessage(user: User, text: string): Promise<ChatMessage> {
+  // Send a message (All connected users can chat)
+  public async sendMessage(user: User | null, text: string): Promise<ChatMessage> {
     const trimmed = text.trim();
     if (!trimmed) throw new Error('Message cannot be empty.');
-    if (!user || !user.id) throw new Error('You must be signed in to send messages.');
+
+    const effectiveUserId = user?.id || (user?.email ? `u_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}` : `streamer_${Date.now()}`);
+    const effectiveUserName = user?.name?.trim() || (user?.email ? user.email.split('@')[0] : 'Streamer');
+    const effectiveAvatar = user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(effectiveUserName)}&background=E50914&color=fff`;
+    const effectiveEmail = user?.email || '';
 
     const now = Date.now();
-    const tempId = `temp_${now}_${Math.random().toString(36).slice(2, 7)}`;
+    const tempId = `temp_${now}_${Math.random().toString(36).slice(2, 9)}`;
     const optimisticMessage: ChatMessage = {
       id: tempId,
-      userId: user.id,
-      userName: user.name || 'Streamer',
-      userAvatar: user.avatar,
-      userEmail: user.email,
+      userId: effectiveUserId,
+      userName: effectiveUserName,
+      userAvatar: effectiveAvatar,
+      userEmail: effectiveEmail,
       text: trimmed,
       createdAt: now,
       expiresAt: now + CHAT_RETENTION_MS
     };
 
-    // Optimistically add to UI
+    // Optimistically add to local UI state
     this.addMessage(optimisticMessage);
 
-    // If WebSocket is open, send exclusively via WebSocket with clientTempId
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      try {
-        this.socket.send(JSON.stringify({
-          type: 'chat:send',
-          userId: user.id,
-          userName: user.name,
-          userAvatar: user.avatar,
-          userEmail: user.email,
-          text: trimmed,
-          clientTempId: tempId
-        }));
-        return optimisticMessage;
-      } catch (err) {
-        console.warn('WebSocket send failed, falling back to HTTP:', err);
-      }
-    }
-
-    // Fallback to REST API if WebSocket is not open
+    // Guaranteed send via REST API
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
-          userName: user.name,
-          userAvatar: user.avatar,
-          userEmail: user.email,
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userAvatar: effectiveAvatar,
+          userEmail: effectiveEmail,
           text: trimmed,
           clientTempId: tempId
         })
       });
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Failed to send message.');
+        let errDesc = 'Failed to send message. Please try again.';
+        try {
+          const errJson = await response.json();
+          if (errJson && errJson.error) {
+            errDesc = errJson.error;
+          }
+        } catch (_) {
+          // ignore
+        }
+        throw new Error(errDesc);
       }
 
       const resData = await response.json();
-      if (resData.success && resData.message) {
+      if (resData && resData.message) {
         this.addMessage(resData.message, tempId);
         return resData.message;
       }
     } catch (err: any) {
       this.removeMessage(tempId);
       throw err;
+    }
+
+    // Also notify WebSocket if connected
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      try {
+        this.socket.send(JSON.stringify({
+          type: 'chat:send',
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userAvatar: effectiveAvatar,
+          userEmail: effectiveEmail,
+          text: trimmed,
+          clientTempId: tempId
+        }));
+      } catch (wsErr) {
+        console.warn('WebSocket send warning:', wsErr);
+      }
     }
 
     return optimisticMessage;

@@ -1306,19 +1306,12 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     });
   });
 
-  // REST API: POST send message (Requires registered user)
+  // REST API: POST send message (Connected for all users, registered or guests)
   apiRouter.post("/chat/send", (req, res) => {
     try {
       const { userId, userName, userAvatar, userEmail, text } = req.body;
 
-      if (!userId || !userName) {
-        return res.status(401).json({
-          success: false,
-          error: "Only registered users can participate in the community chat. Please sign in or register."
-        });
-      }
-
-      const trimmedText = (text || '').trim();
+      const trimmedText = String(text || '').trim();
       if (!trimmedText) {
         return res.status(400).json({ success: false, error: "Message cannot be empty." });
       }
@@ -1327,15 +1320,23 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         return res.status(400).json({ success: false, error: "Message too long (max 1000 characters)." });
       }
 
+      const rawUserId = String(userId || '').trim();
+      const rawUserEmail = String(userEmail || '').trim();
+      const rawUserName = String(userName || '').trim();
+
+      const effectiveUserId = rawUserId || (rawUserEmail ? `u_${rawUserEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : `streamer_${Date.now()}`);
+      const effectiveUserName = rawUserName || (rawUserEmail ? rawUserEmail.split('@')[0] : 'Streamer');
+
       pruneExpiredMessages();
 
       const now = Date.now();
+      const randomSuffix = Math.random().toString(36).slice(2, 9) + Math.random().toString(36).slice(2, 6);
       const newMessage: CommunityChatMessage = {
-        id: `msg_${now}_${Math.random().toString(36).slice(2, 9)}`,
-        userId: String(userId),
-        userName: String(userName),
-        userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E50914&color=fff`,
-        userEmail: userEmail || '',
+        id: `msg_${now}_${randomSuffix}`,
+        userId: effectiveUserId,
+        userName: effectiveUserName,
+        userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(effectiveUserName)}&background=E50914&color=fff`,
+        userEmail: rawUserEmail,
         text: trimmedText,
         createdAt: now,
         expiresAt: now + CHAT_RETENTION_MS
@@ -1347,11 +1348,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
       }
 
       // Broadcast new message to all connected clients
-      broadcastWs({
-        type: 'chat:message',
-        message: newMessage,
-        clientTempId: req.body.clientTempId
-      });
+      try {
+        broadcastWs({
+          type: 'chat:message',
+          message: newMessage,
+          clientTempId: req.body.clientTempId
+        });
+      } catch (wsErr) {
+        console.warn("WebSocket broadcast warning:", wsErr);
+      }
 
       res.json({
         success: true,
@@ -1458,17 +1463,23 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         const payload = JSON.parse(data.toString());
         if (payload.type === "chat:send") {
           const { userId, userName, userAvatar, userEmail, text } = payload;
-          if (!userId || !userName || !text?.trim()) return;
+          const trimmed = String(text || '').trim();
+          if (!trimmed) return;
+
+          const rawUserId = String(userId || '').trim();
+          const rawEmail = String(userEmail || '').trim();
+          const effectiveId = rawUserId || (rawEmail ? `u_${rawEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : `user_${Date.now()}`);
+          const effectiveName = String(userName || '').trim() || (rawEmail ? rawEmail.split('@')[0] : 'Streamer');
 
           pruneExpiredMessages();
           const now = Date.now();
           const newMessage: CommunityChatMessage = {
             id: `msg_${now}_${Math.random().toString(36).slice(2, 9)}`,
-            userId: String(userId),
-            userName: String(userName),
-            userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E50914&color=fff`,
-            userEmail: userEmail || '',
-            text: String(text).trim().slice(0, 1000),
+            userId: effectiveId,
+            userName: effectiveName,
+            userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(effectiveName)}&background=E50914&color=fff`,
+            userEmail: rawEmail,
+            text: trimmed.slice(0, 1000),
             createdAt: now,
             expiresAt: now + CHAT_RETENTION_MS
           };
