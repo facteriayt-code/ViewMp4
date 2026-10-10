@@ -5,8 +5,8 @@
     "userName": "GeminiStream Community",
     "userAvatar": "https://ui-avatars.com/api/?name=GS&background=E50914&color=fff",
     "text": "👋 Welcome to the GeminiStream Live Community Chat! Connect, share stream recommendations, and talk movies. All chats auto-delete after 12 hours.",
-    "createdAt": 1791545260616,
-    "expiresAt": 1791588460616
+    "createdAt": 1791624333642,
+    "expiresAt": 1791667533642
   },
   {
     "id": "welcome-community-2",
@@ -14,87 +14,27 @@
     "userName": "Alex R. (Moderator)",
     "userAvatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop",
     "text": "🍿 What is everyone binging tonight? The 4K streaming servers are flying fast today!",
-    "createdAt": 1791547060616,
-    "expiresAt": 1791590260616
+    "createdAt": 1791626133642,
+    "expiresAt": 1791669333642
   },
   {
-    "id": "msg_1791548873940_fevezxj",
-    "userId": "test-user-1",
-    "userName": "Sarah Connor",
-    "userAvatar": "https://ui-avatars.com/api/?name=Sarah%20Connor&background=E50914&color=fff",
-    "userEmail": "sarah@example.com",
-    "text": "Can anyone recommend a good sci-fi movie?",
-    "createdAt": 1791548873940,
-    "expiresAt": 1791592073940
-  },
-  {
-    "id": "msg_1791549682469_8fcoo5b",
-    "userId": "google-1791548353575",
-    "userName": "Facteriayt",
-    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
-    "userEmail": "facteriayt@gmail.com",
-    "text": "Stranger things",
-    "createdAt": 1791549682469,
-    "expiresAt": 1791592882469
-  },
-  {
-    "id": "msg_1791550028274_hum7flj",
-    "userId": "google-1791548353575",
-    "userName": "Facteriayt",
-    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
-    "userEmail": "facteriayt@gmail.com",
-    "text": "Hu",
-    "createdAt": 1791550028274,
-    "expiresAt": 1791593228274
-  },
-  {
-    "id": "msg_1791550028295_fr06yqv",
-    "userId": "google-1791548353575",
-    "userName": "Facteriayt",
-    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
-    "userEmail": "facteriayt@gmail.com",
-    "text": "Hu",
-    "createdAt": 1791550028295,
-    "expiresAt": 1791593228295
-  },
-  {
-    "id": "msg_1791550567609_vje4ige",
-    "userId": "google-1791548353575",
-    "userName": "Facteriayt",
-    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
-    "userEmail": "facteriayt@gmail.com",
-    "text": "👏",
-    "createdAt": 1791550567609,
-    "expiresAt": 1791593767609
-  },
-  {
-    "id": "msg_1791550839395_rs4trt1",
-    "userId": "test",
-    "userName": "Test User",
-    "userAvatar": "https://ui-avatars.com/api/?name=Test%20User&background=E50914&color=fff",
-    "userEmail": "",
-    "text": "Hello world",
-    "createdAt": 1791550839395,
-    "expiresAt": 1791594039395
-  },
-  {
-    "id": "msg_1791551009957_u1v4xi1",
+    "id": "msg_1791628521777_g99khhb8tqn",
     "userId": "google-1791548353575",
     "userName": "Facteriayt",
     "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
     "userEmail": "facteriayt@gmail.com",
     "text": "Hi",
-    "createdAt": 1791551009957,
-    "expiresAt": 1791594209957
+    "createdAt": 1791628521777,
+    "expiresAt": 1791671721777
   },
   {
-    "id": "msg_1791551506728_e2gpomxng45",
-    "userId": "test-user",
-    "userName": "Test User",
-    "userAvatar": "https://ui-avatars.com/api/?name=Test%20User&background=E50914&color=fff",
+    "id": "msg_1791629324019_rzt4unjfpw2",
+    "userId": "test_user_42",
+    "userName": "CinemaFan",
+    "userAvatar": "https://ui-avatars.com/api/?name=CinemaFan&background=E50914&color=fff",
     "userEmail": "",
-    "text": "Testing chat sending fix",
-    "createdAt": 1791551506728,
-    "expiresAt": 1791594706728
+    "text": "Testing live stream sync and persistent chat!",
+    "createdAt": 1791629324019,
+    "expiresAt": 1791672524019
   }
 ]

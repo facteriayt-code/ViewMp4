@@ -26,6 +26,14 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
   initialTab = 'community'
 }) => {
   const [activeTab, setActiveTab] = useState<'community' | 'google'>(initialTab);
+
+  // Sync activeTab whenever modal opens with initialTab
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isConnected, setIsConnected] = useState<boolean>(true);

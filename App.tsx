@@ -71,6 +71,7 @@ const App: React.FC = () => {
   const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [chatTab, setChatTab] = useState<'community' | 'google'>('community');
   const [bingrActiveTab, setBingrActiveTab] = useState<BingrNavTab>('home');
   const [tmdbSpotlightMovies, setTmdbSpotlightMovies] = useState<Movie[]>(() => {
     try {
@@ -655,7 +656,14 @@ const App: React.FC = () => {
         onOpenRandom={handleBingrOpenRandom}
         onOpenRecommendations={handleBingrOpenRecommendations}
         onOpenAccount={handleBingrOpenAccount}
-        onOpenChat={() => setShowChatModal(true)}
+        onOpenChat={() => {
+          setChatTab('community');
+          setShowChatModal(true);
+        }}
+        onOpenGoogleChat={() => {
+          setChatTab('google');
+          setShowChatModal(true);
+        }}
         onSelectPlatform={handleSelectPlatform}
         onGoHome={handleBingrGoHome}
       />
@@ -696,7 +704,14 @@ const App: React.FC = () => {
             }} 
             onLoginClick={() => setShowLoginModal(true)} 
             onLogout={handleLogout}
-            onChatClick={() => setShowChatModal(true)}
+            onChatClick={() => {
+              setChatTab('community');
+              setShowChatModal(true);
+            }}
+            onGoogleChatClick={() => {
+              setChatTab('google');
+              setShowChatModal(true);
+            }}
             onSearch={setSearchTerm}
             onSelectPlatform={handleSelectPlatform}
             onAdBlockClick={() => setShowAdGuardModal(true)}
@@ -877,7 +892,15 @@ const App: React.FC = () => {
           onClose={() => {
             setPlayingMovie(null);
             clearModalUrl();
-          }} 
+          }}
+          onOpenChat={() => {
+            setChatTab('community');
+            setShowChatModal(true);
+          }}
+          onOpenGoogleChat={() => {
+            setChatTab('google');
+            setShowChatModal(true);
+          }}
         />
       )}
 
@@ -969,15 +992,23 @@ const App: React.FC = () => {
       {/* Community Live Chat Floating Widget (All users connected, 12h auto-delete) */}
       <CommunityChatWidget
         isOpen={showChatModal}
-        onOpenChat={() => setShowChatModal(true)}
+        onOpenChat={() => {
+          setChatTab('community');
+          setShowChatModal(true);
+        }}
+        onOpenGoogleChat={() => {
+          setChatTab('google');
+          setShowChatModal(true);
+        }}
       />
 
-      {/* Community Live Chat Window */}
+      {/* Community Live Chat & Google Chat Window */}
       <CommunityChatModal
         isOpen={showChatModal}
         onClose={() => setShowChatModal(false)}
         user={user}
         onLoginClick={() => setShowLoginModal(true)}
+        initialTab={chatTab}
       />
     </div>
   );

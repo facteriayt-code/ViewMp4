@@ -14,6 +14,7 @@ interface BingrNavigationProps {
   onOpenRecommendations: () => void;
   onOpenAccount: () => void;
   onOpenChat?: () => void;
+  onOpenGoogleChat?: () => void;
   onSelectPlatform?: (platform: PlatformId) => void;
   onGoHome: () => void;
 }
@@ -27,6 +28,7 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
   onOpenRecommendations,
   onOpenAccount,
   onOpenChat,
+  onOpenGoogleChat,
   onSelectPlatform,
   onGoHome,
 }) => {
@@ -213,9 +215,36 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
           </div>
         )}
 
-        {/* Dedicated Desktop Sidebar Community Chat Action */}
-        {onOpenChat && (
-          <div className="px-3 pb-2 w-full shrink-0">
+        {/* Dedicated Desktop Sidebar Chat Actions: Google Chat & Live Stream */}
+        <div className="px-3 pb-2 w-full shrink-0 space-y-1.5">
+          {onOpenGoogleChat && (
+            <button
+              type="button"
+              onClick={onOpenGoogleChat}
+              className="w-full flex items-center h-10 rounded-xl px-2.5 transition-all duration-300 relative text-blue-300 hover:text-white bg-blue-600/10 hover:bg-blue-600/25 border border-blue-500/20 group"
+              title="Google Workspace Chat (Official spaces & threads)"
+            >
+              <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600/20 text-blue-400 group-hover:scale-110 transition-transform">
+                <svg className="w-4 h-4 fill-blue-400" viewBox="0 0 24 24">
+                  <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                </svg>
+              </span>
+              <div
+                className={`ml-3 flex items-center justify-between flex-1 overflow-hidden transition-all duration-300 ${
+                  isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-3 pointer-events-none'
+                }`}
+              >
+                <span className="text-xs font-bold tracking-wide whitespace-nowrap text-blue-200 group-hover:text-white">
+                  Google Chat
+                </span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 whitespace-nowrap ml-2">
+                  Spaces
+                </span>
+              </div>
+            </button>
+          )}
+
+          {onOpenChat && (
             <button
               type="button"
               onClick={onOpenChat}
@@ -232,15 +261,15 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
                 }`}
               >
                 <span className="text-xs font-bold tracking-wide whitespace-nowrap text-gray-300 group-hover:text-white">
-                  Live Chat
+                  Live Stream
                 </span>
                 <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap ml-2">
                   12h
                 </span>
               </div>
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Bottom User Quick Info / Version */}
         <div className="p-3 w-20 flex flex-col items-center justify-center shrink-0 border-t border-white/5">
@@ -249,6 +278,23 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
           </div>
         </div>
       </aside>
+
+      {/* ── MOBILE: Floating Quick Chat Chips (Above Dock) ── */}
+      <div className="md:hidden fixed bottom-20 right-4 z-[60] flex items-center space-x-2">
+        {onOpenGoogleChat && (
+          <button
+            type="button"
+            onClick={onOpenGoogleChat}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-xl shadow-blue-600/40 border border-blue-400/30 active:scale-95 backdrop-blur-md"
+            title="Open Google Workspace Chat"
+          >
+            <svg className="w-3.5 h-3.5 fill-white shrink-0" viewBox="0 0 24 24">
+              <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+            </svg>
+            <span>Google Chat</span>
+          </button>
+        )}
+      </div>
 
       {/* ── MOBILE: Floating Bottom Dock Bar (Clean 4-item dock: Home, Dice, For You, Account) ── */}
       <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[60] w-[94%] max-w-md">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
-  AlertTriangle, RefreshCw, X, Check
+  AlertTriangle, RefreshCw, X, Check, MessageSquare
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -19,9 +19,16 @@ import { AdGuardDnsModal } from './AdGuardDnsModal.tsx';
 interface VideoPlayerProps {
   movie: Movie;
   onClose: () => void;
+  onOpenChat?: () => void;
+  onOpenGoogleChat?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
+  movie, 
+  onClose,
+  onOpenChat,
+  onOpenGoogleChat
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [season, setSeason] = useState<number>(movie.initialSeason || 1);
@@ -554,14 +561,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
           )}
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
+          {onOpenChat && (
+            <button
+              type="button"
+              onClick={onOpenChat}
+              className="text-red-400 hover:text-white font-bold bg-red-600/15 hover:bg-red-600/30 px-3 py-1 rounded-full border border-red-500/30 flex items-center space-x-1.5 transition active:scale-95"
+              title="Open Live Stream Community Chat"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-red-500" />
+              <span>Live Chat</span>
+            </button>
+          )}
+
+          {onOpenGoogleChat && (
+            <button
+              type="button"
+              onClick={onOpenGoogleChat}
+              className="text-blue-400 hover:text-white font-bold bg-blue-600/15 hover:bg-blue-600/30 px-3 py-1 rounded-full border border-blue-500/30 flex items-center space-x-1.5 transition active:scale-95"
+              title="Open Google Workspace Chat"
+            >
+              <svg className="w-3.5 h-3.5 fill-blue-400" viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+              </svg>
+              <span>Google Chat</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowReportModal(true)}
-            className="text-red-400 hover:text-red-300 font-bold bg-red-600/10 hover:bg-red-600/20 px-3 py-1 rounded-full border border-red-500/20 flex items-center space-x-1.5 transition active:scale-95"
+            className="text-gray-400 hover:text-red-300 font-bold bg-white/5 hover:bg-red-600/20 px-3 py-1 rounded-full border border-white/10 flex items-center space-x-1.5 transition active:scale-95"
             title="Report if this movie is not playing or wrong movie"
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
             <span>Report Stream</span>
           </button>
         </div>
