@@ -991,7 +991,7 @@ const App: React.FC = () => {
 
       {/* Community Live Chat Floating Widget (All users connected, 12h auto-delete) */}
       <CommunityChatWidget
-        isOpen={showChatModal}
+        isOpen={showChatModal || showLoginModal || showAccountModal || showUploadModal || showAdGuardModal || !!selectedMovie || !!playingMovie}
         onOpenChat={() => {
           setChatTab('community');
           setShowChatModal(true);

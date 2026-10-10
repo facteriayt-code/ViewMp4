@@ -279,22 +279,6 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
         </div>
       </aside>
 
-      {/* ── MOBILE: Floating Quick Chat Chips (Above Dock) ── */}
-      <div className="md:hidden fixed bottom-20 right-4 z-[60] flex items-center space-x-2">
-        {onOpenGoogleChat && (
-          <button
-            type="button"
-            onClick={onOpenGoogleChat}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-xl shadow-blue-600/40 border border-blue-400/30 active:scale-95 backdrop-blur-md"
-            title="Open Google Workspace Chat"
-          >
-            <svg className="w-3.5 h-3.5 fill-white shrink-0" viewBox="0 0 24 24">
-              <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
-            </svg>
-            <span>Google Chat</span>
-          </button>
-        )}
-      </div>
 
         {/* ── MOBILE: Floating Bottom Dock Bar (Clean dock with Google Chat) ── */}
         <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[60] w-[96%] max-w-md">

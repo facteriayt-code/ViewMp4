@@ -181,13 +181,13 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
     <>
       {/* Mobile backdrop ONLY - never block desktop screen! */}
       <div 
-        className="sm:hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-xs animate-in fade-in"
+        className="sm:hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-xs animate-in fade-in"
         onClick={onClose}
       />
 
       {/* Floating Corner Chat Window (Desktop: Non-blocking bottom-right corner; Mobile: Bottom sheet) */}
       <div 
-        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[85] flex justify-end pointer-events-none p-0 sm:p-0"
+        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[115] flex justify-end pointer-events-none p-0 sm:p-0"
       >
         <div 
           className="pointer-events-auto w-full sm:w-[420px] h-[82vh] sm:h-[600px] max-h-[85vh] sm:max-h-[620px] flex flex-col bg-[#0b0d14]/98 backdrop-blur-2xl border border-white/15 rounded-t-3xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in slide-in-from-bottom-4"

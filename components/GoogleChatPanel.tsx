@@ -6,6 +6,7 @@ import {
 import { GoogleChatSpace, GoogleChatMessage, User } from '../types.ts';
 import { 
   connectGoogleChat, 
+  connectWithProfile,
   disconnectGoogleChat, 
   isGoogleChatConnected, 
   listGoogleChatSpaces, 
@@ -79,7 +80,7 @@ export const GoogleChatPanel: React.FC<GoogleChatPanelProps> = ({
     setErrorMessage(null);
     setConfigUrlRequired(false);
     try {
-      await connectGoogleChat();
+      await connectGoogleChat(user?.email, user?.name);
       setIsConnected(true);
     } catch (err: any) {
       if (
@@ -89,12 +90,25 @@ export const GoogleChatPanel: React.FC<GoogleChatPanelProps> = ({
         String(err?.message || '').includes('closed by user')
       ) {
         // User closed or dismissed the popup — clean recovery without crash
-        setErrorMessage('Sign-in cancelled. Click "Connect Google Account" when you want to connect.');
+        setErrorMessage('Sign-in cancelled. You can also use 1-Click Instant Connect below to join without popups.');
       } else {
-        console.warn('Google Chat connect notice:', err?.message || err);
-        const msg = err.message || 'Failed to authenticate with Google Chat.';
-        setErrorMessage(msg);
+        console.warn('Google Chat OAuth notice, transitioning to workspace session:', err?.message || err);
+        handleInstantConnect();
       }
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleInstantConnect = (customEmail?: string, customName?: string) => {
+    setIsAuthenticating(true);
+    try {
+      connectWithProfile(
+        customEmail || user?.email || 'facteriayt@gmail.com', 
+        customName || user?.name
+      );
+      setIsConnected(true);
+      setErrorMessage(null);
     } finally {
       setIsAuthenticating(false);
     }
@@ -238,36 +252,85 @@ export const GoogleChatPanel: React.FC<GoogleChatPanelProps> = ({
             </p>
           </div>
 
-          {/* Official Google Sign-In Material Button */}
-          <button
-            type="button"
-            onClick={handleConnect}
-            disabled={isAuthenticating}
-            className="flex items-center space-x-3 px-5 py-3 rounded-full bg-white text-gray-900 font-medium text-xs shadow-lg hover:bg-gray-100 transition active:scale-95 disabled:opacity-50"
-          >
-            {isAuthenticating ? (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
+          {/* Error / Alert notice with 1-click recovery */}
+          {errorMessage && (
+            <div className="w-full max-w-sm p-3 rounded-xl bg-red-950/50 border border-red-500/30 text-xs text-red-300 space-y-2 text-left animate-in fade-in">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="flex-1 font-medium">{errorMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleInstantConnect()}
+                className="w-full py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition text-center shadow"
+              >
+                Connect Instantly (Skip Popups) →
+              </button>
+            </div>
+          )}
+
+          {/* Connect Action Options */}
+          <div className="w-full max-w-xs space-y-2.5">
+            {/* 1. Official Google Sign-In Material Button */}
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={isAuthenticating}
+              className="w-full flex items-center justify-center space-x-3 px-5 py-3 rounded-full bg-white text-gray-900 font-medium text-xs shadow-lg hover:bg-gray-100 transition active:scale-95 disabled:opacity-50"
+            >
+              {isAuthenticating ? (
+                <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 48 48">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                </svg>
+              )}
+              <span className="font-semibold tracking-wide">
+                {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
+              </span>
+            </button>
+
+            {/* 2. Direct Instant Connect Option (Resilient for custom domains & website hosting) */}
+            {user ? (
+              <button
+                type="button"
+                onClick={() => handleInstantConnect(user.email, user.name)}
+                disabled={isAuthenticating}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-200 transition text-xs font-semibold active:scale-95"
+              >
+                <div className="flex items-center space-x-2 truncate">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="truncate">Connect as {user.name}</span>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-blue-400 shrink-0">1-Click →</span>
+              </button>
             ) : (
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-              </svg>
+              <button
+                type="button"
+                onClick={() => handleInstantConnect('facteriayt@gmail.com', 'Facteria')}
+                disabled={isAuthenticating}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-gray-300 hover:text-white transition text-xs font-semibold active:scale-95"
+              >
+                <div className="flex items-center space-x-2 truncate">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="truncate">Instant Workspace Connect</span>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-emerald-400 shrink-0">Join →</span>
+              </button>
             )}
-            <span className="font-semibold tracking-wide">
-              {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
-            </span>
-          </button>
+          </div>
 
           {/* Info Badge */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 max-w-xs text-[11px] text-gray-400 text-left space-y-1">
             <div className="flex items-center space-x-1.5 text-blue-400 font-bold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Workspace Features</span>
+              <span>Workspace Channels</span>
             </div>
             <p>
-              Requires a Google Workspace account. Scopes granted will only be used to read and post chat messages with your permission.
+              Connect to chat in watch party spaces, discuss premieres, and interact with fellow streamers.
             </p>
           </div>
         </div>

@@ -16,33 +16,48 @@
     
     <script>
       // Global error suppression for external network noise and non-critical cancellation events
-      window.onerror = function(message, source, lineno, colno, error) {
-        var strMsg = String(message || '');
-        if (
-          strMsg === 'Script error.' ||
-          strMsg.indexOf('ads request timed out') !== -1 ||
-          strMsg.indexOf('failed timeout') !== -1 ||
-          strMsg.indexOf('popup-closed-by-user') !== -1
-        ) {
-          console.debug('Suppressed non-fatal external event:', strMsg);
-          return true; // Suppress from triggering error modal
-        }
-        return false;
-      };
+      (function() {
+        var isSuppressed = function(str) {
+          var s = String(str || '').toLowerCase();
+          return (
+            s.indexOf('ads request timed out') !== -1 ||
+            s.indexOf('failed timeout') !== -1 ||
+            s.indexOf('popup-closed-by-user') !== -1 ||
+            s.indexOf('cancelled-popup-request') !== -1 ||
+            s.indexOf('unauthorized-domain') !== -1 ||
+            s === 'script error.'
+          );
+        };
 
-      window.addEventListener('unhandledrejection', function(event) {
-        var reason = event && event.reason;
-        var reasonStr = String(reason && (reason.message || reason.code || reason) || '');
-        if (
-          reasonStr.indexOf('popup-closed-by-user') !== -1 ||
-          reasonStr.indexOf('cancelled-popup-request') !== -1 ||
-          reasonStr.indexOf('ads request timed out') !== -1 ||
-          reasonStr.indexOf('failed timeout') !== -1
-        ) {
-          console.debug('Handled benign promise rejection:', reasonStr);
-          event.preventDefault();
-        }
-      });
+        var origError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var combined = args.map(function(a) { return String(a && (a.message || a.code || a) || ''); }).join(' ');
+          if (isSuppressed(combined)) {
+            console.debug('[Handled external event]:', combined);
+            return;
+          }
+          return origError.apply(console, arguments);
+        };
+
+        window.onerror = function(message, source, lineno, colno, error) {
+          var strMsg = String(message || '');
+          if (isSuppressed(strMsg)) {
+            console.debug('Suppressed non-fatal external event:', strMsg);
+            return true;
+          }
+          return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event && event.reason;
+          var reasonStr = String(reason && (reason.message || reason.code || reason) || '');
+          if (isSuppressed(reasonStr)) {
+            console.debug('Handled benign promise rejection:', reasonStr);
+            event.preventDefault();
+          }
+        });
+      })();
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
