@@ -72,3 +72,25 @@ export interface ChatMessage {
   createdAt: number;
   expiresAt: number;
 }
+
+export interface GoogleChatSpace {
+  name: string; // "spaces/{spaceId}"
+  displayName?: string;
+  type?: 'SPACE' | 'GROUP_CHAT' | 'DIRECT_MESSAGE';
+  spaceType?: 'SPACE' | 'GROUP_CHAT' | 'DIRECT_MESSAGE';
+  singleUserBotDm?: boolean;
+  spaceThreadingState?: string;
+}
+
+export interface GoogleChatMessage {
+  name: string; // "spaces/{spaceId}/messages/{messageId}"
+  sender?: {
+    name?: string;
+    displayName?: string;
+    avatarUrl?: string;
+    type?: string;
+  };
+  createTime?: string;
+  text?: string;
+  formattedText?: string;
+}
