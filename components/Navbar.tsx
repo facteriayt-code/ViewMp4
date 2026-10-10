@@ -267,13 +267,18 @@ const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onGoogleChatClick}
-            className="flex items-center space-x-1.5 bg-blue-600/15 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 hover:text-white px-2.5 py-1.5 rounded-lg transition text-xs font-semibold shrink-0 active:scale-95 shadow-sm"
+            className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 border border-blue-400/50 text-white px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-bold shrink-0 active:scale-95 shadow-md shadow-blue-600/30 group"
             title="Open Google Workspace Chat (Spaces & Messages)"
           >
-            <svg className="w-3.5 h-3.5 fill-blue-400 shrink-0" viewBox="0 0 24 24">
-              <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
-            </svg>
-            <span className="text-[10px] font-black uppercase tracking-wider hidden xs:inline">Google Chat</span>
+            <span className="p-0.5 rounded bg-white/20 group-hover:scale-110 transition-transform flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 fill-white shrink-0" viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+              </svg>
+            </span>
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Google Chat</span>
+            <span className="hidden sm:inline-block text-[9px] bg-white/20 px-1 py-0.2 rounded font-black">
+              Spaces
+            </span>
           </button>
         )}
 

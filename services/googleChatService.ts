@@ -65,7 +65,17 @@ export const connectGoogleChat = async (): Promise<{ token: string; user: Fireba
     currentChatUser = result.user;
     return { token: cachedAccessToken, user: result.user };
   } catch (err: any) {
-    console.error('Google Chat connection error:', err);
+    if (
+      err?.code === 'auth/popup-closed-by-user' ||
+      err?.code === 'auth/cancelled-popup-request' ||
+      String(err?.message || '').includes('popup-closed-by-user')
+    ) {
+      console.info('Google Chat popup authentication cancelled by user.');
+      const cancelErr = new Error('Sign-in popup closed by user.');
+      (cancelErr as any).code = 'auth/popup-closed-by-user';
+      throw cancelErr;
+    }
+    console.warn('Google Chat connection error:', err?.message || err);
     throw err;
   }
 };

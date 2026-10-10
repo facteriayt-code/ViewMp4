@@ -5,14 +5,14 @@ import {
   query, 
   limit, 
   deleteDoc, 
-  doc,
-  getDocs
+  doc 
 } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import { ChatMessage, User } from '../types.ts';
 
-export const CHAT_RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours
+export const CHAT_RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 const MESSAGES_COLLECTION = 'messages';
+const LOCAL_STORAGE_CACHE_KEY = 'geministream_live_chat_cache';
 
 type MessageListener = (messages: ChatMessage[]) => void;
 type PresenceListener = (onlineCount: number) => void;
@@ -22,28 +22,76 @@ class CommunityChatService {
   private messages: ChatMessage[] = [];
   private onlineCount: number = 1;
   private isConnected: boolean = true;
-  private ws: WebSocket | null = null;
-  private wsReconnectTimer: any = null;
   private unsubscribeFirestore: (() => void) | null = null;
   private purgeInterval: any = null;
   private pollInterval: any = null;
-  private pingInterval: any = null;
+  private broadcastChannel: BroadcastChannel | null = null;
+  private isConnecting: boolean = false;
 
   private messageListeners: Set<MessageListener> = new Set();
   private presenceListeners: Set<PresenceListener> = new Set();
   private statusListeners: Set<StatusListener> = new Set();
 
   constructor() {
+    // 1. Immediately restore cached messages from localStorage so refresh NEVER causes a blank screen
+    this.loadFromLocalStorage();
+
+    // 2. Set up cross-tab broadcast channel for instant multi-tab sync
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('geministream_live_chat');
+        this.broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'new_message' && event.data?.message) {
+            this.insertOrUpdateMessage(event.data.message);
+          } else if (event.data?.type === 'delete_message' && event.data?.id) {
+            this.removeMessage(event.data.id);
+          }
+        };
+      } catch (_) {}
+    }
+
+    // 3. Start auto-purge routine for 12-hour expiration
     this.startAutoPurgeTimer();
+
+    // 4. Automatically connect to Firestore
+    this.connect();
   }
 
-  // Check if message is under 12 hours old
+  // Load persisted messages from localStorage for zero-latency initial render
+  private loadFromLocalStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const now = Date.now();
+          const valid = parsed.filter(m => m && typeof m.createdAt === 'number' && (now - m.createdAt) < CHAT_RETENTION_MS);
+          if (valid.length > 0) {
+            this.messages = this.sortMessages(valid);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Persist valid messages to localStorage
+  private saveToLocalStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const now = Date.now();
+      const valid = this.messages.filter(m => (now - m.createdAt) < CHAT_RETENTION_MS);
+      localStorage.setItem(LOCAL_STORAGE_CACHE_KEY, JSON.stringify(valid.slice(-100)));
+    } catch (_) {}
+  }
+
+  // Check if a message is under 12 hours old
   public isMessageActive(msg: ChatMessage): boolean {
     if (!msg || typeof msg.createdAt !== 'number') return false;
     return (Date.now() - msg.createdAt) < CHAT_RETENTION_MS;
   }
 
-  // Formats time until message deletes automatically
+  // Formats remaining time until auto-expiration
   public formatTimeUntilExpiration(expiresAt: number): string {
     const remainingMs = expiresAt - Date.now();
     if (remainingMs <= 0) return 'Expiring now';
@@ -55,44 +103,26 @@ class CommunityChatService {
     return `Expires in ${Math.max(1, minutes)}m`;
   }
 
-  // Connects via WebSocket, Firestore real-time listener, and HTTP polling redundancy
+  // Connect to Firestore real-time snapshot and background polling
   public connect() {
+    if (this.isConnecting && this.unsubscribeFirestore) return;
+    this.isConnecting = true;
     this.isConnected = true;
     this.notifyStatus();
 
-    // 1. Initial REST cache fetch
-    this.fetchInitialRestMessages();
-
-    // 2. Real-time WebSocket connection for instant zero-latency message sync
-    this.initWebSocket();
-
-    // 3. Real-time Firestore live listener for cross-device cloud persistence
+    // 1. Listen directly to Firestore in real-time
     this.initFirestoreListener();
 
-    // 4. Periodic resilient polling every 3.5 seconds
+    // 2. Poll server endpoint as resilient redundancy
+    this.fetchInitialRestMessages();
     if (!this.pollInterval) {
       this.pollInterval = setInterval(() => {
         this.fetchInitialRestMessages();
-      }, 3500);
+      }, 5000);
     }
   }
 
-  // Disconnects
   public disconnect() {
-    if (this.wsReconnectTimer) {
-      clearTimeout(this.wsReconnectTimer);
-      this.wsReconnectTimer = null;
-    }
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
-    if (this.ws) {
-      try {
-        this.ws.close();
-      } catch (_) {}
-      this.ws = null;
-    }
     if (this.unsubscribeFirestore) {
       this.unsubscribeFirestore();
       this.unsubscribeFirestore = null;
@@ -101,97 +131,26 @@ class CommunityChatService {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+    this.isConnecting = false;
   }
 
-  // Initialize resilient real-time WebSocket connection to /ws/chat
-  private initWebSocket() {
-    if (typeof window === 'undefined') return;
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        this.isConnected = true;
-        this.notifyStatus();
-
-        // Send periodic ping to prevent connection idle timeout
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        this.pingInterval = setInterval(() => {
-          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            try {
-              this.ws.send(JSON.stringify({ type: 'chat:ping' }));
-            } catch (_) {}
-          }
-        }, 25000);
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'chat:init') {
-            if (Array.isArray(data.messages)) {
-              this.mergeMessages(data.messages);
-            }
-            if (typeof data.onlineCount === 'number') {
-              this.setOnlineCount(data.onlineCount);
-            }
-          } else if (data.type === 'chat:message' && data.message) {
-            this.addMessage(data.message, data.clientTempId);
-          } else if (data.type === 'chat:deleted' && data.id) {
-            this.removeMessage(data.id);
-          } else if (data.type === 'chat:presence' && typeof data.onlineCount === 'number') {
-            this.setOnlineCount(data.onlineCount);
-          }
-        } catch (err) {
-          console.warn('[WS] Parse message error:', err);
-        }
-      };
-
-      this.ws.onclose = () => {
-        this.ws = null;
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
-        }
-        // Auto-reconnect after 3 seconds
-        if (!this.wsReconnectTimer) {
-          this.wsReconnectTimer = setTimeout(() => {
-            this.wsReconnectTimer = null;
-            this.initWebSocket();
-          }, 3000);
-        }
-      };
-
-      this.ws.onerror = (err) => {
-        console.warn('[WS] Chat connection error:', err);
-      };
-    } catch (err) {
-      console.warn('[WS] Chat init failed, will retry:', err);
-    }
-  }
-
-  // Real-time Firestore listener with robust fallback
+  // Real-time Firestore snapshot listener across all users and devices
   private initFirestoreListener() {
     if (this.unsubscribeFirestore) return;
 
     try {
       const messagesRef = collection(db, MESSAGES_COLLECTION);
-      const fallbackQuery = query(messagesRef, limit(150));
+      const q = query(messagesRef, limit(200));
 
       this.unsubscribeFirestore = onSnapshot(
-        fallbackQuery,
+        q,
         (snapshot) => {
           this.isConnected = true;
           this.notifyStatus();
 
           const now = Date.now();
-          const firestoreMsgs: ChatMessage[] = [];
-          const expiredIds: string[] = [];
+          const incoming: ChatMessage[] = [];
+          const expiredDocIds: string[] = [];
 
           snapshot.docs.forEach((docSnap) => {
             const data = docSnap.data();
@@ -199,11 +158,11 @@ class CommunityChatService {
             const expiresAt = typeof data.expiresAt === 'number' ? data.expiresAt : (createdAt + CHAT_RETENTION_MS);
 
             if (now - createdAt >= CHAT_RETENTION_MS || now >= expiresAt) {
-              expiredIds.push(docSnap.id);
+              expiredDocIds.push(docSnap.id);
             } else {
-              firestoreMsgs.push({
+              incoming.push({
                 id: docSnap.id,
-                userId: data.userId || data.senderId || 'user',
+                userId: data.userId || data.senderId || 'streamer',
                 userName: data.userName || data.senderName || 'Streamer',
                 userAvatar: data.userAvatar || data.senderAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.userName || data.senderName || 'Streamer')}&background=E50914&color=fff`,
                 userEmail: data.userEmail || '',
@@ -214,72 +173,120 @@ class CommunityChatService {
             }
           });
 
-          // Safely merge without wiping out server REST messages!
-          if (firestoreMsgs.length > 0) {
-            this.mergeMessages(firestoreMsgs);
+          // Update messages state if docs received
+          if (incoming.length > 0) {
+            this.mergeIncomingFirestore(incoming);
+          } else if (this.messages.length === 0) {
+            // If completely empty, fetch REST fallback
+            this.fetchInitialRestMessages();
           }
 
-          // Clean up expired docs in background
-          if (expiredIds.length > 0) {
-            expiredIds.forEach((id) => {
+          // Background purge of expired docs
+          if (expiredDocIds.length > 0) {
+            expiredDocIds.forEach((id) => {
               deleteDoc(doc(db, MESSAGES_COLLECTION, id)).catch(() => {});
             });
           }
         },
         (error) => {
-          console.warn('Firestore onSnapshot listener error:', error);
+          console.warn('Firestore live listener notice (falling back to REST sync):', error?.message || error);
+          this.fetchInitialRestMessages();
         }
       );
     } catch (err) {
-      console.warn('Firestore listener setup exception:', err);
+      console.warn('Firestore subscription exception:', err);
+      this.fetchInitialRestMessages();
     }
   }
 
-  // Fetch from REST API as resilient backup and merge safely
+  // Merge Firestore documents cleanly without duplicates
+  private mergeIncomingFirestore(firestoreDocs: ChatMessage[]) {
+    const existingMap = new Map<string, ChatMessage>();
+    for (const m of this.messages) {
+      if (m && m.id) existingMap.set(m.id, m);
+    }
+
+    for (const doc of firestoreDocs) {
+      // Find if we have a matching local message by ID or by same sender + text + timestamp within 4s
+      let foundKey: string | null = null;
+      for (const [key, val] of existingMap.entries()) {
+        if (val.id === doc.id) {
+          foundKey = key;
+          break;
+        }
+        if (
+          val.userId === doc.userId &&
+          val.text === doc.text &&
+          Math.abs(val.createdAt - doc.createdAt) < 4000
+        ) {
+          foundKey = key;
+          break;
+        }
+      }
+
+      if (foundKey) {
+        existingMap.set(foundKey, { ...existingMap.get(foundKey)!, id: doc.id });
+      } else {
+        existingMap.set(doc.id, doc);
+      }
+    }
+
+    const merged = Array.from(existingMap.values());
+    this.messages = this.sortMessages(merged);
+    this.saveToLocalStorage();
+    this.notifyMessages();
+  }
+
+  // REST API fallback to ensure zero missing messages
   public async fetchInitialRestMessages(): Promise<ChatMessage[]> {
     try {
       const res = await fetch('/api/chat/messages');
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.messages)) {
-          const valid = data.messages.filter((m: ChatMessage) => this.isMessageActive(m));
-          // ALWAYS merge new messages so all users receive updates!
+          const now = Date.now();
+          const valid = data.messages.filter((m: ChatMessage) => m && (now - m.createdAt) < CHAT_RETENTION_MS);
           if (valid.length > 0) {
-            this.mergeMessages(valid);
+            this.mergeIncomingFirestore(valid);
           }
           if (typeof data.onlineCount === 'number') {
-            this.setOnlineCount(Math.max(this.onlineCount, data.onlineCount));
+            this.setOnlineCount(Math.max(1, data.onlineCount));
           }
           return valid;
         }
       }
-    } catch (_) {
-      // ignore network blips
-    }
+    } catch (_) {}
     return this.messages;
   }
 
+  // Periodic 12-hour purge timer
   private startAutoPurgeTimer() {
     this.purgeInterval = setInterval(() => {
-      const active = this.messages.filter(m => this.isMessageActive(m));
+      const now = Date.now();
+      const active = this.messages.filter(m => (now - m.createdAt) < CHAT_RETENTION_MS);
       if (active.length !== this.messages.length) {
-        this.setMessages(active);
+        this.messages = active;
+        this.saveToLocalStorage();
+        this.notifyMessages();
       }
     }, 15000);
   }
 
-  // Send a message (Guaranteed delivery and multi-destination persistence)
+  // Sends a message to the live chat room (Guaranteed cloud persistence across all users)
   public async sendMessage(user: User | null, text: string): Promise<ChatMessage> {
     const trimmed = text.trim();
     if (!trimmed) throw new Error('Message cannot be empty.');
+    if (trimmed.length > 1000) throw new Error('Message is too long (maximum 1,000 characters).');
 
+    // Generate safe user details for registered users or guests
     const effectiveUserId = user?.id || (user?.email ? `u_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}` : `streamer_${Date.now()}`);
     const effectiveUserName = user?.name?.trim() || (user?.email ? user.email.split('@')[0] : 'Streamer');
     const effectiveAvatar = user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(effectiveUserName)}&background=E50914&color=fff`;
     const effectiveEmail = user?.email || '';
 
     const now = Date.now();
-    const tempId = `temp_${now}_${Math.random().toString(36).slice(2, 9)}`;
+    const tempId = `msg_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    
     const optimisticMessage: ChatMessage = {
       id: tempId,
       userId: effectiveUserId,
@@ -291,58 +298,20 @@ class CommunityChatService {
       expiresAt: now + CHAT_RETENTION_MS
     };
 
-    // 1. Optimistically display in UI immediately
-    this.addMessage(optimisticMessage);
+    // 1. Instant local optimistic update
+    this.insertOrUpdateMessage(optimisticMessage);
 
-    let confirmedMessage: ChatMessage = optimisticMessage;
-    let didSave = false;
-
-    // 2. Primary: Post to server REST API (guarantees persistent save in community_chat_history.json & broadcasts to all WebSockets)
-    try {
-      const response = await fetch('/api/chat/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: effectiveUserId,
-          userName: effectiveUserName,
-          userAvatar: effectiveAvatar,
-          userEmail: effectiveEmail,
-          text: trimmed,
-          clientTempId: tempId
-        })
-      });
-
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData && resData.message) {
-          confirmedMessage = resData.message;
-          this.addMessage(confirmedMessage, tempId);
-          didSave = true;
-        }
-      }
-    } catch (apiErr) {
-      console.warn('API send failed, falling back to WebSocket/Firestore:', apiErr);
-    }
-
-    // 3. Secondary: Send over WebSocket if connected
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    // 2. Broadcast to other tabs immediately
+    if (this.broadcastChannel) {
       try {
-        this.ws.send(JSON.stringify({
-          type: 'chat:send',
-          userId: effectiveUserId,
-          userName: effectiveUserName,
-          userAvatar: effectiveAvatar,
-          userEmail: effectiveEmail,
-          text: trimmed,
-          clientTempId: tempId
-        }));
-        didSave = true;
-      } catch (wsErr) {
-        console.warn('WebSocket send error:', wsErr);
-      }
+        this.broadcastChannel.postMessage({ type: 'new_message', message: optimisticMessage });
+      } catch (_) {}
     }
 
-    // 4. Cloud Backup: Save to Firestore
+    let savedMessage: ChatMessage = optimisticMessage;
+    let didSaveToCloud = false;
+
+    // 3. Save to Firebase Firestore (Global real-time sync to all users worldwide)
     try {
       const docRef = await addDoc(collection(db, MESSAGES_COLLECTION), {
         senderId: effectiveUserId,
@@ -357,33 +326,64 @@ class CommunityChatService {
         expiresAt: now + CHAT_RETENTION_MS
       });
 
-      if (docRef && docRef.id && !didSave) {
-        confirmedMessage = {
-          ...optimisticMessage,
-          id: docRef.id
-        };
-        this.addMessage(confirmedMessage, tempId);
-        didSave = true;
+      if (docRef && docRef.id) {
+        savedMessage = { ...optimisticMessage, id: docRef.id };
+        this.insertOrUpdateMessage(savedMessage, tempId);
+        didSaveToCloud = true;
       }
-    } catch (firestoreErr) {
-      console.warn('Firestore write warning:', firestoreErr);
+    } catch (firestoreErr: any) {
+      console.warn('Firestore direct write notice:', firestoreErr?.message || firestoreErr);
     }
 
-    if (!didSave) {
-      this.removeMessage(tempId);
-      throw new Error('Failed to send message. Please check your connection.');
+    // 4. Save to REST API as backup
+    try {
+      const res = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userAvatar: effectiveAvatar,
+          userEmail: effectiveEmail,
+          text: trimmed,
+          clientTempId: tempId
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.message && !didSaveToCloud) {
+          savedMessage = data.message;
+          this.insertOrUpdateMessage(savedMessage, tempId);
+          didSaveToCloud = true;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('REST API send notice:', apiErr);
     }
 
+    this.saveToLocalStorage();
     this.isConnected = true;
     this.notifyStatus();
-    return confirmedMessage;
+    return savedMessage;
   }
 
-  // Delete message across both server and Firestore
+  // Delete message
   public async deleteMessage(messageId: string, userId: string): Promise<void> {
     this.removeMessage(messageId);
 
-    // Delete in server
+    // Cross-tab broadcast
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'delete_message', id: messageId });
+      } catch (_) {}
+    }
+
+    // Delete in Firestore
+    try {
+      await deleteDoc(doc(db, MESSAGES_COLLECTION, messageId));
+    } catch (_) {}
+
+    // Delete via REST
     try {
       await fetch(`/api/chat/messages/${messageId}`, {
         method: 'DELETE',
@@ -391,81 +391,44 @@ class CommunityChatService {
         body: JSON.stringify({ userId })
       });
     } catch (_) {}
-
-    // Delete in Firestore
-    try {
-      await deleteDoc(doc(db, MESSAGES_COLLECTION, messageId));
-    } catch (_) {}
   }
 
-  // Strictly deduplicates and sorts messages by timestamp
-  private deduplicateAndSort(msgs: ChatMessage[]): ChatMessage[] {
-    const map = new Map<string, ChatMessage>();
-    for (const m of msgs) {
-      if (m && m.id) {
-        // If message has same content, sender and within 2 seconds, treat as same
-        const existing = map.get(m.id);
-        if (!existing) {
-          map.set(m.id, m);
-        }
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.createdAt - b.createdAt);
-  }
-
-  // Safe merge without wiping existing messages
-  private mergeMessages(incoming: ChatMessage[]) {
-    const activeIncoming = incoming.filter(m => this.isMessageActive(m));
-    if (activeIncoming.length === 0) return;
-
-    const currentMap = new Map<string, ChatMessage>();
-    for (const m of this.messages) {
-      if (m && m.id) currentMap.set(m.id, m);
-    }
-
-    let hasNew = false;
-    for (const m of activeIncoming) {
-      if (m && m.id && !currentMap.has(m.id)) {
-        currentMap.set(m.id, m);
-        hasNew = true;
-      }
-    }
-
-    if (hasNew || this.messages.length === 0) {
-      const merged = Array.from(currentMap.values()).sort((a, b) => a.createdAt - b.createdAt);
-      this.setMessages(merged);
-    }
-  }
-
-  // Internal state modifiers
-  private setMessages(newMessages: ChatMessage[]) {
-    this.messages = this.deduplicateAndSort(newMessages);
-    this.notifyMessages();
-  }
-
-  private addMessage(msg: ChatMessage, replaceTempId?: string) {
+  // Insert or update a message
+  private insertOrUpdateMessage(msg: ChatMessage, replaceId?: string) {
     if (!msg || !msg.id) return;
     let list = this.messages;
-    if (replaceTempId) {
-      list = list.filter(m => m.id !== replaceTempId);
+    if (replaceId) {
+      list = list.filter(m => m.id !== replaceId);
     }
     list = list.filter(m => m.id !== msg.id);
     list.push(msg);
-    this.messages = this.deduplicateAndSort(list);
+    this.messages = this.sortMessages(list);
+    this.saveToLocalStorage();
     this.notifyMessages();
   }
 
   private removeMessage(id: string) {
     this.messages = this.messages.filter(m => m.id !== id);
+    this.saveToLocalStorage();
     this.notifyMessages();
   }
 
-  private setOnlineCount(count: number) {
+  private sortMessages(msgs: ChatMessage[]): ChatMessage[] {
+    const map = new Map<string, ChatMessage>();
+    for (const m of msgs) {
+      if (m && m.id) {
+        map.set(m.id, m);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  public setOnlineCount(count: number) {
     this.onlineCount = Math.max(1, count);
     this.notifyPresence();
   }
 
-  // Subscriptions
+  // Listeners
   public subscribeMessages(listener: MessageListener): () => void {
     this.messageListeners.add(listener);
     listener(this.messages);

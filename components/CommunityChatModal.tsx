@@ -95,22 +95,36 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
     }
   }, [isOpen, isMinimized, user, activeTab]);
 
+  const [guestName, setGuestName] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('geministream_guest_chat_name');
+      if (stored) return stored;
+      const gen = `Streamer #${Math.floor(Math.random() * 900 + 100)}`;
+      localStorage.setItem('geministream_guest_chat_name', gen);
+      return gen;
+    } catch (_) {
+      return `Streamer #${Math.floor(Math.random() * 900 + 100)}`;
+    }
+  });
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim()) return;
-
-    if (!user) {
-      onLoginClick();
-      return;
-    }
+    if (!inputText.trim() || isSending) return;
 
     const text = inputText.trim();
     setInputText('');
     setIsSending(true);
     setErrorMsg(null);
 
+    const activeUser: User = user || {
+      id: `guest_${guestName.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      name: guestName,
+      email: '',
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(guestName)}&background=E50914&color=fff`
+    };
+
     try {
-      await communityChatService.sendMessage(user, text);
+      await communityChatService.sendMessage(activeUser, text);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to send message. Please try again.');
       setInputText(text); // restore text if failed
@@ -120,21 +134,17 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
   };
 
   const handleQuickEmoji = (emoji: string) => {
-    if (!user) {
-      onLoginClick();
-      return;
-    }
     setErrorMsg(null);
     setInputText(prev => prev + emoji);
     inputRef.current?.focus();
   };
 
   const handleDeleteMessage = async (msgId: string) => {
-    if (!user) return;
+    const currentUserId = user?.id || `guest_${guestName.replace(/[^a-zA-Z0-9]/g, '_')}`;
     try {
-      await communityChatService.deleteMessage(msgId, user.id);
+      await communityChatService.deleteMessage(msgId, currentUserId);
     } catch (err) {
-      console.error('Failed to delete message:', err);
+      console.warn('Failed to delete message:', err);
     }
   };
 
@@ -421,52 +431,44 @@ export const CommunityChatModal: React.FC<CommunityChatModalProps> = ({
                   </div>
                 )}
 
-                {user ? (
-                  <form onSubmit={handleSendMessage} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
+                <form onSubmit={handleSendMessage} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
+                    <div className="flex items-center space-x-1.5 truncate">
                       <span className="truncate">
-                        Posting as <strong className="text-white font-semibold">{user.name}</strong>
+                        Posting as <strong className="text-white font-semibold">{user ? user.name : guestName}</strong>
                       </span>
-                      <span>Max 500 chars</span>
+                      {!user && (
+                        <button
+                          type="button"
+                          onClick={onLoginClick}
+                          className="text-red-400 hover:text-red-300 font-bold underline transition ml-1"
+                        >
+                          (Sign In for badge)
+                        </button>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        placeholder="Type a message to all streamers..."
-                        maxLength={500}
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        className="flex-1 bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-red-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none transition shadow-inner font-medium"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!inputText.trim() || isSending}
-                        className="p-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:hover:bg-red-600 text-white rounded-xl transition shadow-md shadow-red-600/30 active:scale-95 shrink-0 flex items-center justify-center font-bold"
-                        title="Send message (Enter)"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="p-3 rounded-2xl bg-gradient-to-r from-red-950/40 via-zinc-900 to-zinc-950 border border-red-500/20 text-center space-y-2">
-                    <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-gray-200">
-                      <LogIn className="w-3.5 h-3.5 text-red-500" />
-                      <span>Sign in to join the conversation</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400">
-                      Only registered users can send text messages to all connected streamers.
-                    </p>
+                    <span>Max 500 chars</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder={user ? "Type a message to all streamers..." : `Type as ${guestName} or sign in...`}
+                      maxLength={500}
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      className="flex-1 bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-red-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none transition shadow-inner font-medium"
+                    />
                     <button
-                      type="button"
-                      onClick={onLoginClick}
-                      className="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-red-600/40 active:scale-95"
+                      type="submit"
+                      disabled={!inputText.trim() || isSending}
+                      className="p-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:hover:bg-red-600 text-white rounded-xl transition shadow-md shadow-red-600/30 active:scale-95 shrink-0 flex items-center justify-center font-bold"
+                      title="Send message (Enter)"
                     >
-                      Sign In / Register Free
+                      <Send className="w-4 h-4" />
                     </button>
                   </div>
-                )}
+                </form>
               </div>
             </>
           )}

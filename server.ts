@@ -10,6 +10,15 @@ import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import admin from 'firebase-admin';
+import { initializeApp as initFirebaseClientApp } from "firebase/app";
+import { 
+  getFirestore as getFirebaseClientFirestore, 
+  collection as getFirebaseCollection, 
+  getDocs as getFirebaseDocs, 
+  addDoc as getFirebaseAddDoc, 
+  query as getFirebaseQuery, 
+  limit as getFirebaseLimit 
+} from "firebase/firestore";
 import { GoogleGenAI, Type } from "@google/genai";
 
 let aiClient: GoogleGenAI | null = null;
@@ -132,6 +141,15 @@ async function startServer() {
     }
   } catch (e: any) {
     console.error("Failed to initialize Firestore handle:", e.message);
+  }
+
+  let clientDb: any = null;
+  try {
+    const clientApp = initFirebaseClientApp(firebaseConfig, "server-client-app");
+    clientDb = getFirebaseClientFirestore(clientApp, firebaseConfig.firestoreDatabaseId);
+    console.log("Client Firestore handle initialized on server successfully");
+  } catch (err: any) {
+    console.warn("Client Firestore handle warning on server:", err.message);
   }
 
   // --- Connection Test Logic ---
@@ -1294,9 +1312,44 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   }, 30000);
 
-  // REST API: GET all messages (< 12 hours old)
-  apiRouter.get("/chat/messages", (req, res) => {
+  // REST API: GET all messages (< 12 hours old, synced with Firestore cloud database)
+  apiRouter.get("/chat/messages", async (req, res) => {
     pruneExpiredMessages();
+
+    // Synchronize with Firestore so all containers and instances share live messages
+    if (clientDb) {
+      try {
+        const snap = await getFirebaseDocs(getFirebaseQuery(getFirebaseCollection(clientDb, 'messages'), getFirebaseLimit(100)));
+        const now = Date.now();
+        snap.docs.forEach((docSnap: any) => {
+          const d = docSnap.data();
+          const createdAt = typeof d.createdAt === 'number' ? d.createdAt : now;
+          if (now - createdAt < CHAT_RETENTION_MS) {
+            const existing = communityMessages.find(m => 
+              m.id === docSnap.id || 
+              (m.userId === (d.userId || d.senderId) && m.text === d.text && Math.abs(m.createdAt - createdAt) < 4000)
+            );
+            if (!existing) {
+              communityMessages.push({
+                id: docSnap.id,
+                userId: d.userId || d.senderId || 'streamer',
+                userName: d.userName || d.senderName || 'Streamer',
+                userAvatar: d.userAvatar || d.senderAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(d.userName || d.senderName || 'Streamer')}&background=E50914&color=fff`,
+                userEmail: d.userEmail || '',
+                text: d.text || '',
+                createdAt,
+                expiresAt: d.expiresAt || (createdAt + CHAT_RETENTION_MS)
+              });
+            }
+          }
+        });
+        communityMessages.sort((a, b) => a.createdAt - b.createdAt);
+        saveCommunityMessages();
+      } catch (err: any) {
+        console.warn("Firestore sync warning on GET /chat/messages:", err.message);
+      }
+    }
+
     res.json({
       success: true,
       messages: communityMessages,
@@ -1307,7 +1360,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   });
 
   // REST API: POST send message (Connected for all users, registered or guests)
-  apiRouter.post("/chat/send", (req, res) => {
+  apiRouter.post("/chat/send", async (req, res) => {
     try {
       const { userId, userName, userAvatar, userEmail, text } = req.body;
 
@@ -1345,6 +1398,29 @@ Recommend exactly ONE great movie they would love. Provide response in format:
       if (!communityMessages.some(m => m.id === newMessage.id)) {
         communityMessages.push(newMessage);
         saveCommunityMessages();
+      }
+
+      // Persist to Firestore cloud database
+      if (clientDb) {
+        try {
+          const docRef = await getFirebaseAddDoc(getFirebaseCollection(clientDb, 'messages'), {
+            senderId: effectiveUserId,
+            userId: effectiveUserId,
+            senderName: effectiveUserName,
+            userName: effectiveUserName,
+            senderAvatar: newMessage.userAvatar,
+            userAvatar: newMessage.userAvatar,
+            userEmail: rawUserEmail,
+            text: trimmedText,
+            createdAt: now,
+            expiresAt: now + CHAT_RETENTION_MS
+          });
+          if (docRef && docRef.id) {
+            newMessage.id = docRef.id;
+          }
+        } catch (dbErr: any) {
+          console.warn("Firestore backup write warning:", dbErr.message);
+        }
       }
 
       // Broadcast new message to all connected clients

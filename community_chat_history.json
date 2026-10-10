@@ -28,6 +28,26 @@
     "expiresAt": 1791671721777
   },
   {
+    "id": "fEP40avOedqqwWFPNlFt",
+    "userId": "google-1791628616142",
+    "userName": "O",
+    "userAvatar": "https://ui-avatars.com/api/?name=O&background=E50914&color=fff",
+    "userEmail": "o",
+    "text": "Hi",
+    "createdAt": 1791629006798,
+    "expiresAt": 1791672206798
+  },
+  {
+    "id": "ZFSbauaoshZxeSLWsVrz",
+    "userId": "google-1791629037868",
+    "userName": "Facteriayt",
+    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
+    "userEmail": "facteriayt@gmail.com",
+    "text": "Hi",
+    "createdAt": 1791629045770,
+    "expiresAt": 1791672245770
+  },
+  {
     "id": "msg_1791629324019_rzt4unjfpw2",
     "userId": "test_user_42",
     "userName": "CinemaFan",
@@ -36,5 +56,35 @@
     "text": "Testing live stream sync and persistent chat!",
     "createdAt": 1791629324019,
     "expiresAt": 1791672524019
+  },
+  {
+    "id": "zSqTmUIColeJCO0H86Eq",
+    "userId": "google-1791629037868",
+    "userName": "Facteriayt",
+    "userAvatar": "https://ui-avatars.com/api/?name=Facteriayt&background=E50914&color=fff",
+    "userEmail": "facteriayt@gmail.com",
+    "text": "Hi",
+    "createdAt": 1791629569959,
+    "expiresAt": 1791672769959
+  },
+  {
+    "id": "msg_1791629727109_htp6f61jw3u",
+    "userId": "test1",
+    "userName": "Tester",
+    "userAvatar": "https://ui-avatars.com/api/?name=Tester&background=E50914&color=fff",
+    "userEmail": "",
+    "text": "Hello World",
+    "createdAt": 1791629727109,
+    "expiresAt": 1791672927109
+  },
+  {
+    "id": "KSsTB1jB4zxrMIDlfeJu",
+    "userId": "streamer_test",
+    "userName": "GeminiTester",
+    "userAvatar": "https://ui-avatars.com/api/?name=GeminiTester&background=E50914&color=fff",
+    "userEmail": "",
+    "text": "Live chat persistence test successful!",
+    "createdAt": 1791630432030,
+    "expiresAt": 1791673632030
   }
 ]

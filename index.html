@@ -14,26 +14,36 @@
     <meta property="og:description" content="A high-end movie streaming platform with AI-powered insights, community uploads, and video streaming." />
     <meta property="og:type" content="website" />
     
-    <script async src="//d.smopy.com/d/?resource=pubJS"></script>
-    <script src="/sayhgngsboeqhsk.php"></script>
     <script>
-      // Global error suppression for external script noise
+      // Global error suppression for external network noise and non-critical cancellation events
       window.onerror = function(message, source, lineno, colno, error) {
-        if (message === 'Script error.') {
-          console.debug('Caught external script error (hidden by browser security)');
-          return true; // Suppress the error from surfacing as a crash
+        var strMsg = String(message || '');
+        if (
+          strMsg === 'Script error.' ||
+          strMsg.indexOf('ads request timed out') !== -1 ||
+          strMsg.indexOf('failed timeout') !== -1 ||
+          strMsg.indexOf('popup-closed-by-user') !== -1
+        ) {
+          console.debug('Suppressed non-fatal external event:', strMsg);
+          return true; // Suppress from triggering error modal
         }
         return false;
       };
-    </script>
 
-    <!-- Video.js and VAST/IMA Requirements -->
-    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/videojs-ima@2.1.0/dist/videojs.ima.css" rel="stylesheet" />
-    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-    <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-ads@7.3.2/dist/videojs-contrib-ads.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/videojs-ima@2.1.0/dist/videojs.ima.min.js"></script>
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event && event.reason;
+        var reasonStr = String(reason && (reason.message || reason.code || reason) || '');
+        if (
+          reasonStr.indexOf('popup-closed-by-user') !== -1 ||
+          reasonStr.indexOf('cancelled-popup-request') !== -1 ||
+          reasonStr.indexOf('ads request timed out') !== -1 ||
+          reasonStr.indexOf('failed timeout') !== -1
+        ) {
+          console.debug('Handled benign promise rejection:', reasonStr);
+          event.preventDefault();
+        }
+      });
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

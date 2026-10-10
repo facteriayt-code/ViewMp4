@@ -82,9 +82,19 @@ export const GoogleChatPanel: React.FC<GoogleChatPanelProps> = ({
       await connectGoogleChat();
       setIsConnected(true);
     } catch (err: any) {
-      console.error('Google Chat connect error:', err);
-      const msg = err.message || 'Failed to authenticate with Google Chat.';
-      setErrorMessage(msg);
+      if (
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request' ||
+        String(err?.message || '').includes('popup-closed-by-user') ||
+        String(err?.message || '').includes('closed by user')
+      ) {
+        // User closed or dismissed the popup — clean recovery without crash
+        setErrorMessage('Sign-in cancelled. Click "Connect Google Account" when you want to connect.');
+      } else {
+        console.warn('Google Chat connect notice:', err?.message || err);
+        const msg = err.message || 'Failed to authenticate with Google Chat.';
+        setErrorMessage(msg);
+      }
     } finally {
       setIsAuthenticating(false);
     }

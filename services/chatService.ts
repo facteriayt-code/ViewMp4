@@ -36,13 +36,8 @@ export const subscribeToLiveChat = (
   const messagesRef = collection(db, MESSAGES_COLLECTION);
   const twelveHoursAgo = Date.now() - TWELVE_HOURS_MS;
 
-  // Query recent messages ordered by createdAt
-  const q = query(
-    messagesRef,
-    where('createdAt', '>=', twelveHoursAgo),
-    orderBy('createdAt', 'asc'),
-    limit(150)
-  );
+  // Query messages without composite index requirements
+  const q = query(messagesRef, limit(200));
 
   const unsubscribe = onSnapshot(
     q,

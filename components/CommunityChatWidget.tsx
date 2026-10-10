@@ -47,7 +47,7 @@ export const CommunityChatWidget: React.FC<CommunityChatWidgetProps> = ({
   if (isOpen) return null;
 
   return (
-    <div className="hidden md:flex items-center space-x-2 fixed bottom-6 right-6 z-[40]">
+    <div className="flex items-center space-x-1.5 sm:space-x-2 fixed bottom-20 md:bottom-6 right-3 sm:right-6 z-[60]">
       {/* 1. Dedicated Google Chat Quick Action Pill */}
       {onOpenGoogleChat && (
         <button

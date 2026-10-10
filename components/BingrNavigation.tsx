@@ -296,9 +296,26 @@ export const BingrNavigation: React.FC<BingrNavigationProps> = ({
         )}
       </div>
 
-      {/* ── MOBILE: Floating Bottom Dock Bar (Clean 4-item dock: Home, Dice, For You, Account) ── */}
-      <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[60] w-[94%] max-w-md">
-        <div className="relative flex items-center justify-around h-14 bg-[#0d0f17]/90 backdrop-blur-2xl border border-white/15 px-2 py-1 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.85)]">
+        {/* ── MOBILE: Floating Bottom Dock Bar (Clean dock with Google Chat) ── */}
+        <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[60] w-[96%] max-w-md">
+          <div className="relative flex items-center justify-around h-14 bg-[#0d0f17]/90 backdrop-blur-2xl border border-white/15 px-2 py-1 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.85)]">
+            {onOpenGoogleChat && (
+              <button
+                type="button"
+                onClick={onOpenGoogleChat}
+                className="relative flex flex-col items-center justify-center py-1 px-2.5 rounded-full text-blue-400 hover:text-white transition-all active:scale-90"
+                title="Google Workspace Chat (Spaces & Direct Messages)"
+              >
+                <span className="relative z-10 p-1 rounded-full bg-blue-600/30 text-blue-400 flex items-center justify-center">
+                  <svg className="w-4 h-4 fill-blue-400" viewBox="0 0 24 24">
+                    <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                  </svg>
+                </span>
+                <span className="relative z-10 text-[9px] font-black tracking-tight mt-0.5 leading-none text-blue-300">
+                  Google Chat
+                </span>
+              </button>
+            )}
           {navItems.filter(item => item.id !== 'hubs').map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
