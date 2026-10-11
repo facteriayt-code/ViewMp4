@@ -439,6 +439,10 @@ const App: React.FC = () => {
         title: 'Trending Now (Blockbusters & Hits)', 
         movies: pool.slice(0, 20) 
       },
+      {
+        title: 'Anime & Animated Hits (AniList VIP)',
+        movies: pool.filter(m => m.anilistId || m.anist_ids || /anime|animation/i.test(`${m.genre} ${m.title}`)).slice(0, 24)
+      },
       { 
         title: 'Top TV Series & Binge Shows', 
         movies: tvShows.slice(0, 20) 

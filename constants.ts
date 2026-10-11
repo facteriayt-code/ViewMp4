@@ -3,11 +3,13 @@ import tmdbCatalogData from './tmdb_catalog.json';
 import curatedMoviesData from './curated_movies.json';
 import curatedTvShowsData from './curated_tv_shows.json';
 import verifiedPlatformMoviesData from './verified_platform_movies.json';
+import curatedAnimeData from './curated_anime.json';
 
 const rawCatalog = tmdbCatalogData as Movie[];
 const curatedMovies = curatedMoviesData as Movie[];
 const curatedTv = curatedTvShowsData as Movie[];
 const verifiedPlatformMovies = verifiedPlatformMoviesData as Movie[];
+const curatedAnime = curatedAnimeData as Movie[];
 
 // Helper to filter out DVD featurettes, workout videos, fan films, and podcast commentaries
 const isJunkOrUnstreamable = (title: string = ''): boolean => {
@@ -18,7 +20,17 @@ const seenIds = new Set<string>();
 const seenTitles = new Set<string>();
 const combinedMovies: Movie[] = [];
 
-// 1. Add verified platform titles (Netflix, Prime, Disney+, Apple TV+, Max, Hulu)
+// 1. Add verified anime series with official AniList IDs (Goblin Slayer, Attack on Titan, Jujutsu Kaisen, etc.)
+for (const a of curatedAnime) {
+  const normTitle = (a.title || '').toLowerCase().trim();
+  if (!seenIds.has(a.id) && !seenTitles.has(normTitle)) {
+    seenIds.add(a.id);
+    seenTitles.add(normTitle);
+    combinedMovies.push(a);
+  }
+}
+
+// 2. Add verified platform titles (Netflix, Prime, Disney+, Apple TV+, Max, Hulu)
 for (const vp of verifiedPlatformMovies) {
   const normTitle = (vp.title || '').toLowerCase().trim();
   if (!seenIds.has(vp.id) && !seenTitles.has(normTitle)) {
@@ -28,7 +40,7 @@ for (const vp of verifiedPlatformMovies) {
   }
 }
 
-// 2. Add top verified blockbusters (Oppenheimer, Deadpool, Avengers, Gladiator, Interstellar, etc.)
+// 3. Add top verified blockbusters (Oppenheimer, Deadpool, Avengers, Gladiator, Interstellar, etc.)
 for (const m of curatedMovies) {
   const normTitle = (m.title || '').toLowerCase().trim();
   if (!seenIds.has(m.id) && !seenTitles.has(normTitle)) {
@@ -38,7 +50,7 @@ for (const m of curatedMovies) {
   }
 }
 
-// 3. Add top verified TV series (Breaking Bad, Stranger Things, House of the Dragon, Game of Thrones, The Boys, etc.)
+// 4. Add top verified TV series (Breaking Bad, Stranger Things, House of the Dragon, Game of Thrones, The Boys, etc.)
 for (const t of curatedTv) {
   const normTitle = (t.title || '').toLowerCase().trim();
   if (!seenIds.has(t.id) && !seenTitles.has(normTitle)) {
@@ -48,7 +60,7 @@ for (const t of curatedTv) {
   }
 }
 
-// 4. Add verified released movies (year <= 2024, views >= 1,000,000) from tmdbCatalogData
+// 5. Add verified released movies (year <= 2024, views >= 1,000,000) from tmdbCatalogData
 // Note: strip fake auto-generated streamingSources from raw catalog so platform replicas strictly contain verified platform titles
 for (const m of rawCatalog) {
   const normTitle = (m.title || '').toLowerCase().trim();
@@ -73,6 +85,7 @@ export const INITIAL_MOVIES: Movie[] = combinedMovies;
 
 export const CATEGORIES = [
   'Trending Now',
+  'Anime & Animated Hits',
   'TV Series & Binge Shows',
   'Sci-Fi Masterpieces',
   'Action & Adventure',

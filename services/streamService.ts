@@ -660,13 +660,40 @@ export function isIndianContent(movie: Movie): boolean {
 }
 
 /**
- * Generates stream servers for a movie or TV show.
+ * Extracts AniList ID from a Movie object if available.
+ * Handles both anilistId and anist_ids parameter variations,
+ * as well as IDs prefixed with 'anilist-'.
+ */
+export function getMovieAnilistId(movie: Movie): number | null {
+  if (!movie) return null;
+  const anyMovie = movie as any;
+  if (anyMovie.anilistId && !isNaN(Number(anyMovie.anilistId)) && Number(anyMovie.anilistId) > 0) {
+    return Number(anyMovie.anilistId);
+  }
+  if (anyMovie.anist_ids && !isNaN(Number(anyMovie.anist_ids)) && Number(anyMovie.anist_ids) > 0) {
+    return Number(anyMovie.anist_ids);
+  }
+  if (movie.id && String(movie.id).startsWith('anilist-')) {
+    const parsed = parseInt(String(movie.id).replace('anilist-', ''), 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return null;
+}
+
+/**
+ * Generates stream servers for a movie, TV show, or Anime.
  * 
- * Order logic per user specification:
+ * Embed anime episodes with AniList IDs:
+ * URL format: https://embed.filmu.in/anime/{anist_ids}/{season}/{episode}
+ * Use just the ID to auto-detect season and start from episode 1, season and episode are optional.
+ * 
+ * Order logic:
+ * - Anime with AniList ID: Filmu Anime Server (embed.filmu.in/anime/{id}/{s}/{e}) prioritized as Server #1
  * - Foreign films: Filmy Server (embed.filmu.in) prioritized as Server #1
  * - Indian films: AutoEmbed Server (player.autoembed.co) prioritized as Server #1
  */
 export function getMovieStreamServers(movie: Movie, season: number = 1, episode: number = 1): StreamServer[] {
+  const anilistId = getMovieAnilistId(movie);
   const tmdbId = getMovieTmdbId(movie);
   const imdbId = getMovieImdbId(movie);
   const key = CODESPECTERS_API_KEY;
@@ -694,21 +721,35 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  const filmuUrl = isSeries 
+  // Filmu standard movie / tv URL
+  const standardFilmuUrl = isSeries 
     ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
     : `https://embed.filmu.in/movie/${tmdbId}`;
 
+  // Filmu Anime URL using AniList ID: https://embed.filmu.in/anime/{anist_ids}/{season}/{episode}
+  // Season and episode are optional, or can be passed directly for specific episodes
+  const filmuAnimeUrl = anilistId 
+    ? (season && episode 
+        ? `https://embed.filmu.in/anime/${anilistId}/${season}/${episode}`
+        : `https://embed.filmu.in/anime/${anilistId}`)
+    : standardFilmuUrl;
+
+  const filmuUrl = anilistId ? filmuAnimeUrl : standardFilmuUrl;
+
   const filmuServer: StreamServer = {
-    id: 'filmu-primary',
-    name: 'Filmu Server (Working Now)',
-    badge: 'Active VIP 4K',
+    id: anilistId ? 'filmu-anime' : 'filmu-primary',
+    name: anilistId ? 'Filmu Anime VIP' : 'Filmu Server (Working Now)',
+    badge: anilistId ? 'AniList 4K' : 'Active VIP 4K',
     url: filmuUrl,
     type: 'iframe',
     quality: '4K Ultra HD',
-    description: 'Filmu Server - Verified Active & Working (Multi-Audio: Hindi Dub, English & South Indian Languages)',
-    isHindi: true,
+    description: anilistId 
+      ? `Filmu Anime Player - Powered by AniList ID (${anilistId}) with multi-audio, Japanese subs & dubs`
+      : 'Filmu Server - Verified Active & Working (Multi-Audio: Hindi Dub, English & South Indian Languages)',
+    isHindi: !anilistId,
     isFilmu: true,
-    isTv: isSeries
+    isTv: isSeries,
+    isAnime: Boolean(anilistId)
   };
 
   const cinesrcUrl = isSeries
@@ -791,10 +832,11 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   };
 
   // Server Priority:
-  // Filmy Server is active and working (prime source for multi-audio/Hindi/South & foreign)
-  // Priority order: Filmy Server, AutoEmbed 4K VIP, VidSrc Pro, CineSrc 4K
-  const orderedServers: StreamServer[] = isSeries
-    ? [filmuServer, autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
+  // Anime titles: Filmu Anime VIP (embed.filmu.in/anime/{anilistId}/{season}/{episode}) is #1
+  // Foreign films: Filmy Server is #1
+  // Indian films: AutoEmbed Server is #1
+  const orderedServers: StreamServer[] = isIndian
+    ? [autoembedServer, filmuServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
     : [filmuServer, autoembedServer, vidsrcServer, cinesrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer];
 
   const servers: StreamServer[] = [...orderedServers];

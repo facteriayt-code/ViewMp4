@@ -12,6 +12,7 @@ const CATEGORIES = [
   { name: 'All Categories', label: 'All', icon: <Compass className="w-3.5 h-3.5" />, color: 'text-zinc-400' },
   { name: 'Top 10', label: 'Top 10 Today', icon: <Trophy className="w-3.5 h-3.5" />, color: 'text-amber-400' },
   { name: 'Trending Now', label: 'Trending', icon: <Flame className="w-3.5 h-3.5" />, color: 'text-orange-400' },
+  { name: 'Anime & Animated Hits', label: 'Anime', icon: <Sparkles className="w-3.5 h-3.5" />, color: 'text-pink-400' },
   { name: 'Top TV Series & Binge Shows', label: 'TV Shows', icon: <Tv className="w-3.5 h-3.5" />, color: 'text-purple-400' },
   { name: 'Top Rated Movies & Masterpieces', label: 'Masterpieces', icon: <Star className="w-3.5 h-3.5" />, color: 'text-amber-400' },
   { name: 'Sci-Fi & Cosmic Adventures', label: 'Sci-Fi', icon: <Sparkles className="w-3.5 h-3.5" />, color: 'text-cyan-400' },

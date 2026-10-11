@@ -3,6 +3,9 @@ import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle, Ext
 import { Movie } from '../types.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie, getSavedMovieIdSet, getLikedMovieIdSet } from '../services/userLibraryService.ts';
+import { MovieRowSkeleton, MovieCardSkeleton } from './SkeletonLoaders.tsx';
+
+export { MovieRowSkeleton, MovieCardSkeleton };
 
 interface MovieRowProps {
   title: string;
@@ -11,6 +14,7 @@ interface MovieRowProps {
   onPlay: (movie: Movie) => void;
   isTop10?: boolean;
   sourceUrl?: string;
+  isLoading?: boolean;
 }
 
 const formatViews = (views: number) => {
@@ -19,7 +23,7 @@ const formatViews = (views: number) => {
   return views.toString();
 };
 
-const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay, isTop10, sourceUrl }) => {
+const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay, isTop10, sourceUrl, isLoading = false }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedCategory, setCopiedCategory] = useState(false);
@@ -87,7 +91,12 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
     }
   };
 
-  if (movies.length === 0) return null;
+  if (isLoading || movies.length === 0) {
+    if (isLoading) {
+      return <MovieRowSkeleton title={title} isTop10={isTop10} />;
+    }
+    return null;
+  }
 
   return (
     <div id={`row-${title.replace(/\s+/g, '-').toLowerCase()}`} className="space-y-3 sm:space-y-4 mb-8 sm:mb-12 group/row">

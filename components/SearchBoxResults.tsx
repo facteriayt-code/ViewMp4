@@ -8,6 +8,9 @@ import { Movie } from '../types.ts';
 import { WatchmodeSearchResult, convertSearchResultToMovie } from '../services/watchmodeService.ts';
 import { matchesMediaType, matchesCategory, isTvOrSeries } from '../services/streamService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
+import { SearchResultsSkeleton, SearchCardSkeleton } from './SkeletonLoaders.tsx';
+
+export { SearchResultsSkeleton, SearchCardSkeleton };
 
 export interface TrendingQuery {
   id: string;
@@ -434,11 +437,23 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
 
       {/* 2. Results Content: Catalog Verified Movies + TMDb Global Search */}
       <div className={`${isDropdown ? 'overflow-y-auto flex-1 p-2.5 sm:p-3.5 space-y-4 no-scrollbar' : 'space-y-6 sm:space-y-8'}`}>
-        {/* Loading Indicator */}
-        {isSearchingApi && (
-          <div className="flex items-center justify-center space-x-2 py-3 text-red-500 bg-red-600/10 rounded-xl border border-red-500/20 animate-pulse text-xs">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="font-bold">Searching millions of movies & shows in live database...</span>
+        {/* Full Skeleton Loader when search query is initially fetching */}
+        {isSearchingApi && totalResultsCount === 0 && (
+          <SearchResultsSkeleton 
+            isDropdown={isDropdown} 
+            count={isDropdown ? 4 : 12} 
+            message={`Searching live cinema database for "${searchTerm}"...`}
+          />
+        )}
+
+        {/* Live background sync indicator when partial results already shown */}
+        {isSearchingApi && totalResultsCount > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 text-red-400 bg-red-600/10 rounded-xl border border-red-500/20 text-xs animate-pulse">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span className="font-bold">Streaming additional live results from global database...</span>
+            </div>
+            <span className="text-[10px] uppercase font-black tracking-wider text-red-500">Live API</span>
           </div>
         )}
 

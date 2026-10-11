@@ -43,6 +43,8 @@ export interface Movie {
   rank?: number;
   poster?: string;
   weeksInTop10?: number;
+  anilistId?: number;
+  anist_ids?: number;
 }
 
 export interface UserUpload {

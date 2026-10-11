@@ -9,6 +9,7 @@ import { saveContinueWatching } from '../services/continueWatchingService.ts';
 import { 
   getMovieStreamServers, 
   getMovieTmdbId, 
+  getMovieAnilistId,
   isTvOrSeries,
   StreamServer 
 } from '../services/streamService.ts';
@@ -65,6 +66,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   const tmdbId = getMovieTmdbId(movie);
+  const anilistId = getMovieAnilistId(movie);
   const isSeries = detectedIsSeries || forceSeriesMode;
 
   const handleFixApplied = (result: StreamFixResult) => {
@@ -213,9 +215,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <h1 className="text-xs sm:text-base font-black text-white tracking-tight uppercase truncate">
                 {movie.title}
               </h1>
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/40 hidden md:inline">
-                ID: {tmdbId}
-              </span>
+              {anilistId ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-pink-600/30 text-pink-300 border border-pink-500/40 hidden md:inline">
+                  AniList: {anilistId}
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/40 hidden md:inline">
+                  ID: {tmdbId}
+                </span>
+              )}
             </div>
             <div className="flex items-center space-x-1.5 text-[10px] sm:text-xs text-gray-400 font-medium truncate">
               <span>{movie.year}</span>
