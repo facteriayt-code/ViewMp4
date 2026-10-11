@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Share2, Check, Eye, Play, AlertTriangle, ExternalLink, Bookmark, Heart } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
-import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
+import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie, getSavedMovieIdSet, getLikedMovieIdSet } from '../services/userLibraryService.ts';
 
 interface MovieRowProps {
   title: string;
@@ -29,8 +29,10 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
 
   useEffect(() => {
     const updateSets = () => {
-      setSavedIds(new Set(movies.filter(m => isMovieSaved(m.id)).map(m => m.id)));
-      setLikedIds(new Set(movies.filter(m => isMovieLiked(m.id)).map(m => m.id)));
+      const allSaved = getSavedMovieIdSet();
+      const allLiked = getLikedMovieIdSet();
+      setSavedIds(new Set(movies.map(m => m.id).filter(id => allSaved.has(id))));
+      setLikedIds(new Set(movies.map(m => m.id).filter(id => allLiked.has(id))));
     };
     updateSets();
     window.addEventListener('gemini_saved_movies_updated', updateSets);
@@ -164,6 +166,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                     alt={movie.title} 
                     className="w-full h-full object-cover object-center brightness-[0.92] group-hover/card:brightness-75 transition-all duration-500 pointer-events-none"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
                       if (movie.backdrop && target.src !== movie.backdrop) {

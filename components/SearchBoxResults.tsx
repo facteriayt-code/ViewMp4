@@ -102,13 +102,22 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
     });
   }, [catalogMovies, searchTerm, isSearchEmpty, mediaType, selectedCategory]);
 
-  // Filtered TMDb database API results
+  // Filtered TMDb database API results (deduplicated against catalog)
   const filteredApiResults = useMemo(() => {
     if (isSearchEmpty) return [];
+    const catalogTitles = new Set(filteredCatalog.map(m => m.title.toLowerCase().trim()));
+    const catalogIds = new Set(filteredCatalog.map(m => m.watchmodeId || parseInt(m.id.replace(/\D/g, '') || '0', 10)));
+
     return apiSearchResults.filter(item => {
       const isTv = item.type === 'tv_series' || item.type === 'tv';
       if (mediaType === 'tv' && !isTv) return false;
       if (mediaType === 'movie' && isTv) return false;
+
+      // Exclude if already shown in Featured Streams
+      const normTitle = (item.name || item.title || '').toLowerCase().trim();
+      if (catalogTitles.has(normTitle) || (item.id && catalogIds.has(item.id))) {
+        return false;
+      }
 
       if (selectedCategory !== 'All Genres') {
         const cat = selectedCategory.toLowerCase();
@@ -123,7 +132,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
       }
       return true;
     });
-  }, [apiSearchResults, isSearchEmpty, mediaType, selectedCategory]);
+  }, [apiSearchResults, isSearchEmpty, mediaType, selectedCategory, filteredCatalog]);
 
   const totalResultsCount = filteredCatalog.length + filteredApiResults.length;
 
@@ -304,6 +313,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                           }
                         }}
                         loading="lazy"
+                        referrerPolicy="no-referrer"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/pick:opacity-100 transition flex items-center justify-center">
                         <Play className="w-4 h-4 fill-white text-white drop-shadow-md" />
@@ -455,7 +465,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
+            <div className={`grid ${isDropdown ? 'grid-cols-2 xs:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'} gap-2.5 sm:gap-3.5`}>
               {filteredCatalog.map(movie => (
                 <div
                   key={movie.id}
@@ -474,6 +484,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                       } 
                       alt={movie.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      referrerPolicy="no-referrer"
                       onError={(e) => {
                         const target = e.currentTarget;
                         if (movie.backdrop && target.src !== movie.backdrop) {
@@ -542,21 +553,37 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
+            <div className={`grid ${isDropdown ? 'grid-cols-2 xs:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'} gap-2.5 sm:gap-3.5`}>
               {filteredApiResults.map(item => {
                 const title = item.name || item.title || 'Untitled';
                 const isTv = item.type === 'tv_series' || item.type === 'tv' || (item as any).is_tv;
-                const poster = 
+                
+                // Prioritize vertical 2:3 poster, fallback to backdrop
+                const posterRaw = 
+                  item.poster_path || 
                   item.imageUrl || 
                   item.image_url || 
-                  item.backdropUrl || 
-                  (item as any).poster_path || 
                   (item as any).thumbnail || 
+                  item.backdropUrl || 
                   (item as any).backdrop;
 
-                const cleanPoster = poster
-                  ? (poster.startsWith('/') ? `https://image.tmdb.org/t/p/w780${poster}` : poster)
-                  : 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
+                let cleanPoster = '';
+                if (posterRaw && typeof posterRaw === 'string' && posterRaw.trim()) {
+                  const p = posterRaw.trim();
+                  cleanPoster = p.startsWith('http') ? p : (p.startsWith('/') ? `https://image.tmdb.org/t/p/w780${p}` : `https://image.tmdb.org/t/p/w780/${p}`);
+                }
+
+                // If no poster in API result, try matching title in catalog
+                if (!cleanPoster) {
+                  const catalogMatch = catalogMovies.find(m => m.title.toLowerCase().trim() === title.toLowerCase().trim());
+                  if (catalogMatch && catalogMatch.thumbnail) {
+                    cleanPoster = catalogMatch.thumbnail.startsWith('/') ? `https://image.tmdb.org/t/p/w780${catalogMatch.thumbnail}` : catalogMatch.thumbnail;
+                  }
+                }
+
+                if (!cleanPoster) {
+                  cleanPoster = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
+                }
 
                 return (
                   <div
@@ -569,6 +596,7 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                         src={cleanPoster} 
                         alt={title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        referrerPolicy="no-referrer"
                         onError={(e) => {
                           const target = e.currentTarget;
                           if (item.backdropUrl && target.src !== item.backdropUrl) {

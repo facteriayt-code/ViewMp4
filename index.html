@@ -12,6 +12,7 @@
     <meta name="description" content="A high-end movie streaming platform with AI-powered insights, community uploads, and video streaming." />
     <meta property="og:title" content="GeminiStream - The Future of Entertainment" />
     <meta property="og:description" content="A high-end movie streaming platform with AI-powered insights, community uploads, and video streaming." />
+    <meta name="referrer" content="no-referrer">
     <meta property="og:type" content="website" />
     
     <script>
@@ -115,16 +116,13 @@
         @keyframes moviePageEntrance {
             0% {
                 opacity: 0;
-                transform: scale(0.985) translateY(12px);
             }
             100% {
                 opacity: 1;
-                transform: scale(1) translateY(0);
             }
         }
         .animate-movie-entrance {
-            animation: moviePageEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            will-change: opacity, transform;
+            animation: moviePageEntrance 0.15s ease-out forwards;
         }
         .video-js { width: 100%; height: 100%; background-color: black; }
         .vjs-big-play-button {

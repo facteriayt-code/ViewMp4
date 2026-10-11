@@ -449,15 +449,15 @@ const App: React.FC = () => {
       },
       { 
         title: 'Sci-Fi & Cosmic Adventures', 
-        movies: pool.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${m.genre} ${m.title}`)) 
+        movies: pool.filter(m => /sci-fi|science fiction|space|alien|interstellar|inception|dune|matrix|avatar/i.test(`${m.genre} ${m.title}`)).slice(0, 24) 
       },
       { 
         title: 'Action & Adventure Hits', 
-        movies: pool.filter(m => /action|adventure|thriller|knight|rings|spider|deadpool|wick|gladiator|batman|avengers|fast/i.test(`${m.genre} ${m.title}`)) 
+        movies: pool.filter(m => /action|adventure|thriller|knight|rings|spider|deadpool|wick|gladiator|batman|avengers|fast/i.test(`${m.genre} ${m.title}`)).slice(0, 24) 
       },
       { 
         title: 'Popular Streaming Catalog', 
-        movies: pool 
+        movies: pool.slice(0, 32) 
       }
     ];
   }, [filteredMovies]);
@@ -474,7 +474,7 @@ const App: React.FC = () => {
     return featuredSpotlightMovies[0] || movies.find(m => !m.isUserUploaded) || INITIAL_MOVIES[0];
   }, [featuredSpotlightMovies, movies]);
 
-  // Real-time Watchmode Database API search when user types in search bar
+  // Real-time Watchmode Database API search when user types in search bar with instant local response
   useEffect(() => {
     const term = searchTerm.trim();
     if (!term || term.length < 1) {
@@ -483,21 +483,47 @@ const App: React.FC = () => {
       return;
     }
 
+    // Instant local matches for 0ms visual feedback while network loads
+    const lower = term.toLowerCase();
+    const instantLocal: WatchmodeSearchResult[] = movies
+      .filter(m => m.title.toLowerCase().includes(lower) || (m.genre && m.genre.toLowerCase().includes(lower)))
+      .slice(0, 24)
+      .map(m => ({
+        id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),
+        name: m.title,
+        title: m.title,
+        type: m.isTv ? 'tv_series' : 'movie',
+        year: m.year,
+        imageUrl: m.thumbnail,
+        image_url: m.thumbnail,
+        poster_path: m.thumbnail,
+        thumbnail: m.thumbnail,
+        backdropUrl: m.backdrop || m.thumbnail,
+        overview: m.description,
+        voteAverage: m.userRating,
+        tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
+      }));
+
+    if (instantLocal.length > 0) {
+      setApiSearchResults(instantLocal);
+    }
+
     setIsSearchingApi(true);
     const timer = setTimeout(async () => {
       try {
         const results = await searchWatchmode(term);
-        setApiSearchResults(results);
+        if (results && results.length > 0) {
+          setApiSearchResults(results);
+        }
       } catch (err) {
         console.error("TMDb search error:", err);
-        setApiSearchResults([]);
       } finally {
         setIsSearchingApi(false);
       }
-    }, 200);
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, movies]);
 
   // Handle direct streaming from an API result card
   const handleStreamApiMovie = async (item: WatchmodeSearchResult) => {
@@ -717,6 +743,8 @@ const App: React.FC = () => {
             onAdBlockClick={() => setShowAdGuardModal(true)}
             searchTerm={searchTerm}
             catalogMovies={movies}
+            apiSearchResults={apiSearchResults}
+            isSearchingApi={isSearchingApi}
             onSelectMovie={handleSelectMovie}
             onPlayMovie={handlePlay}
           />

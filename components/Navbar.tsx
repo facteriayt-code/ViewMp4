@@ -4,6 +4,8 @@ import { User, Movie } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
 import { SearchBoxResults } from './SearchBoxResults.tsx';
 
+import { WatchmodeSearchResult } from '../services/watchmodeService.ts';
+
 interface NavbarProps {
   user: User | null;
   onUploadClick: () => void;
@@ -16,6 +18,8 @@ interface NavbarProps {
   onGoogleChatClick?: () => void;
   searchTerm?: string;
   catalogMovies?: Movie[];
+  apiSearchResults?: WatchmodeSearchResult[];
+  isSearchingApi?: boolean;
   onSelectMovie?: (movie: Movie) => void;
   onPlayMovie?: (movie: Movie) => void;
 }
@@ -32,6 +36,8 @@ const Navbar: React.FC<NavbarProps> = ({
   onGoogleChatClick,
   searchTerm: parentSearchTerm = '',
   catalogMovies = [],
+  apiSearchResults = [],
+  isSearchingApi = false,
   onSelectMovie,
   onPlayMovie
 }) => {
@@ -197,12 +203,14 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Real-time Trending Searches Dropdown - Fitted viewport bounds (fixed on mobile, absolute on desktop) */}
-          {isSearchFocused && !searchTerm.trim() && (
-            <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[460px] sm:max-w-[min(460px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0e15]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+          {/* Real-time Search & Trending Searches Dropdown */}
+          {isSearchFocused && (
+            <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[480px] sm:max-w-[min(480px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0e15]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
               <SearchBoxResults
-                searchTerm=""
+                searchTerm={searchTerm}
                 catalogMovies={catalogMovies}
+                apiSearchResults={apiSearchResults}
+                isSearchingApi={isSearchingApi}
                 onSelectMovie={(movie) => {
                   setIsSearchFocused(false);
                   onSelectMovie?.(movie);
@@ -217,7 +225,6 @@ const Navbar: React.FC<NavbarProps> = ({
                 onSelectQuery={(query) => {
                   setSearchTerm(query);
                   onSearch(query);
-                  setIsSearchFocused(false);
                 }}
               />
             </div>

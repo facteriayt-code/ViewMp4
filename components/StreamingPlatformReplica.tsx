@@ -102,7 +102,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
     });
   }, []);
 
-  // Real-time API and catalog search matching the site search box
+  // Real-time API and catalog search matching the site search box with instant local response
   useEffect(() => {
     const term = searchQuery.trim();
     if (!term || term.length < 1) {
@@ -111,21 +111,46 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
       return;
     }
 
+    const lower = term.toLowerCase();
+    const instantLocal: WatchmodeSearchResult[] = movies
+      .filter(m => m.title.toLowerCase().includes(lower) || (m.genre && m.genre.toLowerCase().includes(lower)))
+      .slice(0, 24)
+      .map(m => ({
+        id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),
+        name: m.title,
+        title: m.title,
+        type: m.isTv ? 'tv_series' : 'movie',
+        year: m.year,
+        imageUrl: m.thumbnail,
+        image_url: m.thumbnail,
+        poster_path: m.thumbnail,
+        thumbnail: m.thumbnail,
+        backdropUrl: m.backdrop || m.thumbnail,
+        overview: m.description,
+        voteAverage: m.userRating,
+        tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
+      }));
+
+    if (instantLocal.length > 0) {
+      setApiSearchResults(instantLocal);
+    }
+
     setIsSearchingApi(true);
     const timer = setTimeout(async () => {
       try {
         const results = await searchWatchmode(term);
-        setApiSearchResults(results);
+        if (results && results.length > 0) {
+          setApiSearchResults(results);
+        }
       } catch (err) {
         console.error("Replica search error:", err);
-        setApiSearchResults([]);
       } finally {
         setIsSearchingApi(false);
       }
-    }, 200);
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, movies]);
 
   const config = PLATFORMS[platformId];
 
@@ -293,12 +318,14 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
               )}
             </div>
 
-            {/* In-Platform Trending Searches Dropdown - Fitted viewport bounds */}
-            {isSearchFocused && !searchQuery.trim() && (
-              <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[460px] sm:max-w-[min(460px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
+            {/* In-Platform Search & Trending Searches Dropdown */}
+            {isSearchFocused && (
+              <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[480px] sm:max-w-[min(480px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <SearchBoxResults
-                  searchTerm=""
+                  searchTerm={searchQuery}
                   catalogMovies={movies}
+                  apiSearchResults={apiSearchResults}
+                  isSearchingApi={isSearchingApi}
                   onSelectMovie={(movie) => {
                     setIsSearchFocused(false);
                     onSelectMovie(movie);
@@ -312,7 +339,6 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
                   isInputFocused={true}
                   onSelectQuery={(query) => {
                     setSearchQuery(query);
-                    setIsSearchFocused(false);
                   }}
                 />
               </div>

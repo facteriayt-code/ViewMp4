@@ -82,7 +82,7 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
       const releaseDate = item.release_date || item.first_air_date || "";
       const year = releaseDate ? parseInt(releaseDate.slice(0, 4), 10) : undefined;
       const rawPoster = item.poster_path || item.backdrop_path;
-      const poster = rawPoster ? (rawPoster.startsWith('http') ? rawPoster : `${TMDB_IMG_THUMB}${rawPoster}`) : null;
+      const poster = rawPoster ? (rawPoster.startsWith('http') ? rawPoster : `${TMDB_IMG_POSTER}${rawPoster}`) : null;
       const rawBackdrop = item.backdrop_path || item.poster_path;
       const backdrop = rawBackdrop ? (rawBackdrop.startsWith('http') ? rawBackdrop : `${TMDB_IMG_BACKDROP}${rawBackdrop}`) : null;
       
@@ -332,9 +332,17 @@ export const getWatchmodeStatus = async (): Promise<WatchmodeStatus | null> => {
   };
 };
 
+// In-memory LRU query cache for instant keystroke response
+const searchCache = new Map<string, WatchmodeSearchResult[]>();
+
 export const searchWatchmode = async (query: string): Promise<WatchmodeSearchResult[]> => {
   if (!query || query.trim().length === 0) return [];
   const term = query.trim().toLowerCase();
+
+  // Check fast in-memory cache first
+  if (searchCache.has(term)) {
+    return searchCache.get(term)!;
+  }
 
   // 1. Instant local matches from the stored TMDb blockbuster movies
   const localMatches: WatchmodeSearchResult[] = INITIAL_MOVIES
@@ -368,6 +376,12 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
           merged.push(item);
         }
       }
+      // Store in memory cache
+      if (searchCache.size > 200) {
+        const firstKey = searchCache.keys().next().value;
+        if (firstKey) searchCache.delete(firstKey);
+      }
+      searchCache.set(term, merged);
       return merged;
     }
   } catch (err) {
@@ -375,6 +389,7 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
   }
 
   // 3. Fallback to local catalog matches
+  searchCache.set(term, localMatches);
   return localMatches;
 };
 

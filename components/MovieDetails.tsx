@@ -71,11 +71,21 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
     setIsLiked(newState);
   };
 
+  // Body scroll lock while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // Reset and fetch full TMDb details on movie change
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     const modal = document.querySelector('.bingr-movie-page');
-    if (modal) modal.scrollTo({ top: 0, behavior: 'smooth' });
+    if (modal) {
+      modal.scrollTop = 0;
+    }
 
     setSelectedSeason(movie.initialSeason || 1);
     setSelectedEpisode(movie.initialEpisode || 1);
@@ -98,7 +108,7 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [movie.id, movie.title]);
+  }, [movie.id]);
 
   // Recommendations: TMDb recommendations first, followed by catalog items
   const recommendations = useMemo(() => {
@@ -181,7 +191,7 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
       }
     });
     return () => { isCurrent = false; };
-  }, [isTv, movie, selectedSeason]);
+  }, [isTv, movie.id, selectedSeason]);
 
   const currentSeasonEpisodes = seasonEpisodes.length > 0 ? seasonEpisodes : Array.from({ length: 8 }, (_, i) => ({
     number: i + 1,

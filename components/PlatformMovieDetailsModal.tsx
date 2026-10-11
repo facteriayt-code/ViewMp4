@@ -85,7 +85,7 @@ export const PlatformMovieDetailsModal: React.FC<PlatformMovieDetailsModalProps>
       }
     });
     return () => { isCurrent = false; };
-  }, [movie, isTv, selectedSeason]);
+  }, [movie.id, isTv, selectedSeason]);
 
   // Reset scroll on movie change
   useEffect(() => {

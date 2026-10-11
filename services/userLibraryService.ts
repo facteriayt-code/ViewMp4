@@ -4,6 +4,12 @@ const SAVED_MOVIES_KEY = 'gemini_saved_movies';
 const LIKED_MOVIES_KEY = 'gemini_liked_movies';
 const LEGACY_WATCHLIST_KEY = 'gemini_watchlist';
 
+// In-memory cache for instantaneous O(1) checks during card rendering
+let cachedSavedMovies: Movie[] | null = null;
+let cachedLikedMovies: Movie[] | null = null;
+let cachedSavedIds = new Set<string>();
+let cachedLikedIds = new Set<string>();
+
 // Helper to safely read from localStorage
 const readList = (key: string): Movie[] => {
   try {
@@ -25,6 +31,29 @@ const writeList = (key: string, list: Movie[]) => {
   }
 };
 
+// Initialize caches
+const ensureSavedCache = () => {
+  if (cachedSavedMovies === null) {
+    cachedSavedMovies = readList(SAVED_MOVIES_KEY);
+    cachedSavedIds = new Set(cachedSavedMovies.map(m => m.id));
+    try {
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_WATCHLIST_KEY) || '[]');
+      if (Array.isArray(legacy)) {
+        legacy.forEach(id => cachedSavedIds.add(id));
+      }
+    } catch {
+      // ignore
+    }
+  }
+};
+
+const ensureLikedCache = () => {
+  if (cachedLikedMovies === null) {
+    cachedLikedMovies = readList(LIKED_MOVIES_KEY);
+    cachedLikedIds = new Set(cachedLikedMovies.map(m => m.id));
+  }
+};
+
 // Broadcast updates to other components
 const dispatchEvent = (eventName: string, data: any) => {
   try {
@@ -35,43 +64,48 @@ const dispatchEvent = (eventName: string, data: any) => {
 };
 
 export const getSavedMovies = (): Movie[] => {
-  return readList(SAVED_MOVIES_KEY);
+  ensureSavedCache();
+  return cachedSavedMovies || [];
 };
 
 export const getLikedMovies = (): Movie[] => {
-  return readList(LIKED_MOVIES_KEY);
+  ensureLikedCache();
+  return cachedLikedMovies || [];
+};
+
+export const getSavedMovieIdSet = (): Set<string> => {
+  ensureSavedCache();
+  return cachedSavedIds;
+};
+
+export const getLikedMovieIdSet = (): Set<string> => {
+  ensureLikedCache();
+  return cachedLikedIds;
 };
 
 export const isMovieSaved = (movieId: string): boolean => {
   if (!movieId) return false;
-  const list = getSavedMovies();
-  if (list.some(m => m.id === movieId)) return true;
-  // Also check legacy watchlist string array
-  try {
-    const legacy = JSON.parse(localStorage.getItem(LEGACY_WATCHLIST_KEY) || '[]');
-    if (Array.isArray(legacy) && legacy.includes(movieId)) return true;
-  } catch {
-    // ignore
-  }
-  return false;
+  ensureSavedCache();
+  return cachedSavedIds.has(movieId);
 };
 
 export const isMovieLiked = (movieId: string): boolean => {
   if (!movieId) return false;
-  const list = getLikedMovies();
-  return list.some(m => m.id === movieId);
+  ensureLikedCache();
+  return cachedLikedIds.has(movieId);
 };
 
 export const toggleSaveMovie = (movie: Movie): boolean => {
   if (!movie || !movie.id) return false;
-  const current = getSavedMovies();
-  const exists = current.some(m => m.id === movie.id);
+  ensureSavedCache();
+  const current = cachedSavedMovies || [];
+  const exists = cachedSavedIds.has(movie.id);
   let updated: Movie[];
 
   if (exists) {
     updated = current.filter(m => m.id !== movie.id);
+    cachedSavedIds.delete(movie.id);
   } else {
-    // Save clean movie object
     const movieToSave: Movie = {
       id: movie.id,
       title: movie.title,
@@ -87,13 +121,14 @@ export const toggleSaveMovie = (movie: Movie): boolean => {
       videoUrl: movie.videoUrl
     };
     updated = [movieToSave, ...current];
+    cachedSavedIds.add(movie.id);
   }
 
+  cachedSavedMovies = updated;
   writeList(SAVED_MOVIES_KEY, updated);
 
-  // Sync legacy watchlist array of IDs
   try {
-    const legacyIds = updated.map(m => m.id);
+    const legacyIds = Array.from(cachedSavedIds);
     localStorage.setItem(LEGACY_WATCHLIST_KEY, JSON.stringify(legacyIds));
   } catch {
     // ignore
@@ -105,12 +140,14 @@ export const toggleSaveMovie = (movie: Movie): boolean => {
 
 export const toggleLikeMovie = (movie: Movie): boolean => {
   if (!movie || !movie.id) return false;
-  const current = getLikedMovies();
-  const exists = current.some(m => m.id === movie.id);
+  ensureLikedCache();
+  const current = cachedLikedMovies || [];
+  const exists = cachedLikedIds.has(movie.id);
   let updated: Movie[];
 
   if (exists) {
     updated = current.filter(m => m.id !== movie.id);
+    cachedLikedIds.delete(movie.id);
   } else {
     const movieToLike: Movie = {
       id: movie.id,
@@ -127,19 +164,24 @@ export const toggleLikeMovie = (movie: Movie): boolean => {
       videoUrl: movie.videoUrl
     };
     updated = [movieToLike, ...current];
+    cachedLikedIds.add(movie.id);
   }
 
+  cachedLikedMovies = updated;
   writeList(LIKED_MOVIES_KEY, updated);
   dispatchEvent('gemini_liked_movies_updated', { movie, isLiked: !exists, list: updated });
   return !exists;
 };
 
 export const removeSavedMovie = (movieId: string) => {
-  const current = getSavedMovies();
+  ensureSavedCache();
+  const current = cachedSavedMovies || [];
   const updated = current.filter(m => m.id !== movieId);
+  cachedSavedIds.delete(movieId);
+  cachedSavedMovies = updated;
   writeList(SAVED_MOVIES_KEY, updated);
   try {
-    const legacyIds = updated.map(m => m.id);
+    const legacyIds = Array.from(cachedSavedIds);
     localStorage.setItem(LEGACY_WATCHLIST_KEY, JSON.stringify(legacyIds));
   } catch {
     // ignore
@@ -148,8 +190,11 @@ export const removeSavedMovie = (movieId: string) => {
 };
 
 export const removeLikedMovie = (movieId: string) => {
-  const current = getLikedMovies();
+  ensureLikedCache();
+  const current = cachedLikedMovies || [];
   const updated = current.filter(m => m.id !== movieId);
+  cachedLikedIds.delete(movieId);
+  cachedLikedMovies = updated;
   writeList(LIKED_MOVIES_KEY, updated);
   dispatchEvent('gemini_liked_movies_updated', { movieId, isLiked: false, list: updated });
 };
