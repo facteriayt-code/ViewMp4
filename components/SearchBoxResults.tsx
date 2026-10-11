@@ -288,9 +288,22 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                   >
                     <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-zinc-900 shadow-md">
                       <img
-                        src={m.thumbnail || m.backdrop}
+                        src={
+                          (m.thumbnail && m.thumbnail.startsWith('/') ? `https://image.tmdb.org/t/p/w780${m.thumbnail}` : m.thumbnail) || 
+                          (m.backdrop && m.backdrop.startsWith('/') ? `https://image.tmdb.org/t/p/w780${m.backdrop}` : m.backdrop) ||
+                          'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop'
+                        }
                         alt={m.title}
                         className="w-full h-full object-cover group-hover/pick:scale-105 transition duration-300"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (m.backdrop && target.src !== m.backdrop) {
+                            target.src = m.backdrop.startsWith('/') ? `https://image.tmdb.org/t/p/w780${m.backdrop}` : m.backdrop;
+                          } else {
+                            target.src = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
+                          }
+                        }}
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/pick:opacity-100 transition flex items-center justify-center">
                         <Play className="w-4 h-4 fill-white text-white drop-shadow-md" />
@@ -454,9 +467,22 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                 >
                   <div className="relative aspect-[2/3] w-full bg-zinc-800 overflow-hidden">
                     <img 
-                      src={movie.thumbnail || movie.backdrop} 
+                      src={
+                        (movie.thumbnail && movie.thumbnail.startsWith('/') ? `https://image.tmdb.org/t/p/w780${movie.thumbnail}` : movie.thumbnail) || 
+                        (movie.backdrop && movie.backdrop.startsWith('/') ? `https://image.tmdb.org/t/p/w780${movie.backdrop}` : movie.backdrop) ||
+                        'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop'
+                      } 
                       alt={movie.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (movie.backdrop && target.src !== movie.backdrop) {
+                          target.src = movie.backdrop.startsWith('/') ? `https://image.tmdb.org/t/p/w780${movie.backdrop}` : movie.backdrop;
+                        } else {
+                          target.src = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
+                        }
+                      }}
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
                     <div className="absolute top-1.5 left-1.5 bg-black/75 px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-300">
@@ -520,7 +546,17 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
               {filteredApiResults.map(item => {
                 const title = item.name || item.title || 'Untitled';
                 const isTv = item.type === 'tv_series' || item.type === 'tv' || (item as any).is_tv;
-                const poster = item.image_url || (item as any).poster_path || (item as any).thumbnail;
+                const poster = 
+                  item.imageUrl || 
+                  item.image_url || 
+                  item.backdropUrl || 
+                  (item as any).poster_path || 
+                  (item as any).thumbnail || 
+                  (item as any).backdrop;
+
+                const cleanPoster = poster
+                  ? (poster.startsWith('/') ? `https://image.tmdb.org/t/p/w780${poster}` : poster)
+                  : 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
 
                 return (
                   <div
@@ -529,17 +565,20 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
                     className="group relative rounded-xl overflow-hidden bg-zinc-900 border border-amber-500/20 hover:border-amber-400/50 transition cursor-pointer shadow-lg flex flex-col"
                   >
                     <div className="relative aspect-[2/3] w-full bg-zinc-800 overflow-hidden">
-                      {poster ? (
-                        <img 
-                          src={poster} 
-                          alt={title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-gray-500">
-                          <Film className="w-6 h-6" />
-                        </div>
-                      )}
+                      <img 
+                        src={cleanPoster} 
+                        alt={title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (item.backdropUrl && target.src !== item.backdropUrl) {
+                            target.src = item.backdropUrl.startsWith('/') ? `https://image.tmdb.org/t/p/w780${item.backdropUrl}` : item.backdropUrl;
+                          } else {
+                            target.src = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=600&auto=format&fit=crop';
+                          }
+                        }}
+                        loading="lazy"
+                      />
                       <div className="absolute top-1 left-1 flex gap-1">
                         <span className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isTv ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'}`}>
                           {isTv ? 'TV' : 'Movie'}

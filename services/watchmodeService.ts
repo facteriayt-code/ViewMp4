@@ -10,6 +10,9 @@ export interface WatchmodeSearchResult {
   type: string;
   year?: number;
   imageUrl?: string | null;
+  image_url?: string | null;
+  poster_path?: string | null;
+  thumbnail?: string | null;
   backdropUrl?: string | null;
   overview?: string;
   voteAverage?: number;
@@ -57,7 +60,7 @@ const TMDB_CLIENT_KEY = (import.meta as any).env?.VITE_TMDB_API_KEY || "f4a9807f
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w780";
 const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
-const TMDB_IMG_THUMB = "https://image.tmdb.org/t/p/w342";
+const TMDB_IMG_THUMB = "https://image.tmdb.org/t/p/w500";
 
 const SAMPLE_STREAMS = [
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
@@ -78,8 +81,10 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
       const title = item.title || item.name || "Untitled";
       const releaseDate = item.release_date || item.first_air_date || "";
       const year = releaseDate ? parseInt(releaseDate.slice(0, 4), 10) : undefined;
-      const poster = item.poster_path ? `${TMDB_IMG_THUMB}${item.poster_path}` : (item.backdrop_path ? `${TMDB_IMG_THUMB}${item.backdrop_path}` : null);
-      const backdrop = item.backdrop_path ? `${TMDB_IMG_BACKDROP}${item.backdrop_path}` : (item.poster_path ? `${TMDB_IMG_POSTER}${item.poster_path}` : null);
+      const rawPoster = item.poster_path || item.backdrop_path;
+      const poster = rawPoster ? (rawPoster.startsWith('http') ? rawPoster : `${TMDB_IMG_THUMB}${rawPoster}`) : null;
+      const rawBackdrop = item.backdrop_path || item.poster_path;
+      const backdrop = rawBackdrop ? (rawBackdrop.startsWith('http') ? rawBackdrop : `${TMDB_IMG_BACKDROP}${rawBackdrop}`) : null;
       
       return {
         id: item.id,
@@ -88,6 +93,9 @@ const formatTmdbResults = (rawResults: any[]): WatchmodeSearchResult[] => {
         type: isTv ? 'tv_series' : 'movie',
         year: year,
         imageUrl: poster,
+        image_url: poster,
+        poster_path: poster,
+        thumbnail: poster,
         backdropUrl: backdrop,
         overview: item.overview || "An acclaimed motion picture from The Movie Database.",
         voteAverage: item.vote_average,
@@ -338,6 +346,9 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
       type: 'movie',
       year: m.year,
       imageUrl: m.thumbnail,
+      image_url: m.thumbnail,
+      poster_path: m.thumbnail,
+      thumbnail: m.thumbnail,
       backdropUrl: m.backdrop || m.thumbnail,
       overview: m.description,
       voteAverage: m.userRating,
