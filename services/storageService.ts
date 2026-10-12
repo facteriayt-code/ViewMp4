@@ -4,6 +4,44 @@ import { supabase } from './supabaseClient.ts';
 // High-quality fallback if everything else fails
 const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop';
 
+export const fileToDataUrl = (file: File, maxWidth = 1280, quality = 0.85): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof window === 'undefined' || !window.document) {
+        return resolve(reader.result as string);
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+            return;
+          }
+        } catch {
+          // fallback to raw data URL
+        }
+        resolve(reader.result as string);
+      };
+      img.onerror = () => resolve(reader.result as string);
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 export const saveVideoToCloud = async (
   movieMetadata: Partial<Movie>, 
   videoFile?: File | null, 
@@ -41,7 +79,12 @@ export const saveVideoToCloud = async (
 
     // If a new thumbnail file was provided (manual OR auto-extracted first-frame)
     if (thumbnailFile) {
-      finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
+      try {
+        finalThumbnailUrl = await uploadFile('thumbnails', thumbnailFile);
+      } catch (thumbErr) {
+        console.warn("Storage upload for thumbnails bucket failed, using high-res data URL fallback:", thumbErr);
+        finalThumbnailUrl = await fileToDataUrl(thumbnailFile);
+      }
     }
     
     // Safety check: ensure finalThumbnailUrl is NEVER null or empty string to avoid DB constraint violation
@@ -112,13 +155,23 @@ export const saveVideoToCloud = async (
     console.warn("Cloud storage upload failed, falling back to local playable broadcast:", error);
     // Graceful fallback: construct playable local movie so the user's video can still play immediately
     const fallbackVideoUrl = videoFile ? URL.createObjectURL(videoFile) : (movieMetadata.videoUrl || '');
-    const fallbackThumbUrl = thumbnailFile ? URL.createObjectURL(thumbnailFile) : (movieMetadata.thumbnail || DEFAULT_THUMBNAIL);
+    let fallbackThumbUrl = movieMetadata.thumbnail;
+    if (thumbnailFile) {
+      try {
+        fallbackThumbUrl = await fileToDataUrl(thumbnailFile);
+      } catch {
+        fallbackThumbUrl = URL.createObjectURL(thumbnailFile);
+      }
+    }
+    if (!fallbackThumbUrl || fallbackThumbUrl.trim() === '') {
+      fallbackThumbUrl = DEFAULT_THUMBNAIL;
+    }
 
     if (!fallbackVideoUrl) {
       throw error;
     }
 
-    return {
+    const localMovie: Movie = {
       id: movieMetadata.id || `local-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       title: movieMetadata.title || 'Untitled Broadcast',
       description: movieMetadata.description || 'Uploaded video broadcast.',
@@ -132,6 +185,24 @@ export const saveVideoToCloud = async (
       uploaderId: movieMetadata.uploaderId,
       uploaderName: movieMetadata.uploaderName || 'You'
     };
+
+    try {
+      fetch('/api/movies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: localMovie.title,
+          description: localMovie.description,
+          thumbnail: localMovie.thumbnail,
+          videoUrl: localMovie.videoUrl,
+          genre: localMovie.genre,
+          uploaderId: localMovie.uploaderId,
+          uploaderName: localMovie.uploaderName
+        })
+      }).catch(() => {});
+    } catch {}
+
+    return localMovie;
   }
 };
 

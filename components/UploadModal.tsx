@@ -40,6 +40,7 @@ interface BulkItem {
   url?: string;
   thumbnailFile: File | null;
   thumbnailPreview: string | null;
+  thumbnailUrl?: string;
   title: string;
   genre: string;
   status: 'pending' | 'extracting' | 'uploading' | 'success' | 'error';
@@ -70,8 +71,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
   const [videoUrl, setVideoUrl] = useState(movieToEdit?.videoUrl || '');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(movieToEdit?.thumbnail || '');
-  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(movieToEdit?.thumbnail || null);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [thumbnailMode, setThumbnailMode] = useState<'upload' | 'url'>('upload');
+  const [thumbnailSourceType, setThumbnailSourceType] = useState<'none' | 'auto' | 'custom-file' | 'url'>(
+    movieToEdit?.thumbnail ? 'url' : 'none'
+  );
+  const [urlInput, setUrlInput] = useState(movieToEdit?.thumbnail || '');
+  const [isDragOverThumbnail, setIsDragOverThumbnail] = useState(false);
+  const manualThumbnailInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk Upload States
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
@@ -215,31 +223,61 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     }
   };
 
-  const generateSingleThumbnail = async (file: File): Promise<{file: File, url: string}> => {
+  const generateSingleThumbnail = async (file: File, seekTime = 0.2): Promise<{file: File, url: string}> => {
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error("Thumbnail extraction timed out"));
+      }, 3500);
+
       const video = document.createElement('video');
-      video.src = URL.createObjectURL(file);
+      const blobUrl = URL.createObjectURL(file);
+      video.src = blobUrl;
       video.muted = true;
       video.playsInline = true;
       video.crossOrigin = "anonymous";
-      
-      video.onloadedmetadata = () => { video.currentTime = 0.2; }; // Capture slightly into the video
-      video.onseeked = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const fileResult = new File([blob], 'thumb.jpg', { type: 'image/jpeg' });
-              resolve({ file: fileResult, url: URL.createObjectURL(blob) });
-            } else reject();
-          }, 'image/jpeg', 0.8);
-        } else reject();
+      video.preload = "metadata";
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(blobUrl);
       };
-      video.onerror = reject;
+
+      video.onloadedmetadata = () => {
+        const targetTime = Math.min(seekTime, (video.duration && video.duration > 0) ? Math.max(0.05, video.duration / 3) : 0.1);
+        video.currentTime = targetTime;
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 360;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+              cleanup();
+              if (blob) {
+                const fileResult = new File([blob], 'thumb.jpg', { type: 'image/jpeg' });
+                resolve({ file: fileResult, url: canvas.toDataURL('image/jpeg', 0.85) });
+              } else {
+                reject(new Error("Canvas blob generation failed"));
+              }
+            }, 'image/jpeg', 0.85);
+          } else {
+            cleanup();
+            reject(new Error("Canvas 2D context unavailable"));
+          }
+        } catch (e) {
+          cleanup();
+          reject(e);
+        }
+      };
+
+      video.onerror = (e) => {
+        cleanup();
+        reject(e);
+      };
     });
   };
 
@@ -250,12 +288,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     if (uploadMode === 'single') {
       const file = files[0];
       setVideoFile(file);
-      if (!thumbnailFile) { // Only auto-generate if user hasn't uploaded one
+      if (!thumbnailFile && thumbnailSourceType !== 'custom-file') {
         setIsGeneratingThumbnail(true);
         try {
           const { file: tFile, url: tUrl } = await generateSingleThumbnail(file);
           setThumbnailFile(tFile);
           setThumbnailPreview(tUrl);
+          setThumbnailSourceType('auto');
         } catch (err) {
           console.error("Auto thumbnail capture failed", err);
         } finally {
@@ -268,6 +307,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
         file,
         thumbnailFile: null,
         thumbnailPreview: null,
+        thumbnailUrl: '',
         title: file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
         genre: 'Viral',
         status: 'pending',
@@ -297,18 +337,68 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     const file = e.target.files?.[0];
     if (file) {
       setThumbnailFile(file);
-      setThumbnailPreview(URL.createObjectURL(file));
+      setThumbnailSourceType('custom-file');
+      const reader = new FileReader();
+      reader.onload = () => {
+        setThumbnailPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleApplyThumbnailUrl = (urlToApply?: string) => {
+    const target = urlToApply !== undefined ? urlToApply : urlInput;
+    if (!target || !target.trim()) return;
+    setThumbnailUrl(target.trim());
+    setThumbnailPreview(target.trim());
+    setThumbnailFile(null);
+    setThumbnailSourceType('url');
+  };
+
+  const handleRecaptureFromVideo = async (seconds = 0.5) => {
+    if (!videoFile) return;
+    setIsGeneratingThumbnail(true);
+    try {
+      const { file: tFile, url: tUrl } = await generateSingleThumbnail(videoFile, seconds);
+      setThumbnailFile(tFile);
+      setThumbnailPreview(tUrl);
+      setThumbnailSourceType('auto');
+    } catch (err) {
+      console.warn("Re-capture frame failed:", err);
+    } finally {
+      setIsGeneratingThumbnail(false);
+    }
+  };
+
+  const handleClearThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailUrl('');
+    setThumbnailPreview(null);
+    setUrlInput('');
+    setThumbnailSourceType('none');
+    if (manualThumbnailInputRef.current) {
+      manualThumbnailInputRef.current.value = '';
     }
   };
 
   const handleBulkItemThumbnail = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const preview = URL.createObjectURL(file);
-      setBulkItems(prev => prev.map(item => 
-        item.id === id ? { ...item, thumbnailFile: file, thumbnailPreview: preview } : item
-      ));
+      const reader = new FileReader();
+      reader.onload = () => {
+        const preview = reader.result as string;
+        setBulkItems(prev => prev.map(item => 
+          item.id === id ? { ...item, thumbnailFile: file, thumbnailPreview: preview } : item
+        ));
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleBulkItemThumbnailUrl = (id: string, url: string) => {
+    setBulkItems(prev => prev.map(item => 
+      item.id === id ? { ...item, thumbnailUrl: url, thumbnailPreview: url, thumbnailFile: null } : item
+    ));
   };
 
   const addBulkLinkRow = () => {
@@ -317,6 +407,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
       url: '',
       thumbnailFile: null,
       thumbnailPreview: null,
+      thumbnailUrl: '',
       title: '',
       genre: 'Viral',
       status: 'pending',
@@ -348,6 +439,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
             uploaderId: activeUser.id,
             uploaderName: activeUser.name,
             videoUrl: item.url || undefined,
+            thumbnail: item.thumbnailUrl || (item.thumbnailPreview && !item.thumbnailFile ? item.thumbnailPreview : undefined),
             year: new Date().getFullYear(),
             rating: 'NR'
           },
@@ -380,6 +472,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
     setIsUploading(true);
     setError(null);
 
+    const effectiveThumbnail = thumbnailUrl || (thumbnailPreview && !thumbnailFile ? thumbnailPreview : undefined);
+
     try {
       const result = await saveVideoToCloud(
         {
@@ -390,7 +484,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
           uploaderId: activeUser.id,
           uploaderName: activeUser.name,
           videoUrl: uploadType === 'link' ? videoUrl : undefined,
-          thumbnail: thumbnailUrl, 
+          thumbnail: effectiveThumbnail, 
           year: movieToEdit?.year || new Date().getFullYear(),
           rating: 'NR'
         },
@@ -565,39 +659,195 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                     </div>
                   )}
 
-                  <div className="space-y-6">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-1">Visual Poster (Manual Override)</label>
-                    <div className="relative aspect-video rounded-[3rem] overflow-hidden bg-black border border-white/10 group shadow-2xl transition-all hover:scale-[1.02]">
+                  <div className="space-y-4 bg-white/[0.02] border border-white/10 rounded-[2.5rem] p-6 shadow-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <ImageIcon className="w-4 h-4 text-red-500" />
+                        <label className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Video Thumbnail / Poster</label>
+                      </div>
+                      <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-[9px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setThumbnailMode('upload')}
+                          className={`px-3 py-1 rounded-lg transition-colors ${thumbnailMode === 'upload' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                        >
+                          Upload File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThumbnailMode('url')}
+                          className={`px-3 py-1 rounded-lg transition-colors ${thumbnailMode === 'url' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                        >
+                          Image URL
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Preview / Drop Box */}
+                    <div 
+                      onDragOver={(e) => { e.preventDefault(); setIsDragOverThumbnail(true); }}
+                      onDragLeave={() => setIsDragOverThumbnail(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragOverThumbnail(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file && file.type.startsWith('image/')) {
+                          setThumbnailFile(file);
+                          setThumbnailSourceType('custom-file');
+                          const reader = new FileReader();
+                          reader.onload = () => setThumbnailPreview(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className={`relative aspect-video rounded-3xl overflow-hidden bg-black border-2 transition-all group ${
+                        isDragOverThumbnail ? 'border-red-500 bg-red-950/20 scale-[1.01]' : 'border-white/10 hover:border-red-600/40'
+                      }`}
+                    >
                       <input 
+                        ref={manualThumbnailInputRef}
                         type="file" 
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
                         onChange={handleManualThumbnail}
-                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        className="hidden"
                       />
+
                       {(thumbnailPreview || thumbnailUrl) ? (
                         <div className="relative w-full h-full">
-                           <img src={thumbnailPreview || thumbnailUrl} alt="Signal Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
-                              <Camera className="w-10 h-10 text-white mb-3" />
-                              <span className="text-[10px] font-black text-white uppercase tracking-widest">Replace Signal Image</span>
-                           </div>
+                          <img 
+                            src={thumbnailPreview || thumbnailUrl} 
+                            alt="Video Thumbnail" 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                          />
+                          
+                          {/* Badges on top of thumbnail */}
+                          <div className="absolute top-3 left-3 flex items-center space-x-2">
+                            {thumbnailSourceType === 'custom-file' && (
+                              <span className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                                <CheckCircle2 className="w-3 h-3 mr-1" /> Custom File
+                              </span>
+                            )}
+                            {thumbnailSourceType === 'auto' && (
+                              <span className="bg-blue-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                                <Film className="w-3 h-3 mr-1" /> Video Frame
+                              </span>
+                            )}
+                            {thumbnailSourceType === 'url' && (
+                              <span className="bg-purple-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                                <LinkIcon className="w-3 h-3 mr-1" /> Link Poster
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Hover action overlay */}
+                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 backdrop-blur-sm space-y-3">
+                            <button
+                              type="button"
+                              onClick={() => manualThumbnailInputRef.current?.click()}
+                              className="bg-white hover:bg-gray-100 text-black px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider flex items-center space-x-2 shadow-xl transition-transform active:scale-95"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Replace Image</span>
+                            </button>
+                            <div className="flex items-center space-x-2">
+                              {videoFile && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRecaptureFromVideo(0.5)}
+                                  className="bg-white/10 hover:bg-white/20 text-white px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center space-x-1.5 transition"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                  <span>Frame Snap</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleClearThumbnail}
+                                className="bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center space-x-1.5 transition"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Reset</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-800 p-8 text-center">
-                          <ImageIcon className="w-16 h-16 mb-4 opacity-10" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.6em] opacity-40">Drop Visual Overlay</span>
+                        <div 
+                          onClick={() => manualThumbnailInputRef.current?.click()}
+                          className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-white/[0.02] transition"
+                        >
+                          <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3 text-red-500 group-hover:scale-110 transition-transform">
+                            <Upload className="w-7 h-7" />
+                          </div>
+                          <p className="text-xs font-bold text-white uppercase tracking-wider mb-1">Click to Upload Thumbnail</p>
+                          <p className="text-[10px] text-gray-500 font-medium">Or drag & drop JPG, PNG, WEBP here (16:9 recommended)</p>
                         </div>
                       )}
-                      
+
+                      {/* Capturing state indicator */}
                       {isGeneratingThumbnail && (
-                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30">
-                          <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-6" />
-                          <span className="text-[10px] font-black text-white uppercase tracking-[0.8em] animate-pulse">CAPTURING...</span>
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 backdrop-blur-sm">
+                          <Loader2 className="w-10 h-10 text-red-600 animate-spin mb-3" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-[0.5em] animate-pulse">Capturing Frame...</span>
                         </div>
                       )}
                     </div>
-                    {uploadType === 'file' && !thumbnailFile && (
-                      <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest ml-1 animate-pulse">Auto-capturing first frame from stream...</p>
+
+                    {/* Direct Controls beneath preview */}
+                    {thumbnailMode === 'upload' ? (
+                      <div className="flex items-center space-x-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => manualThumbnailInputRef.current?.click()}
+                          className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center space-x-2 border border-white/10 transition active:scale-95 shadow-md"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-red-500" />
+                          <span>{thumbnailPreview ? 'Change Thumbnail File' : 'Choose Thumbnail File'}</span>
+                        </button>
+                        {videoFile && (
+                          <button
+                            type="button"
+                            onClick={() => handleRecaptureFromVideo(0.5)}
+                            disabled={isGeneratingThumbnail}
+                            title="Extract snapshot from local video"
+                            className="bg-black/60 hover:bg-black text-gray-300 hover:text-white py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5 border border-white/10 transition disabled:opacity-50"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>Frame Snap</span>
+                          </button>
+                        )}
+                        {(thumbnailPreview || thumbnailUrl) && (
+                          <button
+                            type="button"
+                            onClick={handleClearThumbnail}
+                            title="Remove current thumbnail"
+                            className="p-3 text-gray-500 hover:text-red-500 hover:bg-white/5 rounded-2xl transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex space-x-2">
+                          <div className="relative flex-1">
+                            <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                            <input
+                              type="url"
+                              value={urlInput}
+                              onChange={(e) => setUrlInput(e.target.value)}
+                              placeholder="https://images.unsplash.com/... or poster URL"
+                              className="w-full bg-black/60 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs font-mono text-gray-200 outline-none focus:border-red-600/50"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyThumbnailUrl()}
+                            className="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 shadow-lg"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -685,24 +935,36 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[55vh] overflow-y-auto pr-4 custom-scrollbar">
                     {bulkItems.map((item) => (
-                      <div key={item.id} className="bg-white/[0.02] border border-white/10 rounded-[3rem] p-8 flex items-center space-x-8 group hover:bg-white/[0.04] transition-all relative overflow-hidden backdrop-blur-xl">
+                      <div key={item.id} className="bg-white/[0.02] border border-white/10 rounded-[3rem] p-8 flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-8 group hover:bg-white/[0.04] transition-all relative overflow-hidden backdrop-blur-xl">
                         {/* Interactive Bulk Thumbnail Overlay */}
-                        <div className="w-44 aspect-video bg-black rounded-[1.5rem] overflow-hidden relative shrink-0 shadow-2xl border border-white/5 group/item-thumb cursor-pointer">
+                        <div className="w-full sm:w-44 aspect-video bg-black rounded-[1.5rem] overflow-hidden relative shrink-0 shadow-2xl border border-white/10 group/item-thumb cursor-pointer">
                           <input 
+                            id={`bulk-thumb-${item.id}`}
                             type="file" 
-                            accept="image/*"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
                             onChange={(e) => handleBulkItemThumbnail(item.id, e)}
                             className="absolute inset-0 opacity-0 cursor-pointer z-[15]"
                           />
                           {item.thumbnailPreview ? (
                             <img src={item.thumbnailPreview} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-                              {item.status === 'extracting' ? <Loader2 className="w-6 h-6 text-red-600 animate-spin" /> : <Camera className="w-6 h-6 text-zinc-700" />}
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-500 hover:text-white transition-colors p-2 text-center">
+                              {item.status === 'extracting' ? (
+                                <>
+                                  <Loader2 className="w-6 h-6 text-red-600 animate-spin mb-1" />
+                                  <span className="text-[8px] font-bold uppercase tracking-wider">Extracting</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Camera className="w-6 h-6 mb-1 text-red-500" />
+                                  <span className="text-[8px] font-black uppercase tracking-wider text-gray-400">Add Poster</span>
+                                </>
+                              )}
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/item-thumb:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                             <Camera className="w-6 h-6 text-white" />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/item-thumb:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">
+                             <Camera className="w-5 h-5 text-white mb-1" />
+                             <span className="text-[8px] font-black text-white uppercase tracking-wider">Change Poster</span>
                           </div>
                           {item.status === 'success' && (
                             <div className="absolute inset-0 bg-green-500/90 flex items-center justify-center backdrop-blur-md">
@@ -711,7 +973,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0 space-y-4">
+                        <div className="flex-1 min-w-0 w-full space-y-3">
                           <input 
                             type="text" 
                             placeholder="TITLE"
@@ -721,13 +983,22 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUpload, movi
                           />
                           
                           {bulkType === 'link' && (
-                            <input 
-                              type="url" 
-                              placeholder="SIGNAL_URL"
-                              value={item.url}
-                              onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, url: e.target.value } : i))}
-                              className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3 text-[10px] font-mono text-gray-500 focus:text-red-600 focus:border-red-600/30 outline-none transition-all"
-                            />
+                            <div className="space-y-2">
+                              <input 
+                                type="url" 
+                                placeholder="SIGNAL_URL (Video/Stream Link)"
+                                value={item.url}
+                                onChange={(e) => setBulkItems(prev => prev.map(i => i.id === item.id ? { ...i, url: e.target.value } : i))}
+                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-4 py-2.5 text-[10px] font-mono text-gray-300 focus:text-red-500 focus:border-red-600/30 outline-none transition-all"
+                              />
+                              <input 
+                                type="url" 
+                                placeholder="POSTER_URL (Optional Image Link)"
+                                value={item.thumbnailUrl || ''}
+                                onChange={(e) => handleBulkItemThumbnailUrl(item.id, e.target.value)}
+                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-4 py-2 text-[9px] font-mono text-gray-400 focus:text-white focus:border-red-600/30 outline-none transition-all"
+                              />
+                            </div>
                           )}
 
                           <div className="flex items-center justify-between">

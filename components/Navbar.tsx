@@ -112,9 +112,40 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
         
         {/* Desktop Links */}
-        <div className="hidden lg:flex items-center space-x-6 text-sm font-medium text-gray-200">
-          <button onClick={() => handleClearSearch()} className="hover:text-white transition">Home</button>
+        <div className="hidden lg:flex items-center space-x-5 text-sm font-medium text-gray-200">
+          <button onClick={() => handleClearSearch()} className="hover:text-white transition font-bold">Home</button>
           
+          {/* Live Chat Button - Positioned right near Home */}
+          {onChatClick && (
+            <button
+              type="button"
+              onClick={onChatClick}
+              className="flex items-center space-x-1.5 bg-red-600/20 hover:bg-red-600/35 border border-red-500/40 text-white px-2.5 py-1 rounded-full transition text-xs font-bold shrink-0 active:scale-95 shadow-sm group"
+              title="Community Live Chat (Connected for all users, 12h auto-delete)"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-red-500 fill-red-500/30 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Chat</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            </button>
+          )}
+
+          {/* Google Chat Button - Positioned right near Home */}
+          {onGoogleChatClick && (
+            <button
+              type="button"
+              onClick={onGoogleChatClick}
+              className="flex items-center space-x-1.5 bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/40 text-blue-200 hover:text-white px-2.5 py-1 rounded-full transition text-xs font-bold shrink-0 active:scale-95 shadow-sm group"
+              title="Open Google Workspace Chat (Spaces & Messages)"
+            >
+              <span className="p-0.5 rounded bg-blue-600 text-white group-hover:scale-110 transition-transform flex items-center justify-center">
+                <svg className="w-3 h-3 fill-white shrink-0" viewBox="0 0 24 24">
+                  <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                </svg>
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider">Google Chat</span>
+            </button>
+          )}
+
           {/* Streaming Hubs Dropdown */}
           <div className="relative" ref={hubsRef}>
             <button
@@ -176,6 +207,19 @@ const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0">
+        {/* Mobile Chat Quick Action Button (Beside brand/search on small screens) */}
+        {onChatClick && (
+          <button
+            type="button"
+            onClick={onChatClick}
+            className="lg:hidden flex items-center space-x-1 bg-red-600/20 hover:bg-red-600/35 border border-red-500/40 text-white px-2 py-1 rounded-full text-xs font-bold shrink-0 active:scale-95"
+            title="Community Live Chat"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-red-500 fill-red-500/30" />
+            <span className="text-[10px] font-black uppercase">Chat</span>
+          </button>
+        )}
+
         {/* Perfectly Fitted Search Box with Real-time Trending Searches Dropdown */}
         <div ref={searchContainerRef} className="relative">
           <div className={`flex items-center h-9 sm:h-10 px-3 sm:px-3.5 bg-black/80 hover:bg-black/95 focus-within:bg-black border border-white/20 hover:border-white/35 focus-within:border-red-600 rounded-full transition-all duration-300 shadow-inner focus-within:ring-2 focus-within:ring-red-600/30 ${
@@ -203,11 +247,11 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Real-time Search & Trending Searches Dropdown */}
-          {isSearchFocused && (
+          {/* Real-time Trending Searches Dropdown ONLY when input is empty & focused to prevent layer collision */}
+          {isSearchFocused && !searchTerm.trim() && (
             <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[480px] sm:max-w-[min(480px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0e15]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
               <SearchBoxResults
-                searchTerm={searchTerm}
+                searchTerm=""
                 catalogMovies={catalogMovies}
                 apiSearchResults={apiSearchResults}
                 isSearchingApi={isSearchingApi}
@@ -225,25 +269,12 @@ const Navbar: React.FC<NavbarProps> = ({
                 onSelectQuery={(query) => {
                   setSearchTerm(query);
                   onSearch(query);
+                  setIsSearchFocused(false);
                 }}
               />
             </div>
           )}
         </div>
-
-        {/* Community Live Chat Button (Registered users real-time chat, 12h auto-delete) */}
-        {onChatClick && (
-          <button
-            type="button"
-            onClick={onChatClick}
-            className="flex items-center space-x-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-white px-2 sm:px-2.5 py-1.5 rounded-lg transition text-xs font-semibold shrink-0 active:scale-95 shadow-sm group"
-            title="Community Live Chat (Connected for all users, 12h auto-delete)"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-red-500 fill-red-500/30 group-hover:scale-110 transition-transform" />
-            <span className="hidden xs:inline text-[10px] font-black uppercase tracking-wider">Chat</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          </button>
-        )}
 
         {/* Smart Link Ad Integration */}
         <a 
@@ -266,26 +297,6 @@ const Navbar: React.FC<NavbarProps> = ({
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-[10px] font-black uppercase tracking-wider">Ad Block</span>
-          </button>
-        )}
-
-        {/* Google Chat Button */}
-        {onGoogleChatClick && (
-          <button
-            type="button"
-            onClick={onGoogleChatClick}
-            className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 border border-blue-400/50 text-white px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-bold shrink-0 active:scale-95 shadow-md shadow-blue-600/30 group"
-            title="Open Google Workspace Chat (Spaces & Messages)"
-          >
-            <span className="p-0.5 rounded bg-white/20 group-hover:scale-110 transition-transform flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 fill-white shrink-0" viewBox="0 0 24 24">
-                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
-              </svg>
-            </span>
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Google Chat</span>
-            <span className="hidden sm:inline-block text-[9px] bg-white/20 px-1 py-0.2 rounded font-black">
-              Spaces
-            </span>
           </button>
         )}
 
