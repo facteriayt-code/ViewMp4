@@ -785,15 +785,35 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
+  // VidRock HD Server (https://vidrock.to/movie/{tmdb_id})
+  const vidrockMovieId = tmdbId || imdbId;
+  const vidrockUrl = isSeries
+    ? `https://vidrock.to/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidrock.to/movie/${vidrockMovieId}`;
+
+  const vidrockServer: StreamServer = {
+    id: 'vidrock-stream',
+    name: 'VidRock HD',
+    badge: 'Fast HD',
+    url: vidrockUrl,
+    type: 'iframe',
+    quality: '1080p Full HD',
+    description: isSeries
+      ? `VidRock Stream (Season ${season} Episode ${episode})`
+      : 'VidRock Fast Player - Direct stream with zero lag & instant load',
+    isTv: isSeries
+  };
+
   // Original Stream Servers Priority Order:
   // - Anime with AniList ID: Filmu Anime Server prioritized as Server #1
-  // - Indian content: AutoEmbed VIP & Filmu Hindi 4K & 8Stream VIP prioritized
-  // - General/International: Filmu / AutoEmbed prioritized as Server #1
+  // - Indian content: AutoEmbed VIP & Filmu Hindi 4K & VidRock HD prioritized
+  // - General/International: Filmu / AutoEmbed / VidRock prioritized
   let orderedServers: StreamServer[] = [];
   if (anilistId) {
     orderedServers = [
       filmuServer,
       autoembedServer,
+      vidrockServer,
       codespectersServer,
       streamApiServer
     ];
@@ -801,6 +821,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     orderedServers = [
       autoembedServer,
       filmuServer,
+      vidrockServer,
       streamApiServer,
       codespectersServer
     ];
@@ -808,6 +829,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     orderedServers = [
       filmuServer,
       autoembedServer,
+      vidrockServer,
       streamApiServer,
       codespectersServer
     ];
