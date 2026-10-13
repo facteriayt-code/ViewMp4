@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
   AlertTriangle, RefreshCw, X, Check, MessageSquare, Maximize2, Minimize2, ChevronDown,
-  Globe, Radio, CheckCircle2, Info
+  Globe, Radio, CheckCircle2, Info, ExternalLink
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -62,6 +62,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(true);
+  const [streamSlow, setStreamSlow] = useState<boolean>(false);
   
   // Default server category tab: Hindi for Indian content or general default
   const isIndian = useMemo(() => isIndianContent(movie), [movie]);
@@ -155,13 +156,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => clearInterval(progressTimer);
   }, [movie, season, episode, isSeries]);
 
-  // Fast auto-clear for loading state so the iframe is never obscured
+  // Fast auto-clear for loading state and slow stream detection
   useEffect(() => {
     setIsLoading(true);
+    setStreamSlow(false);
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 2000);
-    return () => clearTimeout(timer);
+    const slowTimer = setTimeout(() => {
+      setStreamSlow(true);
+    }, 5000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(slowTimer);
+    };
   }, [activeServerId, iframeKey]);
 
   const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
@@ -367,6 +375,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
+
+          {/* Open Direct Stream in New Tab (solves browser iframe sandbox blocking) */}
+          <a
+            href={activeServer.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 hover:bg-white/15 rounded-full text-gray-300 hover:text-white transition active:scale-95 border border-white/10 hidden sm:flex items-center"
+            title="Open stream in a clean tab if browser blocks iframe"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
         </div>
       </header>
 
@@ -660,6 +679,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
+        {/* Helpful Fallback Prompt if stream is taking longer or buffering */}
+        {streamSlow && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-zinc-950/95 border border-amber-500/50 px-3.5 py-1.5 rounded-full shadow-2xl flex items-center space-x-2.5 text-xs backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+            <span className="text-gray-300 text-[11px] font-medium hidden sm:inline">Stream buffering?</span>
+            <button
+              type="button"
+              onClick={handleNextServer}
+              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-lg transition text-[11px] flex items-center space-x-1 active:scale-95 shadow-md"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Next Server</span>
+            </button>
+            <a
+              href={activeServer.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 text-white font-bold rounded-lg transition text-[11px] flex items-center space-x-1 active:scale-95 border border-white/15"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Open in New Tab</span>
+            </a>
+          </div>
+        )}
+
         {/* Video Player Render - Standard Iframe with full permissions */}
         {activeServer.type === 'video' ? (
           <video 
@@ -668,7 +711,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             controls
             autoPlay
             playsInline
-            onLoadedData={() => setIsLoading(false)}
+            onLoadedData={() => {
+              setIsLoading(false);
+              setStreamSlow(false);
+            }}
             className="w-full h-full object-contain"
           />
         ) : (
@@ -677,10 +723,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             src={activeServer.url}
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
-            allowFullScreen
-            referrerPolicy="origin"
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; display-capture; clipboard-write;"
-            onLoad={() => setIsLoading(false)}
+            allowFullScreen={true}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            onLoad={() => {
+              setIsLoading(false);
+              setStreamSlow(false);
+            }}
           />
         )}
       </main>

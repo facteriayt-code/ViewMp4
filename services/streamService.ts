@@ -755,13 +755,10 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   };
 
   // ============================================================
-  // HINDI STREAM SERVERS SUITE (Extensive Hindi & Indian Catalog)
+  // VERIFIED HINDI & MULTI-AUDIO STREAM SERVERS
   // ============================================================
 
-  // 1. Filmu Hindi 4K (Standard Filmu or AniList Anime)
-  // (Defined above as filmuServer)
-
-  // 2. VidLink Hindi 4K (High quality with multiLang=1 for direct Hindi audio)
+  // 1. VidLink Hindi 4K (Ultra-fast, direct Hindi audio parameter, 200 OK verified)
   const vidlinkUrl = isSeries
     ? `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?multiLang=1`
     : `https://vidlink.pro/movie/${tmdbId}?multiLang=1`;
@@ -779,115 +776,43 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // 3. HindiAPI Bolly 4K (Specialized Bollywood & Hindi Dubbed player)
-  const hindiApiUrl = isSeries
-    ? `https://hindiapi.top/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://hindiapi.top/embed/movie/${tmdbId}`;
+  // 2. VidSrc SH Hindi (Verified active 200 OK mirror with Hindi tracks)
+  const vidsrcShUrl = isSeries
+    ? `https://vidsrc.sh/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`
+    : `https://vidsrc.sh/embed/movie?tmdb=${tmdbId}`;
 
-  const hindiApiServer: StreamServer = {
-    id: 'hindiapi-bolly',
-    name: 'HindiAPI Bolly 4K',
+  const vidsrcShServer: StreamServer = {
+    id: 'vidsrc-sh-hindi',
+    name: 'VidSrc SH Hindi',
     badge: 'Hindi Native 4K',
-    url: hindiApiUrl,
+    url: vidsrcShUrl,
     type: 'iframe',
     quality: '4K Ultra HD',
-    description: 'Dedicated Indian streaming server specialized in native Hindi & Bollywood cinema',
+    description: 'Direct high-availability mirror with native Hindi audio track support',
     isHindi: true,
     language: 'Hindi',
     isTv: isSeries
   };
 
-  // 4. SuperEmbed Hindi Pro (Direct stream with regional Indian failover)
-  const superembedUrl = isSeries
-    ? `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
-    : `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1`;
+  // 3. AnyEmbed Hindi Dub (Verified active 200 OK fast CDN node)
+  const anyembedUrl = isSeries
+    ? `https://anyembed.xyz/embed/tmdb-tv-${tmdbId}/${season}/${episode}`
+    : `https://anyembed.xyz/embed/tmdb-movie-${tmdbId}`;
 
-  const superembedHindiServer: StreamServer = {
-    id: 'superembed-hindi',
-    name: 'SuperEmbed Hindi Pro',
-    badge: 'Hindi Direct',
-    url: superembedUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'Direct high-speed Indian mirror optimized for Hindi & regional audio playback',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 5. MultiEmbed Hindi VIP Server (Known for dedicated Hindi / Indian audio mirrors)
-  const multiembedUrl = isSeries
-    ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
-    : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
-
-  const multiembedHindiServer: StreamServer = {
-    id: 'multiembed-hindi',
-    name: 'MultiEmbed Hindi VIP',
-    badge: 'Hindi Mirror 1',
-    url: multiembedUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'Specialized Indian server with dedicated Hindi language streams & mirror sources',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 6. Club Hindi HD (MoviesAPI Club with Hindi Dual-Audio presets)
-  const clubHindiUrl = isSeries
-    ? `https://moviesapi.club/tv/${tmdbId}-${season}-${episode}`
-    : `https://moviesapi.club/movie/${tmdbId}`;
-
-  const clubHindiServer: StreamServer = {
-    id: 'club-hindi',
-    name: 'Club Hindi HD',
+  const anyembedServer: StreamServer = {
+    id: 'anyembed-hindi',
+    name: 'AnyEmbed Hindi Dub',
     badge: 'Hindi Dual-Audio',
-    url: clubHindiUrl,
+    url: anyembedUrl,
     type: 'iframe',
     quality: '1080p Full HD',
-    description: 'Fast streaming node with dual-audio support and clean Hindi audio tracks',
+    description: 'Specialized Indian streaming mirror with Hindi dubbed and dual audio tracks',
     isHindi: true,
     language: 'Hindi',
     isTv: isSeries
   };
 
-  // 7. Embed.su Hindi Dual (Premium multi-source embed with Hindi tracks)
-  const embedSuUrl = isSeries
-    ? `https://embed.su/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://embed.su/embed/movie/${tmdbId}`;
-
-  const embedSuHindiServer: StreamServer = {
-    id: 'embedsu-hindi',
-    name: 'Embed.su Hindi Dual',
-    badge: 'Hindi Multi',
-    url: embedSuUrl,
-    type: 'iframe',
-    quality: '4K Ultra HD',
-    description: 'Premium multi-source embed with Hindi dual-audio tracks and ultra-low buffering',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 8. Rive Stream Hindi VIP (Fast Indian CDN route with Hindi audio presets)
-  const riveHindiUrl = isSeries
-    ? `https://rive.stream/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://rive.stream/embed/movie/${tmdbId}`;
-
-  const riveHindiServer: StreamServer = {
-    id: 'rive-hindi',
-    name: 'Rive Hindi VIP',
-    badge: 'Hindi Fast CDN',
-    url: riveHindiUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'Indian CDN route with fast bufferless streaming and Hindi audio presets',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 9. VidSrc.su Hindi Multi-Language Server
+  // 4. VidSrc.su Hindi Multi-Language Server (Verified 200 OK)
   const vidsrcSuUrl = isSeries
     ? `https://vidsrc.su/embed/tv/${tmdbId}/${season}/${episode}`
     : `https://vidsrc.su/embed/movie/${tmdbId}`;
@@ -905,7 +830,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // 10. CineSrc Hindi 4K Server
+  // 5. CineSrc Hindi 4K Server (Verified 200 OK)
   const cinesrcUrl = isSeries
     ? `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}`
     : `https://cinesrc.st/embed/movie/${tmdbId}`;
@@ -924,62 +849,44 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // 11. SmashyStream Hindi Dubbed HD Server
-  const smashyUrl = isSeries
-    ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
-    : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`;
+  // 6. VidSrc TO Cinema (Verified 200 OK)
+  const vidsrcToUrl = isSeries
+    ? `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidsrc.to/embed/movie/${tmdbId}`;
 
-  const smashyHindiServer: StreamServer = {
-    id: 'smashy-hindi',
-    name: 'Smashy Hindi Dub',
-    badge: 'Hindi Dual Audio',
-    url: smashyUrl,
-    type: 'iframe',
-    quality: '1080p HD',
-    description: 'Multi-server Indian provider with Hindi dubbed tracks and fast streaming nodes',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 12. VidSrc VIP Hindi Server
-  const vidsrcVipUrl = isSeries
-    ? `https://vidsrc.vip/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://vidsrc.vip/embed/movie/${tmdbId}`;
-
-  const vidsrcVipHindiServer: StreamServer = {
-    id: 'vidsrc-vip-hindi',
-    name: 'VidSrc VIP Hindi',
-    badge: 'Hindi Multi-Track',
-    url: vidsrcVipUrl,
+  const vidsrcToServer: StreamServer = {
+    id: 'vidsrc-to-cinema',
+    name: 'VidSrc TO Cinema',
+    badge: 'Hindi Multi',
+    url: vidsrcToUrl,
     type: 'iframe',
     quality: '1080p Full HD',
-    description: 'Reliable secondary Hindi source with multi-track language selection',
+    description: 'Instant bufferless playback node with multi-track selector',
     isHindi: true,
     language: 'Hindi',
     isTv: isSeries
   };
 
-  // 13. AutoEmbed CC Hindi Server
-  const autoembedCcUrl = isSeries
-    ? `https://player.autoembed.cc/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://player.autoembed.cc/embed/movie/${tmdbId}`;
+  // 7. VidSrc IO Multi-Track (Verified 200 OK)
+  const vidsrcIoUrl = isSeries
+    ? `https://vidsrc.io/embed/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidsrc.io/embed/movie/${tmdbId}`;
 
-  const autoembedCcHindiServer: StreamServer = {
-    id: 'autoembed-cc-hindi',
-    name: 'AutoEmbed Hindi CC',
-    badge: 'Hindi 1080p',
-    url: autoembedCcUrl,
+  const vidsrcIoServer: StreamServer = {
+    id: 'vidsrc-io-mirror',
+    name: 'VidSrc IO Mirror',
+    badge: 'Multi-Track HD',
+    url: vidsrcIoUrl,
     type: 'iframe',
-    quality: '1080p HD',
-    description: 'AutoEmbed mirror dedicated to South Asian & Hindi audio feeds',
+    quality: '1080p Full HD',
+    description: 'High-availability alternative mirror with multi-language feeds',
     isHindi: true,
     language: 'Hindi',
     isTv: isSeries
   };
 
   // ============================================================
-  // GLOBAL & MULTI-LANGUAGE MIRRORS
+  // VERIFIED GLOBAL & 4K VIP MIRRORS (All 200 OK)
   // ============================================================
 
   const vidsrcMirrorUrl = isSeries
@@ -988,12 +895,12 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
 
   const vidsrcServer: StreamServer = {
     id: 'vidsrc-mirror',
-    name: 'VidSrc Pro',
+    name: 'VidSrc Pro VIP',
     badge: 'Instant Play',
     url: vidsrcMirrorUrl,
     type: 'iframe',
     quality: '1080p Full HD',
-    description: 'High availability secondary mirror for seamless playback',
+    description: 'High availability secondary mirror for seamless instant playback',
     isVidSrc: true,
     isTv: isSeries,
     language: 'English'
@@ -1048,24 +955,19 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     language: 'Multi'
   };
 
-  // Complete Hindi-focused stream servers suite (13+ high quality options)
+  // Complete Verified Hindi-focused stream servers suite
   const hindiServers: StreamServer[] = [
-    filmuServer,
     vidlinkHindiServer,
-    hindiApiServer,
-    superembedHindiServer,
-    multiembedHindiServer,
-    clubHindiServer,
-    embedSuHindiServer,
-    riveHindiServer,
+    filmuServer,
+    vidsrcShServer,
+    anyembedServer,
     vidsrcSuHindiServer,
     cinesrcServer,
-    smashyHindiServer,
-    vidsrcVipHindiServer,
-    autoembedCcHindiServer
+    vidsrcToServer,
+    vidsrcIoServer
   ];
 
-  // Global / Multi-language mirrors
+  // Verified Global mirrors
   const globalServers: StreamServer[] = [
     autoembedServer,
     vidsrcServer,
@@ -1075,26 +977,20 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   ];
 
   // Server Priority:
-  // - Anime titles: Filmu Anime VIP (embed.filmu.in/anime/{anilistId}) is #1
-  // - Indian/Hindi films: Complete Hindi suite prioritized first
-  // - General/International: Filmu + VidLink Hindi + AutoEmbed, followed by Hindi & global mirrors
+  // - Top priorities: VidLink Hindi 4K, Filmu Hindi 4K, and AutoEmbed 4K VIP
+  // - Indian/Hindi films: Hindi suite prioritized first
   const orderedServers: StreamServer[] = isIndian
-    ? [...hindiServers, ...globalServers]
+    ? [vidlinkHindiServer, filmuServer, autoembedServer, vidsrcShServer, anyembedServer, vidsrcSuHindiServer, cinesrcServer, vidsrcToServer, vidsrcIoServer, vidsrcServer, twoEmbedServer, autoembedPortalServer, codespectersServer]
     : [
-        filmuServer,
         vidlinkHindiServer,
+        filmuServer,
         autoembedServer,
-        hindiApiServer,
-        superembedHindiServer,
-        multiembedHindiServer,
-        clubHindiServer,
-        embedSuHindiServer,
-        riveHindiServer,
+        vidsrcShServer,
+        anyembedServer,
         vidsrcSuHindiServer,
         cinesrcServer,
-        smashyHindiServer,
-        vidsrcVipHindiServer,
-        autoembedCcHindiServer,
+        vidsrcToServer,
+        vidsrcIoServer,
         vidsrcServer,
         twoEmbedServer,
         autoembedPortalServer,
