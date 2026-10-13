@@ -754,82 +754,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isAnime: Boolean(anilistId)
   };
 
-  // ============================================================
-  // VERIFIED HINDI & MULTI-AUDIO STREAM SERVERS
-  // ============================================================
-
-  // 1. VidLink Multi-Audio / Hindi 4K Server
-  const vidlinkUrl = isSeries
-    ? `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?multiLang=1`
-    : `https://vidlink.pro/movie/${tmdbId}?multiLang=1`;
-
-  const vidlinkHindiServer: StreamServer = {
-    id: 'vidlink-hindi',
-    name: 'VidLink Hindi 4K',
-    badge: 'Hindi 4K Ultra',
-    url: vidlinkUrl,
-    type: 'iframe',
-    quality: '4K Ultra HD',
-    description: 'Ultra-fast bufferless 4K stream with direct Hindi audio track & multi-language support',
-    isHindi: true,
-    language: 'Hindi',
-    isTv: isSeries
-  };
-
-  // 2. VidSrc Pro VIP Mirror
-  const vidsrcMirrorUrl = isSeries
-    ? `https://vidsrc.pm/embed/tv/${tmdbId}/${season}/${episode}`
-    : `https://vidsrc.pm/embed/movie/${tmdbId}`;
-
-  const vidsrcServer: StreamServer = {
-    id: 'vidsrc-mirror',
-    name: 'VidSrc Pro VIP',
-    badge: 'Instant Play',
-    url: vidsrcMirrorUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'High availability secondary mirror for seamless instant playback',
-    isVidSrc: true,
-    isTv: isSeries,
-    language: 'English'
-  };
-
-  // 3. 2Embed 4K
-  const twoEmbedUrl = isSeries
-    ? `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
-    : `https://www.2embed.cc/embed/${tmdbId}`;
-
-  const twoEmbedServer: StreamServer = {
-    id: 'twoembed-mirror',
-    name: '2Embed 4K',
-    badge: 'Dual Stream',
-    url: twoEmbedUrl,
-    type: 'iframe',
-    quality: '1080p Full HD',
-    description: 'Direct multi-source player with fast stream failover',
-    isTv: isSeries,
-    language: 'Multi'
-  };
-
-  // 4. AutoEmbed Portal
-  const autoembedCoUrl = isSeries
-    ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
-    : `https://autoembed.co/movie/tmdb/${tmdbId}`;
-
-  const autoembedPortalServer: StreamServer = {
-    id: 'autoembed-co',
-    name: 'AutoEmbed Portal',
-    badge: 'Portal Mirror',
-    url: autoembedCoUrl,
-    type: 'iframe',
-    quality: '1080p HD',
-    description: 'AutoEmbed portal mirror with internal server selector',
-    isAutoEmbed: true,
-    isTv: isSeries,
-    language: 'Multi'
-  };
-
-  // 5. CodeSpecters VIP
+  // CodeSpecters VIP Server
   const codespectersUrl = isSeries
     ? `https://api.codespecters.com/embed/tv/${tmdbId}/${season}/${episode}?apikey=${key}`
     : `https://api.codespecters.com/embed/movie/${tmdbId}?apikey=${key}`;
@@ -846,39 +771,44 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     language: 'Multi'
   };
 
+  // 8Stream / Vercel Multi-Audio Stream (Direct HLS with Hindi, English, Tamil, Telugu, Bengali)
+  const streamApiServer: StreamServer = {
+    id: 'streamapi-hls',
+    name: '8Stream VIP (Multi-Audio HLS)',
+    badge: 'Hindi + 5 Audio',
+    url: `/api/v1/stream-hls?id=${imdbId || tmdbId}`,
+    type: 'video',
+    quality: '1080p / 4K Direct',
+    description: 'Direct bufferless HLS .m3u8 stream with Hindi, English, Bengali, Tamil & Telugu audio tracks',
+    isHindi: true,
+    language: 'Hindi',
+    isTv: isSeries
+  };
+
   // Original Stream Servers Priority Order:
   // - Anime with AniList ID: Filmu Anime Server prioritized as Server #1
-  // - Indian films: AutoEmbed VIP prioritized as Server #1, followed by Filmu Hindi 4K & VidLink
+  // - Indian content: AutoEmbed VIP & Filmu Hindi 4K & 8Stream VIP prioritized
   // - General/International: Filmu / AutoEmbed prioritized as Server #1
   let orderedServers: StreamServer[] = [];
   if (anilistId) {
     orderedServers = [
       filmuServer,
       autoembedServer,
-      vidlinkHindiServer,
-      vidsrcServer,
-      twoEmbedServer,
-      autoembedPortalServer,
-      codespectersServer
+      codespectersServer,
+      streamApiServer
     ];
   } else if (isIndian) {
     orderedServers = [
       autoembedServer,
       filmuServer,
-      vidlinkHindiServer,
-      vidsrcServer,
-      twoEmbedServer,
-      autoembedPortalServer,
+      streamApiServer,
       codespectersServer
     ];
   } else {
     orderedServers = [
       filmuServer,
       autoembedServer,
-      vidlinkHindiServer,
-      vidsrcServer,
-      twoEmbedServer,
-      autoembedPortalServer,
+      streamApiServer,
       codespectersServer
     ];
   }

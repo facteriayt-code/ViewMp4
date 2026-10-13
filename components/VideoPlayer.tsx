@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
   AlertTriangle, RefreshCw, X, Check, MessageSquare, Maximize2, Minimize2, ChevronDown,
-  Globe, Radio, CheckCircle2, Info, ExternalLink
+  Globe, Radio, CheckCircle2, Info, ExternalLink, Headphones, Settings, Volume2
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -10,6 +10,7 @@ import { saveContinueWatching } from '../services/continueWatchingService.ts';
 import { 
   getMovieStreamServers, 
   getMovieTmdbId, 
+  getMovieImdbId,
   getMovieAnilistId,
   isTvOrSeries,
   isIndianContent,
@@ -18,6 +19,13 @@ import {
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { StreamFixResult } from '../services/streamFixService.ts';
 import { AdGuardDnsModal } from './AdGuardDnsModal.tsx';
+import {
+  fetchMediaInfo,
+  fetchStreamLink,
+  StreamTrack,
+  getStreamApiBaseUrl,
+  setStreamApiBaseUrl
+} from '../services/streamApiProvider.ts';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -64,6 +72,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [controlsVisible, setControlsVisible] = useState<boolean>(true);
   const [streamSlow, setStreamSlow] = useState<boolean>(false);
+
+  // 8Stream / Multi-Audio HLS State
+  const [audioTracks, setAudioTracks] = useState<StreamTrack[]>([]);
+  const [selectedAudioLang, setSelectedAudioLang] = useState<string>('Hindi');
+  const [streamApiKey, setStreamApiKey] = useState<string>('');
+  const [hlsStreamUrl, setHlsStreamUrl] = useState<string | null>(null);
+  const [isResolvingStream, setIsResolvingStream] = useState<boolean>(false);
+  const [showVercelConfigModal, setShowVercelConfigModal] = useState<boolean>(false);
+  const [vercelUrlInput, setVercelUrlInput] = useState<string>(() => getStreamApiBaseUrl());
+  const [vercelTestStatus, setVercelTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [vercelTestMessage, setVercelTestMessage] = useState<string>('');
+  const [showAudioMenu, setShowAudioMenu] = useState<boolean>(false);
   
   // Default server category tab: 'all' so users immediately see all active servers
   const isIndian = useMemo(() => isIndianContent(movie), [movie]);
@@ -178,13 +198,126 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Resolve 8Stream / Multi-Audio HLS stream
+  useEffect(() => {
+    if (activeServer.id !== 'streamapi-hls') return;
+
+    let isMounted = true;
+    setIsResolvingStream(true);
+    setIsLoading(true);
+
+    const imdbId = getMovieImdbId(movie) || 'tt1877830';
+
+    fetchMediaInfo(imdbId)
+      .then(async (info) => {
+        if (!isMounted) return;
+        if (info.success && info.data && Array.isArray(info.data.playlist) && info.data.playlist.length > 0 && info.data.key) {
+          const tracks = info.data.playlist;
+          setAudioTracks(tracks);
+          setStreamApiKey(info.data.key);
+
+          // Find track matching selectedAudioLang or fallback to first track
+          const matched = tracks.find(t => t.title?.toLowerCase().includes(selectedAudioLang.toLowerCase())) || tracks[0];
+          setSelectedAudioLang(matched.title || 'Hindi');
+
+          // POST /api/v1/getStream with { file, key }
+          const streamRes = await fetchStreamLink(matched.file, info.data.key);
+          if (!isMounted) return;
+          if (streamRes.success && streamRes.data?.link) {
+            setHlsStreamUrl(streamRes.data.link);
+            setIsLoading(false);
+          } else {
+            setFailoverNotice(streamRes.message || 'Stream link unavailable');
+            setIsLoading(false);
+          }
+        } else {
+          setFailoverNotice(info.message || 'Could not load media info from Stream API');
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('[StreamAPI] Error:', err);
+        setFailoverNotice('Stream API connection error');
+        setIsLoading(false);
+      })
+      .finally(() => {
+        if (isMounted) setIsResolvingStream(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeServer.id, movie.id, season, episode, iframeKey]);
+
+  const handleSelectAudioLang = async (track: StreamTrack) => {
+    setSelectedAudioLang(track.title);
+    setShowAudioMenu(false);
+    if (!streamApiKey || !track.file) return;
+
+    setIsLoading(true);
+    setFailoverNotice(`Switching audio to ${track.title}...`);
+    try {
+      const res = await fetchStreamLink(track.file, streamApiKey);
+      if (res.success && res.data?.link) {
+        setHlsStreamUrl(res.data.link);
+        setFailoverNotice(`Audio switched to ${track.title}`);
+        setTimeout(() => setFailoverNotice(null), 3000);
+      } else {
+        setFailoverNotice(`Could not load ${track.title} stream`);
+        setTimeout(() => setFailoverNotice(null), 3500);
+      }
+    } catch (e: any) {
+      setFailoverNotice(`Error loading ${track.title}`);
+      setTimeout(() => setFailoverNotice(null), 3500);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestVercelUrl = async () => {
+    setVercelTestStatus('testing');
+    setVercelTestMessage('Testing connection to Stream API...');
+    try {
+      const urlToTest = vercelUrlInput.trim().replace(/\/+$/, '');
+      const testUrl = urlToTest 
+        ? (urlToTest.includes('/api/v1') ? `${urlToTest}/mediaInfo?id=tt1877830` : `${urlToTest}/api/v1/mediaInfo?id=tt1877830`)
+        : '/api/v1/mediaInfo?id=tt1877830';
+
+      const res = await fetch(testUrl);
+      const data = await res.json();
+      if (data.success && data.data?.playlist) {
+        setVercelTestStatus('success');
+        const languages = data.data.playlist.map((t: any) => t.title).join(', ');
+        setVercelTestMessage(`Connected successfully! Found tracks: ${languages}`);
+      } else {
+        setVercelTestStatus('error');
+        setVercelTestMessage(data.message || 'API responded but data format was invalid');
+      }
+    } catch (e: any) {
+      setVercelTestStatus('error');
+      setVercelTestMessage(`Connection failed: ${e.message}`);
+    }
+  };
+
+  const handleSaveVercelUrl = () => {
+    setStreamApiBaseUrl(vercelUrlInput.trim());
+    setShowVercelConfigModal(false);
+    setFailoverNotice('Stream API URL saved!');
+    setTimeout(() => setFailoverNotice(null), 3500);
+    // Refresh active server
+    setIframeKey(k => k + 1);
+  };
+
   // Attach HLS player for .m3u8 direct streams
   useEffect(() => {
     if (activeServer.type !== 'video' || !videoRef.current) return;
     const video = videoRef.current;
-    const url = activeServer.url;
+    const url = activeServer.id === 'streamapi-hls' ? hlsStreamUrl : activeServer.url;
 
-    if (url && (url.includes('.m3u8') || url.includes('/stream') || url.includes('/playlist'))) {
+    if (!url) return;
+
+    if (url.includes('.m3u8') || url.includes('/stream') || url.includes('/playlist') || url.includes('friness-cherlormur')) {
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -194,6 +327,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setIsLoading(false);
+          setStreamSlow(false);
           video.play().catch(() => {});
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -206,9 +340,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         };
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
+        setIsLoading(false);
       }
+    } else {
+      video.src = url;
     }
-  }, [activeServer.url, activeServer.type]);
+  }, [activeServer.url, activeServer.type, activeServer.id, hlsStreamUrl, iframeKey]);
 
   // Group servers into Hindi vs Global
   const hindiServers = useMemo(() => servers.filter(s => s.isHindi), [servers]);
@@ -277,7 +414,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   // Modals visibility check
-  const anyModalOpen = showServerModal || showEpisodesModal || showReportModal || showAdGuardModal;
+  const anyModalOpen = showServerModal || showEpisodesModal || showReportModal || showAdGuardModal || showVercelConfigModal;
 
   return (
     <div 
@@ -398,6 +535,45 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
+            </div>
+          )}
+
+          {/* Audio Language Selector (for 8Stream Multi-Audio VIP) */}
+          {activeServer.id === 'streamapi-hls' && audioTracks.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAudioMenu(!showAudioMenu)}
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-black bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 transition shadow-sm active:scale-95"
+                title="Select Audio Track (Hindi, English, etc.)"
+              >
+                <Headphones className="w-3.5 h-3.5 text-purple-300" />
+                <span className="text-[11px] sm:text-xs">Audio: {selectedAudioLang}</span>
+                <ChevronDown className="w-3 h-3 text-purple-300" />
+              </button>
+
+              {showAudioMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-zinc-900 border border-white/20 rounded-2xl shadow-2xl p-1.5 z-[100] flex flex-col space-y-1">
+                  <span className="text-[10px] font-bold text-gray-400 px-2 py-1 uppercase tracking-wider">Audio Tracks</span>
+                  {audioTracks.map((t) => (
+                    <button
+                      key={t.id || t.title}
+                      type="button"
+                      onClick={() => handleSelectAudioLang(t)}
+                      className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                        selectedAudioLang.toLowerCase() === t.title.toLowerCase()
+                          ? 'bg-purple-600 text-white'
+                          : 'hover:bg-white/10 text-gray-200'
+                      }`}
+                    >
+                      <span>{t.title}</span>
+                      {selectedAudioLang.toLowerCase() === t.title.toLowerCase() && (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -575,6 +751,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
+                  onClick={() => {
+                    setShowServerModal(false);
+                    setShowVercelConfigModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-bold rounded-xl text-xs transition border border-purple-500/30 flex items-center space-x-1.5"
+                  title="Configure 8Stream or Vercel API backend URL"
+                >
+                  <Settings className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Stream API / Vercel</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleNextServer}
                   className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl text-xs transition border border-amber-500/30"
                 >
@@ -586,6 +774,100 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   className="px-4 py-1.5 bg-white text-black font-bold rounded-xl text-xs hover:bg-gray-200 transition"
                 >
                   Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. VERCEL / STREAM API SETTINGS MODAL */}
+      {showVercelConfigModal && (
+        <div className="fixed inset-0 z-[280] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[#141414] border border-white/15 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-zinc-900/90">
+              <div className="flex items-center space-x-3">
+                <div className="bg-purple-600/20 p-2.5 rounded-2xl border border-purple-500/30">
+                  <Settings className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-white">Stream API & Vercel Configuration</h3>
+                  <p className="text-[11px] text-gray-400">Multi-Audio .m3u8 Stream Provider</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowVercelConfigModal(false)}
+                className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="bg-purple-500/10 border border-purple-500/25 rounded-2xl p-3.5 text-xs text-purple-200 space-y-1">
+                <p className="font-bold flex items-center space-x-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>How it works:</span>
+                </p>
+                <p className="text-[11px] text-gray-300">
+                  1. <code>/api/v1/mediaInfo?id=IMDB_ID</code> gets audio tracks & decryption key.<br />
+                  2. <code>/api/v1/getStream</code> (POST) resolves direct .m3u8 stream link with Hindi, English, Bengali, Tamil, Telugu audio.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1.5">
+                  Custom Vercel / Stream API URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={vercelUrlInput}
+                  onChange={(e) => setVercelUrlInput(e.target.value)}
+                  placeholder="e.g. https://my-stream-api.vercel.app (leave empty for built-in proxy)"
+                  className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition font-mono"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Leave empty to use built-in local Express proxy with sample fallback.
+                </p>
+              </div>
+
+              {vercelTestMessage && (
+                <div className={`p-3 rounded-xl text-xs font-medium border ${
+                  vercelTestStatus === 'success'
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : vercelTestStatus === 'error'
+                      ? 'bg-red-500/15 border-red-500/30 text-red-300'
+                      : 'bg-zinc-800 text-gray-300 border-white/10'
+                }`}>
+                  {vercelTestMessage}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-white/10 bg-zinc-900/90 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleTestVercelUrl}
+                disabled={vercelTestStatus === 'testing'}
+                className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold rounded-xl text-xs transition border border-white/10 disabled:opacity-50"
+              >
+                {vercelTestStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowVercelConfigModal(false)}
+                  className="px-4 py-2 hover:bg-white/10 text-gray-300 font-bold rounded-xl text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveVercelUrl}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold rounded-xl text-xs transition shadow-lg shadow-purple-600/30"
+                >
+                  Save URL
                 </button>
               </div>
             </div>
