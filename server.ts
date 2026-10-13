@@ -572,6 +572,128 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     });
   });
 
+  // --- 8Stream / Multi-Audio Stream API (/api/v1/mediaInfo, /api/v1/getSeasonList, /api/v1/getStream) ---
+  let configuredStreamApiBaseUrl = process.env.STREAM_API_BASE_URL || process.env.STREAM_API || "";
+
+  apiRouter.get("/v1/config", (req: express.Request, res: express.Response) => {
+    res.json({
+      success: true,
+      baseUrl: configuredStreamApiBaseUrl || null,
+      isConfigured: !!configuredStreamApiBaseUrl
+    });
+  });
+
+  apiRouter.post("/v1/config", (req: express.Request, res: express.Response) => {
+    const { baseUrl } = req.body;
+    if (typeof baseUrl === "string") {
+      configuredStreamApiBaseUrl = baseUrl.trim().replace(/\/+$/, "");
+      return res.json({ success: true, baseUrl: configuredStreamApiBaseUrl });
+    }
+    res.status(400).json({ success: false, error: "baseUrl string required" });
+  });
+
+  // GET /api/v1/mediaInfo?id=tt1877830
+  apiRouter.get("/v1/mediaInfo", async (req: express.Request, res: express.Response) => {
+    const id = req.query.id as string;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Please provide a valid id" });
+    }
+
+    if (!configuredStreamApiBaseUrl) {
+      return res.status(503).json({
+        success: false,
+        message: "Stream API Base URL is not configured. Please set STREAM_API_BASE_URL in environment or via settings."
+      });
+    }
+
+    try {
+      const targetUrl = configuredStreamApiBaseUrl.includes("/api/v1")
+        ? `${configuredStreamApiBaseUrl}/mediaInfo?id=${encodeURIComponent(id)}`
+        : `${configuredStreamApiBaseUrl}/api/v1/mediaInfo?id=${encodeURIComponent(id)}`;
+
+      const upstreamRes = await fetch(targetUrl, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+      });
+      const data = await upstreamRes.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("[StreamAPI proxy] mediaInfo error:", err);
+      res.status(502).json({ success: false, message: "Failed to connect to Stream API upstream: " + err.message });
+    }
+  });
+
+  // GET /api/v1/getSeasonList?id=tt11737520
+  apiRouter.get("/v1/getSeasonList", async (req: express.Request, res: express.Response) => {
+    const id = req.query.id as string;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Please provide a valid id" });
+    }
+
+    if (!configuredStreamApiBaseUrl) {
+      return res.status(503).json({
+        success: false,
+        message: "Stream API Base URL is not configured."
+      });
+    }
+
+    try {
+      const targetUrl = configuredStreamApiBaseUrl.includes("/api/v1")
+        ? `${configuredStreamApiBaseUrl}/getSeasonList?id=${encodeURIComponent(id)}`
+        : `${configuredStreamApiBaseUrl}/api/v1/getSeasonList?id=${encodeURIComponent(id)}`;
+
+      const upstreamRes = await fetch(targetUrl, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+      });
+      const data = await upstreamRes.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("[StreamAPI proxy] getSeasonList error:", err);
+      res.status(502).json({ success: false, message: "Failed to connect to Stream API upstream: " + err.message });
+    }
+  });
+
+  // POST /api/v1/getStream
+  apiRouter.post("/v1/getStream", async (req: express.Request, res: express.Response) => {
+    const { file, key } = req.body;
+    if (!file || !key) {
+      return res.status(400).json({ success: false, message: "Both 'file' and 'key' are required in request body" });
+    }
+
+    if (!configuredStreamApiBaseUrl) {
+      return res.status(503).json({
+        success: false,
+        message: "Stream API Base URL is not configured."
+      });
+    }
+
+    try {
+      const targetUrl = configuredStreamApiBaseUrl.includes("/api/v1")
+        ? `${configuredStreamApiBaseUrl}/getStream`
+        : `${configuredStreamApiBaseUrl}/api/v1/getStream`;
+
+      const upstreamRes = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
+        body: JSON.stringify({ file, key })
+      });
+      const data = await upstreamRes.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("[StreamAPI proxy] getStream error:", err);
+      res.status(502).json({ success: false, message: "Failed to connect to Stream API upstream: " + err.message });
+    }
+  });
+
   // --- Automated 24-Hour Top 10 Endpoints for Netflix & Prime Video India ---
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   interface Top10CacheEntry {

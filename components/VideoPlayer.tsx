@@ -18,6 +18,7 @@ import {
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { StreamFixResult } from '../services/streamFixService.ts';
 import { AdGuardDnsModal } from './AdGuardDnsModal.tsx';
+import Hls from 'hls.js';
 
 interface VideoPlayerProps {
   movie: Movie;
@@ -174,6 +175,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
   const activeServerIndex = servers.findIndex(s => s.id === activeServer.id);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Attach HLS player for .m3u8 direct streams
+  useEffect(() => {
+    if (activeServer.type !== 'video' || !videoRef.current) return;
+    const video = videoRef.current;
+    const url = activeServer.url;
+
+    if (url && (url.includes('.m3u8') || url.includes('/stream') || url.includes('/playlist'))) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setIsLoading(false);
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            console.warn('[HLS] Stream playback warning:', data);
+          }
+        });
+        return () => {
+          hls.destroy();
+        };
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+      }
+    }
+  }, [activeServer.url, activeServer.type]);
 
   // Group servers into Hindi vs Global
   const hindiServers = useMemo(() => servers.filter(s => s.isHindi), [servers]);
@@ -706,8 +741,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Video Player Render - Standard Iframe with full permissions */}
         {activeServer.type === 'video' ? (
           <video 
+            ref={videoRef}
             key={`${activeServer.url}-${iframeKey}`}
-            src={activeServer.url}
+            src={activeServer.url && (activeServer.url.includes('.m3u8') || activeServer.url.includes('/stream') || activeServer.url.includes('/playlist')) ? undefined : activeServer.url}
             controls
             autoPlay
             playsInline

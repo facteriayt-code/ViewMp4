@@ -20,6 +20,7 @@
     "express": "^5.2.1",
     "firebase": "^12.7.0",
     "firebase-admin": "^13.7.0",
+    "hls.js": "^1.7.3",
     "lucide-react": "0.462.0",
     "motion": "^12.43.0",
     "node-fetch": "^3.3.2",
