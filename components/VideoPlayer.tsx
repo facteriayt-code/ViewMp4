@@ -64,9 +64,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [controlsVisible, setControlsVisible] = useState<boolean>(true);
   const [streamSlow, setStreamSlow] = useState<boolean>(false);
   
-  // Default server category tab: Hindi for Indian content or general default
+  // Default server category tab: 'all' so users immediately see all active servers
   const isIndian = useMemo(() => isIndianContent(movie), [movie]);
-  const [serverCategoryTab, setServerCategoryTab] = useState<'hindi' | 'global' | 'all'>('hindi');
+  const [serverCategoryTab, setServerCategoryTab] = useState<'all' | 'hindi' | 'global'>('all');
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -423,6 +423,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="p-3 sm:p-4 border-b border-white/5 bg-zinc-950/70 flex items-center space-x-2 overflow-x-auto no-scrollbar">
               <button
                 type="button"
+                onClick={() => setServerCategoryTab('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
+                  serverCategoryTab === 'all'
+                    ? 'bg-zinc-700 text-white border border-white/20'
+                    : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
+                }`}
+              >
+                <span>⚡ All Servers ({servers.length})</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setServerCategoryTab('hindi')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
                   serverCategoryTab === 'hindi'
@@ -430,7 +442,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
                 }`}
               >
-                <span>🇮🇳 Hindi Servers</span>
+                <span>🇮🇳 Hindi Dub & Multi</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40">
                   {hindiServers.length}
                 </span>
@@ -449,18 +461,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40">
                   {globalServers.length}
                 </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setServerCategoryTab('all')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
-                  serverCategoryTab === 'all'
-                    ? 'bg-zinc-700 text-white border border-white/20'
-                    : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
-                }`}
-              >
-                <span>⚡ All Servers ({servers.length})</span>
               </button>
             </div>
 
