@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
-  AlertTriangle, RefreshCw, X, Check, MessageSquare
+  AlertTriangle, RefreshCw, X, Check, MessageSquare, Maximize2, Minimize2, ChevronDown,
+  Globe, Radio, CheckCircle2, Info
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -11,6 +12,7 @@ import {
   getMovieTmdbId, 
   getMovieAnilistId,
   isTvOrSeries,
+  isIndianContent,
   StreamServer 
 } from '../services/streamService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
@@ -43,7 +45,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1)
   );
   
-  // Default to top priority server in list (Filmy Server / AutoEmbed 4K)
+  // Default to top priority server in list (Filmu Hindi 4K or AutoEmbed VIP)
   const [activeServerId, setActiveServerId] = useState<string>(() => {
     const list = getMovieStreamServers(movie, movie.initialSeason || 1, movie.initialEpisode || 1);
     return list[0]?.id || 'filmu-primary';
@@ -54,15 +56,52 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showEpisodesModal, setShowEpisodesModal] = useState<boolean>(false);
+  const [showServerModal, setShowServerModal] = useState<boolean>(false);
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [showAdGuardModal, setShowAdGuardModal] = useState<boolean>(false);
   const [failoverNotice, setFailoverNotice] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [controlsVisible, setControlsVisible] = useState<boolean>(true);
+  
+  // Default server category tab: Hindi for Indian content or general default
+  const isIndian = useMemo(() => isIndianContent(movie), [movie]);
+  const [serverCategoryTab, setServerCategoryTab] = useState<'hindi' | 'global' | 'all'>('hindi');
+
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset auto-hide controls timer
+  const resetControlsTimer = () => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      // Auto-hide controls only when no modal is open
+      if (!showServerModal && !showEpisodesModal && !showReportModal && !showAdGuardModal) {
+        setControlsVisible(false);
+      }
+    }, 4500);
+  };
+
+  useEffect(() => {
+    resetControlsTimer();
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [showServerModal, showEpisodesModal, showReportModal, showAdGuardModal]);
 
   // Clean up any legacy popup blocking keys to avoid browser issues
   useEffect(() => {
     try {
       localStorage.removeItem('geministream_block_popups');
     } catch {}
+  }, []);
+
+  // Listen to fullscreen changes
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
   const tmdbId = getMovieTmdbId(movie);
@@ -85,7 +124,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const list = getMovieStreamServers(movie, season, episode);
     setServers(list);
     
-    // When switching to a different movie, always prioritize the top server (Filmu Server #1)
+    // When switching to a different movie, prioritize the top server
     if (lastMovieIdRef.current !== movie.id) {
       lastMovieIdRef.current = movie.id;
       setActiveServerId(list[0]?.id || 'filmu-primary');
@@ -127,14 +166,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
   const activeServerIndex = servers.findIndex(s => s.id === activeServer.id);
-  const nextServer = servers[(activeServerIndex + 1) % servers.length];
+
+  // Group servers into Hindi vs Global
+  const hindiServers = useMemo(() => servers.filter(s => s.isHindi), [servers]);
+  const globalServers = useMemo(() => servers.filter(s => !s.isHindi), [servers]);
 
   const handleSelectServer = (serverId: string) => {
     if (serverId !== activeServerId) {
       setActiveServerId(serverId);
       setIframeKey(k => k + 1);
       setIsLoading(true);
-      setFailoverNotice(null);
+      setShowServerModal(false);
+      const target = servers.find(s => s.id === serverId);
+      if (target) {
+        setFailoverNotice(`Switched to ${target.name}`);
+        setTimeout(() => setFailoverNotice(null), 3500);
+      }
+    } else {
+      setShowServerModal(false);
     }
   };
 
@@ -143,8 +192,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const nextIdx = (activeServerIndex + 1) % servers.length;
     const target = servers[nextIdx];
     handleSelectServer(target.id);
-    setFailoverNotice(`Switched to ${target.name}`);
-    setTimeout(() => setFailoverNotice(null), 4000);
   };
 
   const toggleFullscreen = () => {
@@ -155,20 +202,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Keyboard controls (Esc to close, F to fullscreen)
+  // Keyboard controls (Esc to close, F to fullscreen, N for next server)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      resetControlsTimer();
       if (e.key === 'Escape') {
         if (!document.fullscreenElement) {
           onClose();
         }
       } else if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
+      } else if (e.key === 'n' || e.key === 'N') {
+        handleNextServer();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, activeServerIndex, servers]);
 
   const handlePrevEpisode = () => {
     if (episode > 1) {
@@ -183,9 +233,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setEpisode(prev => prev + 1);
   };
 
+  // Modals visibility check
+  const anyModalOpen = showServerModal || showEpisodesModal || showReportModal || showAdGuardModal;
+
   return (
     <div 
       ref={containerRef}
+      onMouseMove={resetControlsTimer}
+      onClick={resetControlsTimer}
+      onTouchStart={resetControlsTimer}
       className="fixed inset-0 z-[200] bg-black text-white flex flex-col items-center justify-between select-none overflow-hidden animate-in fade-in duration-300"
     >
       {/* Toast Alert for server switches */}
@@ -196,207 +252,289 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* 1. Sleek Top Bar with Back, Title, Server Selectors, and Controls */}
-      <header className="w-full bg-zinc-950/95 px-2.5 sm:px-6 py-2 sm:py-2.5 z-50 flex flex-wrap items-center justify-between gap-1.5 sm:gap-3 border-b border-white/10 backdrop-blur-md">
+      {/* 1. SIMPLIFIED SLEEK TOP HEADER */}
+      <header 
+        className={`w-full bg-gradient-to-b from-black/95 via-black/85 to-transparent px-3 sm:px-6 py-2.5 sm:py-3 z-50 flex items-center justify-between gap-2 sm:gap-4 transition-all duration-300 backdrop-blur-sm ${
+          controlsVisible || anyModalOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+        }`}
+      >
         {/* Left: Back Button & Movie Metadata */}
-        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
           <button 
             type="button"
             onClick={onClose} 
-            className="flex items-center space-x-1 bg-white/10 hover:bg-red-600 text-white font-bold px-2.5 py-1.5 rounded-full text-xs sm:text-sm transition-all active:scale-95 shadow-md"
-            title="Return to library"
+            className="flex items-center space-x-1.5 bg-white/10 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded-full text-xs sm:text-sm transition-all active:scale-95 shadow-lg shrink-0 border border-white/10 hover:border-red-500"
+            title="Return to library (Esc)"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+            <span className="hidden xs:inline">Back</span>
           </button>
 
-          <div className="truncate max-w-[110px] xs:max-w-[150px] sm:max-w-xs md:max-w-md">
-            <div className="flex items-center space-x-1.5">
-              <h1 className="text-xs sm:text-base font-black text-white tracking-tight uppercase truncate">
+          <div className="min-w-0">
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xs sm:text-base font-black text-white tracking-tight uppercase truncate max-w-[120px] xs:max-w-[190px] sm:max-w-xs md:max-w-md">
                 {movie.title}
               </h1>
-              {anilistId ? (
-                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-pink-600/30 text-pink-300 border border-pink-500/40 hidden md:inline">
-                  AniList: {anilistId}
-                </span>
-              ) : (
-                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/40 hidden md:inline">
-                  ID: {tmdbId}
+              {isSeries && (
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-600/30 text-purple-300 border border-purple-500/40 shrink-0">
+                  S{season}:E{episode}
                 </span>
               )}
             </div>
             <div className="flex items-center space-x-1.5 text-[10px] sm:text-xs text-gray-400 font-medium truncate">
-              <span>{movie.year}</span>
-              <span>·</span>
-              <span className="truncate">{movie.genre}</span>
-              <span>·</span>
+              {movie.year && <span>{movie.year}</span>}
+              {movie.year && movie.genre && <span>•</span>}
+              <span className="truncate max-w-[100px] xs:max-w-[150px]">{movie.genre}</span>
+              <span>•</span>
               <span className="text-emerald-400 font-bold">{activeServer.quality}</span>
             </div>
           </div>
         </div>
 
-        {/* Center: Server Switcher Chips */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1 max-w-full">
-          {servers.map((s) => {
-            const isActive = s.id === activeServer.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => handleSelectServer(s.id)}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black transition-all flex items-center space-x-1.5 shadow-sm whitespace-nowrap active:scale-95 shrink-0 ${
-                  isActive 
-                    ? 'bg-red-600 text-white shadow-red-600/40 border border-red-400 ring-2 ring-red-500/40 scale-105' 
-                    : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/10'
-                }`}
-                title={s.description}
-              >
-                {s.id.includes('autoembed') ? (
-                  <Layers className="w-3 h-3 text-emerald-400" />
-                ) : s.id.includes('twoembed') ? (
-                  <Play className="w-3 h-3 text-fuchsia-400" />
-                ) : s.id.includes('vidsrc') ? (
-                  <Film className="w-3 h-3 text-indigo-400" />
-                ) : s.id.includes('filmu') ? (
-                  <span className="flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                  </span>
-                ) : s.id.includes('cinesrc') ? (
-                  <Play className="w-3 h-3 text-cyan-400" />
-                ) : s.id.includes('codespecters') ? (
-                  <ShieldCheck className="w-3 h-3 text-blue-400" />
-                ) : (
-                  <Film className="w-3 h-3 text-gray-300" />
-                )}
-                <span>{s.name}</span>
-                {s.badge && (
-                  <span className={`text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded uppercase font-bold hidden sm:inline ${
-                    isActive ? 'bg-black/40 text-white' : 'bg-black/30 text-gray-400'
-                  }`}>
-                    {s.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* Right: Clean Consolidated Controls (Server Picker, Next Server, Episodes, Fullscreen) */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          {/* Main Server Selector Dropdown Button */}
+          <button
+            type="button"
+            onClick={() => setShowServerModal(true)}
+            className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900/90 hover:bg-zinc-800 text-white border border-white/20 transition-all shadow-md active:scale-95 group"
+            title="Choose stream server (Hindi / Global)"
+          >
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] sm:text-xs font-black text-amber-400">
+                {activeServer.isHindi ? '🇮🇳 Hindi' : '🌐 Multi'}:
+              </span>
+            </span>
+            <span className="truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[180px] text-gray-100 font-extrabold text-[11px] sm:text-xs">
+              {activeServer.name}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition shrink-0" />
+          </button>
 
-        {/* Right: Next Server, Episodes */}
-        <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
-          {/* Quick Switch Server Button */}
+          {/* Quick 1-Tap "Next Server" Failover Button */}
           <button
             type="button"
             onClick={handleNextServer}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition shadow-sm active:scale-95"
-            title="Try next stream server if current is slow or buffering"
+            className="flex items-center space-x-1 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition shadow-sm active:scale-95"
+            title="Fast switch to next stream server (Press 'N')"
           >
-            <RefreshCw className="w-3 h-3" />
-            <span className="hidden xs:inline">Next Server</span>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Next Server</span>
           </button>
 
-          {/* TV Episodes Toggle */}
+          {/* TV Series Episode Navigator (Directly on header, eliminating bulky sub-bars!) */}
+          {isSeries && (
+            <div className="flex items-center bg-zinc-900/90 border border-purple-500/30 rounded-full p-0.5 shadow-sm">
+              <button
+                type="button"
+                onClick={handlePrevEpisode}
+                disabled={season === 1 && episode === 1}
+                className="p-1 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none rounded-full transition text-gray-300 hover:text-white"
+                title="Previous Episode"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForceSeriesMode(true);
+                  setShowEpisodesModal(true);
+                }}
+                className="px-2 py-0.5 text-[11px] sm:text-xs font-black text-purple-300 hover:text-white flex items-center space-x-1 transition"
+                title="Open Episode Grid"
+              >
+                <Tv className="w-3 h-3 text-purple-400" />
+                <span>S{season}:E{episode}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleNextEpisode}
+                className="p-1 hover:bg-white/10 rounded-full transition text-gray-300 hover:text-white"
+                title="Next Episode"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Fullscreen Button */}
           <button
             type="button"
-            onClick={() => {
-              setForceSeriesMode(true);
-              setShowEpisodesModal(true);
-            }}
-            className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold border transition ${
-              isSeries 
-                ? 'bg-purple-600/30 border-purple-500/50 text-purple-200 hover:bg-purple-600/50' 
-                : 'bg-white/10 border-white/15 text-gray-300 hover:text-white'
-            }`}
-            title="Select Season & Episode"
+            onClick={toggleFullscreen}
+            className="p-1.5 hover:bg-white/15 rounded-full text-gray-300 hover:text-white transition active:scale-95 border border-white/10"
+            title={isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
           >
-            <Tv className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden xs:inline">Episodes</span>
-            {isSeries && (
-              <span className="text-[9px] font-mono bg-purple-900/60 px-1 rounded text-purple-200">
-                S{season}:E{episode}
-              </span>
-            )}
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
       </header>
 
-      {/* TV Series Season & Episode Sub-bar */}
-      {isSeries && (
-        <div className="w-full bg-zinc-950/95 border-b border-white/10 px-2.5 sm:px-6 py-1.5 flex flex-wrap items-center justify-between gap-2 z-40 text-xs shadow-md">
-          {/* Left: Season & Episode dropdowns directly on bar */}
-          <div className="flex items-center space-x-2 sm:space-x-3 overflow-x-auto no-scrollbar py-0.5">
-            <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px] hidden xs:inline">
-              Select:
-            </span>
-            
-            {/* Season Selector Dropdown */}
-            <div className="flex items-center space-x-1 shrink-0">
-              <span className="text-gray-400 text-[11px] font-semibold">Season</span>
-              <select
-                value={season}
-                onChange={(e) => {
-                  setSeason(Number(e.target.value));
-                  setEpisode(1);
-                }}
-                className="bg-zinc-800 border border-white/20 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none focus:border-red-500 cursor-pointer"
+      {/* 2. SERVER SELECTION MODAL / DRAWER (Dedicated Hindi & Global Categories) */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-[260] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[#141414] border border-white/15 w-full sm:max-w-2xl max-h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-zinc-900/90">
+              <div className="flex items-center space-x-3">
+                <div className="bg-red-600/20 p-2.5 rounded-2xl border border-red-500/30">
+                  <Radio className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-white uppercase tracking-tight flex items-center space-x-2">
+                    <span>Select Streaming Server</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {servers.length} Available
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-medium">
+                    Choose from dedicated Hindi servers, dual-audio tracks, or global 4K nodes
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowServerModal(false)}
+                className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(sNum => (
-                  <option key={sNum} value={sNum}>Season {sNum}</option>
-                ))}
-              </select>
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Episode Selector Dropdown */}
-            <div className="flex items-center space-x-1 shrink-0">
-              <span className="text-gray-400 text-[11px] font-semibold">Episode</span>
-              <select
-                value={episode}
-                onChange={(e) => {
-                  setEpisode(Number(e.target.value));
-                }}
-                className="bg-zinc-800 border border-white/20 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none focus:border-red-500 cursor-pointer"
+            {/* Language / Category Filter Tabs */}
+            <div className="p-3 sm:p-4 border-b border-white/5 bg-zinc-950/70 flex items-center space-x-2 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setServerCategoryTab('hindi')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
+                  serverCategoryTab === 'hindi'
+                    ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 border border-red-500'
+                    : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
+                }`}
               >
-                {Array.from({ length: 35 }, (_, i) => i + 1).map(epNum => (
-                  <option key={epNum} value={epNum}>Episode {epNum}</option>
-                ))}
-              </select>
+                <span>🇮🇳 Hindi Servers</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40">
+                  {hindiServers.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setServerCategoryTab('global')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
+                  serverCategoryTab === 'global'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-500'
+                    : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
+                }`}
+              >
+                <span>🌐 Global & English</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40">
+                  {globalServers.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setServerCategoryTab('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 shrink-0 ${
+                  serverCategoryTab === 'all'
+                    ? 'bg-zinc-700 text-white border border-white/20'
+                    : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 border border-white/10'
+                }`}
+              >
+                <span>⚡ All Servers ({servers.length})</span>
+              </button>
             </div>
 
-            {/* "Select Episode" Grid Button */}
-            <button
-              type="button"
-              onClick={() => setShowEpisodesModal(true)}
-              className="flex items-center space-x-1 px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-lg font-bold text-[11px] transition shrink-0 active:scale-95"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Episode Grid</span>
-            </button>
-          </div>
+            {/* Server Cards List */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-2.5">
+              {(serverCategoryTab === 'hindi' ? hindiServers : serverCategoryTab === 'global' ? globalServers : servers).map((s, idx) => {
+                const isCurrent = s.id === activeServer.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleSelectServer(s.id)}
+                    className={`w-full p-3.5 rounded-2xl border text-left transition flex items-center justify-between gap-3 active:scale-[0.99] group ${
+                      isCurrent
+                        ? 'bg-red-600/15 border-red-500/60 ring-1 ring-red-500/50 shadow-md'
+                        : 'bg-zinc-900/70 hover:bg-zinc-800/90 border-white/10 hover:border-white/25'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className={`p-2.5 rounded-xl shrink-0 ${
+                        isCurrent 
+                          ? 'bg-red-600 text-white' 
+                          : s.isHindi 
+                            ? 'bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25' 
+                            : 'bg-blue-500/15 text-blue-400 group-hover:bg-blue-500/25'
+                      }`}>
+                        {s.isHindi ? <Sparkles className="w-4 h-4" /> : <Film className="w-4 h-4" />}
+                      </div>
 
-          {/* Right: Prev & Next Episode Controls */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-            <button
-              onClick={handlePrevEpisode}
-              disabled={season === 1 && episode === 1}
-              className="flex items-center space-x-1 px-2 sm:px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:pointer-events-none rounded-lg text-xs font-semibold text-gray-200 transition"
-              title="Previous Episode"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Prev</span>
-            </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-black text-xs sm:text-sm text-white truncate group-hover:text-amber-300 transition">
+                            {s.name}
+                          </h4>
+                          {s.badge && (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                              s.isHindi 
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
+                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                            }`}>
+                              {s.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                          {s.description}
+                        </p>
+                      </div>
+                    </div>
 
-            <span className="font-mono font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/30 text-xs shadow-inner">
-              S{season}:E{episode}
-            </span>
+                    <div className="flex items-center space-x-2.5 shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-800 text-emerald-400 border border-emerald-500/20 hidden xs:inline">
+                        {s.quality}
+                      </span>
+                      {isCurrent ? (
+                        <div className="flex items-center space-x-1 text-xs font-bold text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Active</span>
+                        </div>
+                      ) : (
+                        <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-red-600 group-hover:text-white text-gray-400 transition">
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-            <button
-              onClick={handleNextEpisode}
-              className="flex items-center space-x-1 px-2 sm:px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-semibold text-gray-200 transition"
-              title="Next Episode"
-            >
-              <span className="hidden xs:inline">Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+            {/* Modal Footer with Quick Switch and Tips */}
+            <div className="p-3 sm:p-4 border-t border-white/10 bg-zinc-900/90 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-[11px] text-gray-400 flex items-center space-x-1">
+                <Info className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <span>Tip: Switch servers if buffering or for alternate Hindi dub tracks</span>
+              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleNextServer}
+                  className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl text-xs transition border border-amber-500/30"
+                >
+                  Try Next Server
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowServerModal(false)}
+                  className="px-4 py-1.5 bg-white text-black font-bold rounded-xl text-xs hover:bg-gray-200 transition"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -408,8 +546,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-zinc-900/90">
               <div className="flex items-center space-x-2">
-                <div className="bg-red-600/20 p-2 rounded-xl border border-red-500/30">
-                  <Tv className="w-5 h-5 text-red-500" />
+                <div className="bg-purple-600/20 p-2 rounded-xl border border-purple-500/30">
+                  <Tv className="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-white uppercase tracking-tight">
@@ -440,7 +578,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                       season === sNum 
-                        ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' 
                         : 'bg-zinc-800/80 hover:bg-zinc-700 text-gray-300'
                     }`}
                   >
@@ -473,7 +611,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1 active:scale-95 group ${
                         isCurrent 
-                          ? 'bg-gradient-to-b from-red-600 to-red-700 border-red-400 text-white shadow-lg ring-2 ring-red-400/40' 
+                          ? 'bg-gradient-to-b from-purple-600 to-purple-700 border-purple-400 text-white shadow-lg ring-2 ring-purple-400/40' 
                           : 'bg-zinc-800/60 hover:bg-zinc-700/80 border-white/10 text-gray-200 hover:border-white/20'
                       }`}
                     >
@@ -481,7 +619,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         {isCurrent ? (
                           <Check className="w-3.5 h-3.5 text-white" />
                         ) : (
-                          <Play className="w-3 h-3 text-red-500 group-hover:scale-110 transition" />
+                          <Play className="w-3 h-3 text-purple-400 group-hover:scale-110 transition" />
                         )}
                         <span className="text-xs font-black">
                           Ep {epNum}
@@ -512,13 +650,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* 2. Main Streaming Canvas Area */}
+      {/* 3. MAIN VIDEO STREAMING CANVAS AREA */}
       <main className="w-full flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-        {/* Subtle, Non-blocking Loading Banner (Never blocks user interactions or clicks) */}
+        {/* Non-blocking Loading Banner */}
         {isLoading && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/15 flex items-center space-x-2 text-xs font-bold text-gray-200 animate-in fade-in duration-200 shadow-xl">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/15 flex items-center space-x-2 text-xs font-bold text-gray-200 animate-in fade-in duration-200 shadow-xl">
             <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-            <span>Loading {activeServer.name}...</span>
+            <span>Connecting {activeServer.name}...</span>
           </div>
         )}
 
@@ -547,38 +685,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         )}
       </main>
 
-      {/* 3. Bottom Information Bar */}
-      <footer className="w-full bg-zinc-950/95 px-3 sm:px-6 py-2 z-40 flex items-center justify-between text-[10px] sm:text-xs text-gray-400 border-t border-white/5">
-        <div className="flex items-center space-x-2">
+      {/* 4. SIMPLIFIED SLEEK BOTTOM BAR */}
+      <footer 
+        className={`w-full bg-gradient-to-t from-black/95 via-black/85 to-transparent px-3 sm:px-6 py-2.5 z-40 flex items-center justify-between text-[11px] sm:text-xs text-gray-400 border-t border-white/5 transition-all duration-300 backdrop-blur-sm ${
+          controlsVisible || anyModalOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Active Audio Indicator */}
+          <div className="flex items-center space-x-1.5 text-gray-300 font-bold bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>{activeServer.isHindi ? '🇮🇳 Hindi Audio Active' : '🌐 Multi-Audio Active'}</span>
+          </div>
+
+          {/* Ad-Block Guide Button */}
           <button
             type="button"
             onClick={() => setShowAdGuardModal(true)}
-            className="flex items-center space-x-1.5 text-emerald-400 hover:text-emerald-300 font-bold text-[10px] sm:text-xs bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full transition active:scale-95"
+            className="flex items-center space-x-1.5 text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 sm:px-3 py-1 rounded-full transition active:scale-95"
             title="Step-by-step instructions to block all ads with AdGuard DNS"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Ad Block (AdGuard DNS)</span>
+            <span className="hidden xs:inline">Ad-Free (AdGuard DNS)</span>
+            <span className="xs:hidden">Ad-Free</span>
           </button>
-          {isSeries && (
-            <>
-              <span className="text-gray-500">•</span>
-              <span className="text-amber-400 font-mono font-bold">
-                S{season}:E{episode}
-              </span>
-            </>
-          )}
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
           {onOpenChat && (
             <button
               type="button"
               onClick={onOpenChat}
-              className="text-red-400 hover:text-white font-bold bg-red-600/15 hover:bg-red-600/30 px-3 py-1 rounded-full border border-red-500/30 flex items-center space-x-1.5 transition active:scale-95"
+              className="text-red-400 hover:text-white font-bold bg-red-600/15 hover:bg-red-600/30 px-2.5 sm:px-3 py-1 rounded-full border border-red-500/30 flex items-center space-x-1.5 transition active:scale-95"
               title="Open Live Stream Community Chat"
             >
               <MessageSquare className="w-3.5 h-3.5 text-red-500" />
-              <span>Live Chat</span>
+              <span className="hidden xs:inline">Live Chat</span>
             </button>
           )}
 
@@ -586,24 +728,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               type="button"
               onClick={onOpenGoogleChat}
-              className="text-blue-400 hover:text-white font-bold bg-blue-600/15 hover:bg-blue-600/30 px-3 py-1 rounded-full border border-blue-500/30 flex items-center space-x-1.5 transition active:scale-95"
+              className="text-blue-400 hover:text-white font-bold bg-blue-600/15 hover:bg-blue-600/30 px-2.5 sm:px-3 py-1 rounded-full border border-blue-500/30 flex items-center space-x-1.5 transition active:scale-95"
               title="Open Google Workspace Chat"
             >
               <svg className="w-3.5 h-3.5 fill-blue-400" viewBox="0 0 24 24">
                 <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
               </svg>
-              <span>Google Chat</span>
+              <span className="hidden sm:inline">Google Chat</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={() => setShowReportModal(true)}
-            className="text-gray-400 hover:text-red-300 font-bold bg-white/5 hover:bg-red-600/20 px-3 py-1 rounded-full border border-white/10 flex items-center space-x-1.5 transition active:scale-95"
-            title="Report if this movie is not playing or wrong movie"
+            className="text-gray-400 hover:text-amber-300 font-bold bg-white/5 hover:bg-amber-500/20 px-2.5 sm:px-3 py-1 rounded-full border border-white/10 flex items-center space-x-1.5 transition active:scale-95"
+            title="Report if this movie is buffering or wrong stream"
           >
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Report Stream</span>
+            <span className="hidden xs:inline">Report Stream</span>
           </button>
         </div>
       </footer>
