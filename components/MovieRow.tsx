@@ -173,8 +173,9 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
                   <img 
                     src={movie.thumbnail || movie.poster || movie.backdrop} 
                     alt={movie.title} 
-                    className="w-full h-full object-cover object-center brightness-[0.92] group-hover/card:brightness-75 transition-all duration-500 pointer-events-none"
+                    className="w-full h-full object-cover object-center brightness-[0.92] group-hover/card:brightness-75 transition-all duration-300 pointer-events-none"
                     loading="lazy"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -316,4 +317,4 @@ const MovieRow: React.FC<MovieRowProps> = ({ title, movies, onMovieClick, onPlay
   );
 };
 
-export default MovieRow;
+export default React.memo(MovieRow);

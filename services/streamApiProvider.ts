@@ -95,11 +95,23 @@ function buildApiUrl(endpoint: string, queryParams: Record<string, string> = {})
   return url.toString();
 }
 
+// In-memory cache for media info, season lists, and resolved stream links
+const mediaInfoCache = new Map<string, { data: MediaInfoResponse; expiresAt: number }>();
+const seasonListCache = new Map<string, { data: SeasonListResponse; expiresAt: number }>();
+const streamLinkCache = new Map<string, { data: StreamLinkResponse; expiresAt: number }>();
+const CACHE_TTL_MS = 20 * 60 * 1000; // 20 minutes
+
 /**
- * 1. Fetch Media Info & Track Playlist
+ * 1. Fetch Media Info & Track Playlist (Cached)
  */
 export async function fetchMediaInfo(imdbId: string): Promise<MediaInfoResponse> {
   const cleanId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+  
+  const cached = mediaInfoCache.get(cleanId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   const targetUrl = buildApiUrl('mediaInfo', { id: cleanId });
 
   try {
@@ -113,6 +125,9 @@ export async function fetchMediaInfo(imdbId: string): Promise<MediaInfoResponse>
       throw new Error(`MediaInfo request failed with status: ${response.status}`);
     }
     const data: MediaInfoResponse = await response.json();
+    if (data.success && data.data?.playlist) {
+      mediaInfoCache.set(cleanId, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
     return data;
   } catch (error: any) {
     console.warn(`[StreamAPI] mediaInfo error for ${cleanId}:`, error.message);
@@ -124,10 +139,16 @@ export async function fetchMediaInfo(imdbId: string): Promise<MediaInfoResponse>
 }
 
 /**
- * 2. Fetch TV Series Seasons & Language Info
+ * 2. Fetch TV Series Seasons & Language Info (Cached)
  */
 export async function fetchSeasonList(imdbId: string): Promise<SeasonListResponse> {
   const cleanId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+
+  const cached = seasonListCache.get(cleanId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   const targetUrl = buildApiUrl('getSeasonList', { id: cleanId });
 
   try {
@@ -141,6 +162,9 @@ export async function fetchSeasonList(imdbId: string): Promise<SeasonListRespons
       throw new Error(`SeasonList request failed with status: ${response.status}`);
     }
     const data: SeasonListResponse = await response.json();
+    if (data.success) {
+      seasonListCache.set(cleanId, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
     return data;
   } catch (error: any) {
     console.warn(`[StreamAPI] getSeasonList error for ${cleanId}:`, error.message);
@@ -152,9 +176,15 @@ export async function fetchSeasonList(imdbId: string): Promise<SeasonListRespons
 }
 
 /**
- * 3. Fetch Direct Stream Link via POST { file, key }
+ * 3. Fetch Direct Stream Link via POST { file, key } (Cached)
  */
 export async function fetchStreamLink(file: string, key: string): Promise<StreamLinkResponse> {
+  const cacheKey = `${file.slice(0, 32)}_${key.slice(0, 16)}`;
+  const cached = streamLinkCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   const targetUrl = buildApiUrl('getStream');
 
   try {
@@ -172,6 +202,9 @@ export async function fetchStreamLink(file: string, key: string): Promise<Stream
     }
 
     const data: StreamLinkResponse = await response.json();
+    if (data.success && data.data?.link) {
+      streamLinkCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
     return data;
   } catch (error: any) {
     console.warn('[StreamAPI] getStream error:', error.message);

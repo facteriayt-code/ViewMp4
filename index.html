@@ -74,17 +74,52 @@
         }
       }
     </script>
+    <!-- High-Speed DNS Prefetch & Preconnect for Fast Internet & Zero-Lag Streaming -->
+    <link rel="dns-prefetch" href="https://image.tmdb.org">
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+    <link rel="dns-prefetch" href="https://dnm.nflximg.net">
+    <link rel="preconnect" href="https://dnm.nflximg.net" crossorigin>
+    <link rel="dns-prefetch" href="https://vidrock.to">
+    <link rel="preconnect" href="https://vidrock.to" crossorigin>
+    <link rel="dns-prefetch" href="https://player.autoembed.co">
+    <link rel="preconnect" href="https://player.autoembed.co" crossorigin>
+    <link rel="dns-prefetch" href="https://embed.filmu.in">
+    <link rel="preconnect" href="https://embed.filmu.in" crossorigin>
+    <link rel="dns-prefetch" href="https://api.codespecters.com">
+    <link rel="preconnect" href="https://api.codespecters.com" crossorigin>
+    <link rel="dns-prefetch" href="https://images.unsplash.com">
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+    <link rel="dns-prefetch" href="https://esm.sh">
+    <link rel="preconnect" href="https://esm.sh" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
+        html {
+            scroll-behavior: smooth;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: #090b10;
             color: #ffffff;
             margin: 0;
             overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+        /* GPU accelerated scrolling and rendering performance */
+        .row-container {
+            contain: layout style;
+            will-change: scroll-position;
+        }
+        .group\/card {
+            contain: layout paint;
+            content-visibility: auto;
+            contain-intrinsic-size: 185px 278px;
+            transform: translateZ(0);
         }
         .font-cinema, .font-royal, .font-bold-royal {
             font-family: 'Cinzel', 'Cinzel Decorative', 'Cormorant Garamond', 'Trajan Pro', Georgia, serif !important;

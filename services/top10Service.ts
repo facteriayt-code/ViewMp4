@@ -424,6 +424,29 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
   const cached = getStoredTop10(platform);
   const now = Date.now();
 
+  // If we have a valid, recent cache and not force-refreshing, return it immediately for instant 0ms load!
+  if (cached && !forceRefresh && (now - cached.lastUpdated < TWENTY_FOUR_HOURS_MS)) {
+    // If older than 6 hours, silently refresh in the background without blocking the UI
+    if (now - cached.lastUpdated > 6 * 60 * 60 * 1000) {
+      fetch(`/api/top10/${platform}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.movies) && data.movies.length > 0) {
+            saveStoredTop10(platform, {
+              platform,
+              sourceUrl: data.sourceUrl || (platform === 'netflix' ? 'https://www.netflix.com/tudum/top10/india' : 'https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/'),
+              sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'FlixPatrol India',
+              lastUpdated: data.lastUpdated || Date.now(),
+              nextRefreshAt: data.nextRefreshAt || (Date.now() + TWENTY_FOUR_HOURS_MS),
+              movies: data.movies
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    return cached;
+  }
+
   try {
     const res = await fetch(`/api/top10/${platform}${forceRefresh ? '?refresh=true' : ''}`);
     if (res.ok) {
@@ -445,8 +468,8 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
     console.warn(`Failed to fetch fresh top 10 for ${platform}, using fallback:`, err);
   }
 
-  // If network fetch fails, use cached if available and fresh
-  if (cached && (now - cached.lastUpdated < TWENTY_FOUR_HOURS_MS)) {
+  // If network fetch fails, use cached if available
+  if (cached) {
     return cached;
   }
 

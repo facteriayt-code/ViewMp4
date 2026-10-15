@@ -309,7 +309,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIframeKey(k => k + 1);
   };
 
-  // Attach HLS player for .m3u8 direct streams
+  // Attach high-performance HLS player for .m3u8 direct streams
   useEffect(() => {
     if (activeServer.type !== 'video' || !videoRef.current) return;
     const video = videoRef.current;
@@ -321,20 +321,55 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
+          lowLatencyMode: false, // Disabled for movies/VOD to enable deep forward buffer
+          backBufferLength: 90, // Keep 90s behind in memory for instantaneous rewinding
+          maxBufferLength: 60, // Keep 60s ahead in buffer
+          maxMaxBufferLength: 180, // Allow up to 3 minutes ahead on fast broadband
+          maxBufferSize: 120 * 1024 * 1024, // 120MB buffer limit
+          maxBufferHole: 0.5,
+          highBufferWatchdogPeriod: 2,
+          nudgeOffset: 0.1,
+          nudgeMaxRetry: 5,
+          fragLoadingTimeOut: 20000,
+          fragLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 500,
+          manifestLoadingTimeOut: 15000,
+          levelLoadingTimeOut: 15000,
+          startLevel: -1, // Auto quality selection
+          abrEwmaDefaultEstimate: 10000000, // 10 Mbps initial estimate for fast broadband (crisp HD immediately)
+          autoStartLoad: true,
+          testBandwidth: true,
+          progressive: true,
         });
+
         hls.loadSource(url);
         hls.attachMedia(video);
+
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           setIsLoading(false);
           setStreamSlow(false);
           video.play().catch(() => {});
         });
+
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
-            console.warn('[HLS] Stream playback warning:', data);
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('[HLS] Network error encountered, auto-recovering buffer...', data.details);
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('[HLS] Media decoding glitch, auto-recovering media error...', data.details);
+                hls.recoverMediaError();
+                break;
+              default:
+                console.warn('[HLS] Non-recoverable stream error:', data);
+                hls.destroy();
+                break;
+            }
           }
         });
+
         return () => {
           hls.destroy();
         };
@@ -1029,9 +1064,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             controls
             autoPlay
             playsInline
+            preload="auto"
             onLoadedData={() => {
               setIsLoading(false);
               setStreamSlow(false);
+            }}
+            onCanPlay={() => {
+              setIsLoading(false);
+              setStreamSlow(false);
+            }}
+            onPlaying={() => {
+              setIsLoading(false);
+              setStreamSlow(false);
+            }}
+            onWaiting={() => {
+              setIsLoading(true);
             }}
             className="w-full h-full object-contain"
           />
@@ -1041,6 +1088,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             src={activeServer.url}
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
+            loading="eager"
             allowFullScreen={true}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             onLoad={() => {

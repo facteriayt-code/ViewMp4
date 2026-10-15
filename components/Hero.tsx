@@ -42,14 +42,22 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
     toggleLikeMovie(activeMovie);
   };
 
-  // Auto-advance spotlight every 9 seconds
+  // Auto-advance spotlight every 9 seconds & prefetch next slide backdrop
   useEffect(() => {
     if (playlist.length <= 1) return;
+    // Prefetch next slide backdrop for seamless transition
+    const nextIdx = (currentIndex + 1) % playlist.length;
+    const nextItem = playlist[nextIdx];
+    if (nextItem && nextItem.backdrop) {
+      const preloadImg = new Image();
+      preloadImg.src = nextItem.backdrop;
+    }
+
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % playlist.length);
     }, 9000);
     return () => clearInterval(timer);
-  }, [playlist.length]);
+  }, [playlist, currentIndex]);
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -69,7 +77,10 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
           key={`backdrop-${activeMovie.id}`}
           src={activeMovie.backdrop} 
           alt={activeMovie.title} 
-          className="w-full h-full object-cover object-center md:object-[center_20%] brightness-[0.52] md:brightness-[0.65] transition-opacity duration-700 animate-in fade-in"
+          loading="eager"
+          decoding="async"
+          {...({ fetchpriority: "high" } as any)}
+          className="w-full h-full object-cover object-center md:object-[center_20%] brightness-[0.52] md:brightness-[0.65] transition-opacity duration-500 animate-in fade-in"
           onError={(e) => {
             if (activeMovie.thumbnail && e.currentTarget.src !== activeMovie.thumbnail) {
               e.currentTarget.src = activeMovie.thumbnail;

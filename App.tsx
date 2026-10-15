@@ -145,14 +145,10 @@ const App: React.FC = () => {
   const showUploadModalRef = useRef<boolean>(false);
   const deepLinkProcessed = useRef(false);
   
-  // 1. Global Click Listener for Pop-ups/Ads
+  // 1. Global Click Listener for Pop-ups/Ads (Passive to avoid main-thread blocking)
   useEffect(() => {
-    const handleGlobalClick = () => {
-      // This empty listener encourages the browser to allow script-triggered popups 
-      // from the ad networks included in index.html
-      console.debug("User interaction captured for ad-sync");
-    };
-    window.addEventListener('click', handleGlobalClick);
+    const handleGlobalClick = () => {};
+    window.addEventListener('click', handleGlobalClick, { passive: true });
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 

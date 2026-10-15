@@ -227,13 +227,22 @@ export const incrementMovieView = async (movieId: string) => {
   } catch (err) {}
 };
 
+let cachedCloudMovies: Movie[] | null = null;
+let cachedCloudMoviesTime = 0;
+const CLOUD_MOVIES_CACHE_TTL = 90 * 1000; // 90 seconds
+
 export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
+  const now = Date.now();
+  if (cachedCloudMovies && (now - cachedCloudMoviesTime < CLOUD_MOVIES_CACHE_TTL)) {
+    return cachedCloudMovies;
+  }
+
   try {
     const res = await fetch('/api/movies');
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.movies) && data.movies.length > 0) {
-        return data.movies.map((item: any) => ({
+        const mapped = data.movies.map((item: any) => ({
           id: item.id || `m_${Math.random().toString(36).substring(2, 9)}`,
           title: item.title,
           description: item.description,
@@ -253,6 +262,9 @@ export const getAllVideosFromCloud = async (): Promise<Movie[]> => {
           criticScore: item.critic_score || item.criticScore,
           streamingSources: item.streaming_sources || item.streamingSources
         }));
+        cachedCloudMovies = mapped;
+        cachedCloudMoviesTime = Date.now();
+        return mapped;
       }
     }
   } catch (err) {

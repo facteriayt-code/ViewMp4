@@ -484,8 +484,18 @@ export interface TmdbFullMovieDetails {
   }>;
 }
 
+// Fast cache for full movie details modal (1 hour TTL)
+const fullDetailsCache = new Map<string, { data: TmdbFullMovieDetails; expiresAt: number }>();
+const DETAILS_CACHE_TTL_MS = 60 * 60 * 1000;
+
 // Fetch complete cinematic details for a movie/series (logos, cast, trailers, recommendations, collections)
 export const fetchTmdbFullMovieDetails = async (movie: Movie): Promise<TmdbFullMovieDetails | null> => {
+  const cacheKey = `${movie.id || ''}_${movie.watchmodeId || ''}_${movie.title}`;
+  const cached = fullDetailsCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   try {
     const isTv = !!movie.isTv || movie.genre?.toLowerCase().includes('series') || movie.genre?.toLowerCase().includes('tv');
     let tmdbId: number | null = movie.watchmodeId || null;
@@ -615,7 +625,7 @@ export const fetchTmdbFullMovieDetails = async (movie: Movie): Promise<TmdbFullM
       };
     });
 
-    return {
+    const finalDetails: TmdbFullMovieDetails = {
       logo: logoUrl,
       runtime: runtimeMinutes,
       runtimeFormatted,
@@ -634,6 +644,9 @@ export const fetchTmdbFullMovieDetails = async (movie: Movie): Promise<TmdbFullM
       revenue: data.revenue,
       seasons: data.seasons ? data.seasons.filter((s: any) => s.season_number > 0) : undefined
     };
+
+    fullDetailsCache.set(cacheKey, { data: finalDetails, expiresAt: Date.now() + DETAILS_CACHE_TTL_MS });
+    return finalDetails;
   } catch (err) {
     console.error("Error fetching full TMDb details:", err);
     return null;

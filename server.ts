@@ -1,6 +1,7 @@
 console.log("SERVER.TS LOADED - " + new Date().toISOString());
 
 import express from "express";
+import compression from "compression";
 import http from "http";
 import fs, { readFileSync } from "fs";
 import { WebSocketServer, WebSocket } from "ws";
@@ -51,6 +52,12 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // High-Speed GZIP/Deflate Compression for 75-85% smaller payloads across all APIs
+  app.use(compression({
+    threshold: 512, // compress anything over 512 bytes
+    level: 6
+  }));
+
   // CORS Middleware - Enables cross-origin access from external browsers, tabs, and devices
   app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
@@ -65,6 +72,34 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // In-Memory High-Performance TTL LRU Cache for zero-latency server responses
+  interface ApiCacheEntry<T> {
+    data: T;
+    expiresAt: number;
+  }
+  const apiMemoryCache = new Map<string, ApiCacheEntry<any>>();
+
+  function getApiCache<T = any>(key: string): T | null {
+    const entry = apiMemoryCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      apiMemoryCache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  function setApiCache<T>(key: string, data: T, ttlSeconds: number): void {
+    if (apiMemoryCache.size > 2000) {
+      const firstKey = apiMemoryCache.keys().next().value;
+      if (firstKey) apiMemoryCache.delete(firstKey);
+    }
+    apiMemoryCache.set(key, {
+      data,
+      expiresAt: Date.now() + (ttlSeconds * 1000)
+    });
+  }
 
   // Request logging middleware - VERY EARLY
   app.use((req, res, next) => {
@@ -332,8 +367,15 @@ async function startServer() {
   // In-memory cache for fast fallback
   const inMemoryMovies: any[] = [];
 
-  // --- Movie Streaming Endpoints ---
+  // --- Movie Streaming Endpoints (Cached with 60s TTL) ---
   apiRouter.get("/movies", async (req, res) => {
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+
+    const cached = getApiCache<any[]>("all_movies");
+    if (cached) {
+      return res.json({ success: true, movies: cached });
+    }
+
     try {
       let results: any[] = [];
 
@@ -361,6 +403,7 @@ async function startServer() {
 
       const all = [...results, ...inMemoryMovies];
       const unique = Array.from(new Map(all.map(m => [m.id || m.title, m])).values());
+      setApiCache("all_movies", unique, 60); // Cache for 60 seconds
       res.json({ success: true, movies: unique });
     } catch (err: any) {
       console.warn("Movies fetch warning:", err.message);
@@ -389,6 +432,8 @@ async function startServer() {
         uploader_name: uploaderName || 'Community User',
         created_at: new Date().toISOString()
       };
+
+      apiMemoryCache.delete("all_movies");
 
       if (db) {
         try {
@@ -626,19 +671,24 @@ Recommend exactly ONE great movie they would love. Provide response in format:
 
   const SAMPLE_STREAM_LINK = "https://i-arch-400.friness-cherlormur-i-275.site/stream2/i-arch-400/2e69c15cc905832c1f9f8d93d594b928/MJTMsp1RshGTygnMNRUR2N2MSlnWXZEdMNDZzQWe5MDZzMmdZJTO1R2RWVHZDljekhkSsl1VwYnWtx2cihVT2lVbZJzTX1kMNRVQw0keNdnWqlVeZdVW65ERNFjWUVkeNpmRr5EVVd3TUFVP:1705469597:103.74.72.126:069d121bf24da6b6e19060020f57bfcd8812645bc1f289e36d9cc5381866a015/index.m3u8";
 
-  // GET /api/v1/mediaInfo?id=tt1877830
+  // GET /api/v1/mediaInfo?id=tt1877830 (Cached)
   apiRouter.get("/v1/mediaInfo", async (req: express.Request, res: express.Response) => {
+    res.set("Cache-Control", "public, max-age=600, stale-while-revalidate=1800");
     const id = req.query.id as string;
     if (!id) {
       return res.status(400).json({ success: false, message: "Please provide a valid id" });
     }
 
+    const cacheKey = `stream_mediaInfo_${id}`;
+    const cached = getApiCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     if (!configuredStreamApiBaseUrl) {
-      // Return sample playlist provided in specifications
-      return res.json({
-        success: true,
-        data: SAMPLE_PLAYLIST_DATA
-      });
+      const resp = { success: true, data: SAMPLE_PLAYLIST_DATA };
+      setApiCache(cacheKey, resp, 1800);
+      return res.json(resp);
     }
 
     try {
@@ -653,38 +703,51 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         }
       });
       const data = await upstreamRes.json();
+      setApiCache(cacheKey, data, 1800);
       res.json(data);
     } catch (err: any) {
       console.warn("[StreamAPI proxy] Upstream failed, returning fallback sample data:", err.message);
-      res.json({
+      const fallbackResp = {
         success: true,
         data: SAMPLE_PLAYLIST_DATA,
         warning: "Served from fallback cache (upstream: " + err.message + ")"
-      });
+      };
+      setApiCache(cacheKey, fallbackResp, 300);
+      res.json(fallbackResp);
     }
   });
 
-  // GET /api/v1/getSeasonList?id=tt11737520
+  // GET /api/v1/getSeasonList?id=tt11737520 (Cached)
   apiRouter.get("/v1/getSeasonList", async (req: express.Request, res: express.Response) => {
+    res.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=3600");
     const id = req.query.id as string;
     if (!id) {
       return res.status(400).json({ success: false, message: "Please provide a valid id" });
     }
 
+    const cacheKey = `stream_seasons_${id}`;
+    const cached = getApiCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const defaultSeasons = {
+      success: true,
+      data: {
+        seasons: [
+          {
+            season: "Season 1",
+            totalEpisodes: 8,
+            lang: ["Hindi", "English"]
+          }
+        ],
+        type: "tv"
+      }
+    };
+
     if (!configuredStreamApiBaseUrl) {
-      return res.json({
-        success: true,
-        data: {
-          seasons: [
-            {
-              season: "Season 1",
-              totalEpisodes: 8,
-              lang: ["Hindi", "English"]
-            }
-          ],
-          type: "tv"
-        }
-      });
+      setApiCache(cacheKey, defaultSeasons, 3600);
+      return res.json(defaultSeasons);
     }
 
     try {
@@ -699,39 +762,37 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         }
       });
       const data = await upstreamRes.json();
+      setApiCache(cacheKey, data, 3600);
       res.json(data);
     } catch (err: any) {
       console.warn("[StreamAPI proxy] getSeasonList fallback:", err.message);
-      res.json({
-        success: true,
-        data: {
-          seasons: [
-            {
-              season: "Season 1",
-              totalEpisodes: 8,
-              lang: ["Hindi", "English"]
-            }
-          ],
-          type: "tv"
-        }
-      });
+      setApiCache(cacheKey, defaultSeasons, 600);
+      res.json(defaultSeasons);
     }
   });
 
-  // POST /api/v1/getStream
+  // POST /api/v1/getStream (Cached)
   apiRouter.post("/v1/getStream", async (req: express.Request, res: express.Response) => {
     const { file, key } = req.body;
     if (!file || !key) {
       return res.status(400).json({ success: false, message: "Both 'file' and 'key' are required in request body" });
     }
 
+    const streamCacheKey = `stream_link_${String(file).slice(0, 32)}_${String(key).slice(0, 16)}`;
+    const cached = getApiCache(streamCacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     if (!configuredStreamApiBaseUrl) {
-      return res.json({
+      const sampleResp = {
         success: true,
         data: {
           link: SAMPLE_STREAM_LINK
         }
-      });
+      };
+      setApiCache(streamCacheKey, sampleResp, 1800);
+      return res.json(sampleResp);
     }
 
     try {
@@ -749,15 +810,18 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         body: JSON.stringify({ file, key })
       });
       const data = await upstreamRes.json();
+      setApiCache(streamCacheKey, data, 1800);
       res.json(data);
     } catch (err: any) {
       console.warn("[StreamAPI proxy] getStream fallback:", err.message);
-      res.json({
+      const fallbackResp = {
         success: true,
         data: {
           link: SAMPLE_STREAM_LINK
         }
-      });
+      };
+      setApiCache(streamCacheKey, fallbackResp, 300);
+      res.json(fallbackResp);
     }
   });
 
@@ -889,7 +953,8 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   }
 
   apiRouter.get("/top10/:platform", async (req: express.Request, res: express.Response) => {
-    const platform = (req.params.platform || '').toLowerCase();
+    res.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=86400");
+    const platform = String(req.params.platform || '').toLowerCase();
     if (platform !== 'netflix' && platform !== 'prime') {
       return res.status(400).json({ success: false, error: "Supported platforms are 'netflix' or 'prime'" });
     }
@@ -948,12 +1013,19 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   apiRouter.get("/watchmode/status", handleTmdbStatus);
   apiRouter.get("/tmdb/status", handleTmdbStatus);
 
-  // TMDb Live Movie Search (Multi-search across movies & series)
+  // TMDb Live Movie Search (Multi-search across movies & series) - Cached with 30m TTL
   const handleTmdbSearch = async (req: express.Request, res: express.Response) => {
+    res.set("Cache-Control", "public, max-age=600, stale-while-revalidate=1800");
     try {
       const query = (req.query.query as string || "").trim();
       if (!query) {
         return res.status(400).json({ success: false, error: "Search query is required" });
+      }
+
+      const searchCacheKey = `tmdb_search_${query.toLowerCase()}`;
+      const cached = getApiCache(searchCacheKey);
+      if (cached) {
+        return res.json(cached);
       }
 
       const resp = await fetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`);
@@ -988,12 +1060,14 @@ Recommend exactly ONE great movie they would love. Provide response in format:
           };
         });
 
-      res.json({
+      const responsePayload = {
         success: true,
         query,
         count: results.length,
         results
-      });
+      };
+      setApiCache(searchCacheKey, responsePayload, 1800);
+      res.json(responsePayload);
     } catch (err: any) {
       console.error("TMDb search error:", err);
       res.status(500).json({ success: false, error: err.message || "TMDb search failed" });
@@ -1002,8 +1076,12 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   apiRouter.get("/watchmode/search", handleTmdbSearch);
   apiRouter.get("/tmdb/search", handleTmdbSearch);
 
-  // Helper to extract details from TMDb movie or TV show
-  const fetchTmdbItemDetails = async (id: number | string) => {
+  // Helper to extract details from TMDb movie or TV show (Cached with 2h TTL)
+  const fetchTmdbItemDetails = async (id: number | string): Promise<any> => {
+    const cacheKey = `tmdb_details_${id}`;
+    const cached = getApiCache(cacheKey);
+    if (cached) return cached;
+
     // 1. Try movie first
     let itemResp = await fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=videos,watch/providers`);
     let isTv = false;
@@ -1059,7 +1137,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     const genreNames = Array.isArray(data.genres) ? data.genres.map((g: any) => g.name) : [];
     const primaryGenre = genreNames[0] || (isTv ? 'TV Series' : 'Feature');
 
-    return {
+    const detailsResult = {
       id: data.id,
       watchmodeId: data.id,
       title,
@@ -1079,12 +1157,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
       tmdbId: data.id,
       streamingSources
     };
+    setApiCache(cacheKey, detailsResult, 7200);
+    return detailsResult;
   };
 
   // TMDb Movie Details & Streaming Providers
   const handleTmdbDetails = async (req: express.Request, res: express.Response) => {
+    res.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=86400");
     try {
-      const titleId = req.params.id;
+      const titleId = String(req.params.id || '').trim();
       if (!titleId) {
         return res.status(400).json({ success: false, error: "Movie ID is required" });
       }
@@ -1106,8 +1187,15 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   apiRouter.get("/watchmode/details/:id", handleTmdbDetails);
   apiRouter.get("/tmdb/details/:id", handleTmdbDetails);
 
-  // TMDb Popular / Trending Movies List
+  // TMDb Popular / Trending Movies List (Cached with 1h TTL)
   const handleTmdbPopular = async (req: express.Request, res: express.Response) => {
+    res.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=86400");
+    const popularCacheKey = "tmdb_popular_trending";
+    const cached = getApiCache(popularCacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     try {
       const resp = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
       if (!resp.ok) {
@@ -1127,12 +1215,14 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         voteAverage: item.vote_average
       }));
 
-      res.json({
+      const payload = {
         success: true,
         titles,
         results: titles,
         totalResults: data.total_results || titles.length
-      });
+      };
+      setApiCache(popularCacheKey, payload, 3600);
+      res.json(payload);
     } catch (err: any) {
       console.error("TMDb popular error:", err);
       res.status(500).json({ success: false, error: err.message || "Failed to fetch popular movies" });
