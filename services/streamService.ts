@@ -785,11 +785,11 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // VidRock HD Server (https://vidrock.to/movie/{tmdb_id})
-  const vidrockMovieId = tmdbId || imdbId;
+  // VidRock HD Server (https://vidrock.to/movie/{tmdb_id} or imdb_id)
+  const vidrockId = tmdbId || imdbId;
   const vidrockUrl = isSeries
-    ? `https://vidrock.to/tv/${tmdbId}/${season}/${episode}`
-    : `https://vidrock.to/movie/${vidrockMovieId}`;
+    ? `https://vidrock.to/tv/${vidrockId}/${season}/${episode}`
+    : `https://vidrock.to/movie/${vidrockId}`;
 
   const vidrockServer: StreamServer = {
     id: 'vidrock-stream',

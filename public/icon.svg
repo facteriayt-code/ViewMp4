@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#181c26"/>
+      <stop offset="60%" stop-color="#0f1117"/>
+      <stop offset="100%" stop-color="#07080c"/>
+    </radialGradient>
+    <linearGradient id="neonRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF334B"/>
+      <stop offset="50%" stop-color="#E50914"/>
+      <stop offset="100%" stop-color="#990008"/>
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE600"/>
+      <stop offset="100%" stop-color="#FF7B00"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Base Plate with rounded rectangle -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)"/>
+  <rect width="504" height="504" x="4" y="4" rx="111" fill="none" stroke="rgba(229, 9, 20, 0.35)" stroke-width="4"/>
+
+  <!-- Glowing Emblem Circle -->
+  <circle cx="256" cy="256" r="168" fill="url(#neonRed)" filter="url(#glow)" opacity="0.3"/>
+  <circle cx="256" cy="256" r="160" fill="url(#neonRed)"/>
+
+  <!-- Inner Dynamic Ring -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="rgba(255, 255, 255, 0.25)" stroke-width="3"/>
+
+  <!-- Cinema Play Glyph -->
+  <path d="M 215 165 L 345 256 L 215 347 Z" fill="#ffffff" filter="drop-shadow(0px 8px 16px rgba(0,0,0,0.5))"/>
+
+  <!-- Twin Gemini Sparkle Stars -->
+  <!-- Top Right Star -->
+  <path d="M 365 140 Q 365 160 385 160 Q 365 160 365 180 Q 365 160 345 160 Q 365 160 365 140 Z" fill="url(#goldGlow)"/>
+  <!-- Bottom Left Small Star -->
+  <path d="M 145 330 Q 145 345 160 345 Q 145 345 145 360 Q 145 345 130 345 Q 145 345 145 330 Z" fill="url(#goldGlow)" opacity="0.85"/>
+</svg>

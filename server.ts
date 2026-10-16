@@ -1770,6 +1770,30 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     res.status(404).json({ success: false, error: "API endpoint not found" });
   });
 
+  // PWA Manifest Route with correct MIME type
+  app.get(['/manifest.json', '/manifest.webmanifest'], (req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const manifestPath = fs.existsSync(path.join(process.cwd(), 'public', 'manifest.json'))
+      ? path.join(process.cwd(), 'public', 'manifest.json')
+      : path.join(process.cwd(), 'manifest.json');
+    res.sendFile(manifestPath);
+  });
+
+  // PWA Service Worker Route with Service-Worker-Allowed header
+  app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const swPath = fs.existsSync(path.join(process.cwd(), 'public', 'sw.js'))
+      ? path.join(process.cwd(), 'public', 'sw.js')
+      : path.join(process.cwd(), 'sw.js');
+    res.sendFile(swPath);
+  });
+
+  // Serve static assets from public/ folder (icons, apple-touch-icon, etc.)
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting Vite in middleware mode...");
     const vite = await createViteServer({

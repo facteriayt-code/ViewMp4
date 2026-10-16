@@ -40,6 +40,7 @@ import { AccountInfoModal } from './components/AccountInfoModal.tsx';
 import { PlatformMovieDetailsModal } from './components/PlatformMovieDetailsModal.tsx';
 import { CommunityChatModal } from './components/CommunityChatModal.tsx';
 import { CommunityChatWidget } from './components/CommunityChatWidget.tsx';
+import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -1038,6 +1039,9 @@ const App: React.FC = () => {
         onLoginClick={() => setShowLoginModal(true)}
         initialTab={chatTab}
       />
+
+      {/* PWA Offline Mode Connectivity Indicator */}
+      <OfflineIndicator />
     </div>
   );
 };

@@ -79,7 +79,7 @@ const Hero: React.FC<HeroProps> = ({ movie, featuredMovies, onInfoClick, onPlay 
           alt={activeMovie.title} 
           loading="eager"
           decoding="async"
-          {...({ fetchpriority: "high" } as any)}
+          fetchPriority="high"
           className="w-full h-full object-cover object-center md:object-[center_20%] brightness-[0.52] md:brightness-[0.65] transition-opacity duration-500 animate-in fade-in"
           onError={(e) => {
             if (activeMovie.thumbnail && e.currentTarget.src !== activeMovie.thumbnail) {

@@ -3,6 +3,7 @@ import { Search, User as UserIcon, Plus, Film, LogOut, Crown, Database, X, Tv, C
 import { User, Movie } from '../types.ts';
 import { PlatformId } from '../services/platformCatalog.ts';
 import { SearchBoxResults } from './SearchBoxResults.tsx';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
 
 import { WatchmodeSearchResult } from '../services/watchmodeService.ts';
 
@@ -276,6 +277,9 @@ const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
+        {/* PWA Install Button (1-Click Chrome & Mobile Installation) */}
+        <PWAInstallButton variant="header" />
+
         {/* Smart Link Ad Integration */}
         <a 
           href="https://www.effectivegatecpm.com/b9d6r82q?key=902e05c8bacf00762eff1614c901fae1" 
@@ -340,6 +344,9 @@ const Navbar: React.FC<NavbarProps> = ({
                 </div>
                 <button className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition">Account</button>
                 <button className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition">Help Center</button>
+                <div className="px-2 py-1 border-t border-b border-white/10 my-1">
+                  <PWAInstallButton variant="dropdown" />
+                </div>
                 <button 
                   onClick={onLogout}
                   className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition flex items-center"
