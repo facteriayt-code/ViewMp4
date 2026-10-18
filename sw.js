@@ -53,6 +53,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.m3u8') ||
     url.pathname.endsWith('.ts') ||
     url.origin.includes('vidrock.to') ||
+    url.origin.includes('streamrip.fun') ||
     url.origin.includes('autoembed.co') ||
     url.origin.includes('filmu.in') ||
     url.origin.includes('codespecters.com')

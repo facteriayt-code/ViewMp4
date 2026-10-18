@@ -41,6 +41,7 @@ import { PlatformMovieDetailsModal } from './components/PlatformMovieDetailsModa
 import { CommunityChatModal } from './components/CommunityChatModal.tsx';
 import { CommunityChatWidget } from './components/CommunityChatWidget.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
+import { PlatformTransitionOverlay, TransitionEntity } from './components/PlatformTransitionOverlay.tsx';
 
 const STORAGE_KEYS = {
   HISTORY: 'gemini_stream_history',
@@ -192,22 +193,50 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [isPlatformSwitching, setIsPlatformSwitching] = useState<boolean>(false);
+  const [transitionState, setTransitionState] = useState<{
+    isActive: boolean;
+    from: TransitionEntity;
+    to: TransitionEntity;
+  }>({
+    isActive: false,
+    from: 'geministream',
+    to: 'netflix'
+  });
 
   const handleSelectPlatform = (platformId: PlatformId) => {
-    setIsPlatformSwitching(true);
+    if (activePlatform === platformId) return;
+
+    const fromEntity: TransitionEntity = activePlatform || 'geministream';
+    
+    // Trigger cinematic light rays transition: GeminiStream -> Platform or Platform -> Platform
+    setTransitionState({
+      isActive: true,
+      from: fromEntity,
+      to: platformId
+    });
+
     setActivePlatform(platformId);
     pushState({ platform: platformId });
     window.scrollTo({ top: 0, behavior: 'instant' });
-    setTimeout(() => setIsPlatformSwitching(false), 250);
   };
 
   const handleExitPlatform = () => {
-    setIsPlatformSwitching(true);
+    const fromEntity: TransitionEntity = activePlatform || 'netflix';
+
+    // Trigger cinematic light rays transition back to GeminiStream
+    setTransitionState({
+      isActive: true,
+      from: fromEntity,
+      to: 'geministream'
+    });
+
     setActivePlatform(null);
     pushState({ platform: null });
     window.scrollTo({ top: 0, behavior: 'instant' });
-    setTimeout(() => setIsPlatformSwitching(false), 250);
+  };
+
+  const handleTransitionComplete = () => {
+    setTransitionState(prev => ({ ...prev, isActive: false }));
   };
 
   const pushState = (params: Record<string, string | null>) => {
@@ -695,9 +724,13 @@ const App: React.FC = () => {
         onGoHome={handleBingrGoHome}
       />
       
-      {isPlatformSwitching && (
-        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-amber-400 to-red-600 z-[300] animate-pulse pointer-events-none" />
-      )}
+      {/* Full-screen Cinematic Light Rays Transition Portal (Gemini to Netflix, Prime, Disney+, etc.) */}
+      <PlatformTransitionOverlay
+        fromPlatform={transitionState.from}
+        toPlatform={transitionState.to}
+        isActive={transitionState.isActive}
+        onAnimationComplete={handleTransitionComplete}
+      />
       
       {activePlatform ? (
         <div key={activePlatform} className="animate-platform-fade md:pl-20">

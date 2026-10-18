@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ArrowLeft, ShieldCheck, Film, Sparkles, Tv, Play, ChevronLeft, ChevronRight, Layers,
   AlertTriangle, RefreshCw, X, Check, MessageSquare, Maximize2, Minimize2, ChevronDown,
-  Globe, Radio, CheckCircle2, Info, ExternalLink, Headphones, Settings, Volume2
+  Globe, Radio, CheckCircle2, Info, ExternalLink, Headphones, Settings, Volume2, Download
 } from 'lucide-react';
 import { Movie } from '../types.ts';
 import { incrementMovieView } from '../services/storageService.ts';
@@ -14,6 +14,7 @@ import {
   getMovieAnilistId,
   isTvOrSeries,
   isIndianContent,
+  getStreamRipUrl,
   StreamServer 
 } from '../services/streamService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
@@ -631,6 +632,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             title="Open stream in a clean tab if browser blocks iframe"
           >
             <ExternalLink className="w-4 h-4" />
+          </a>
+
+          {/* StreamRip Direct / Download Button */}
+          <a
+            href={getStreamRipUrl(movie, season, episode)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-amber-300 hover:text-white transition shadow-sm active:scale-95 shrink-0"
+            title={`Download or Open in StreamRip (${movie.title})`}
+          >
+            <Download className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">StreamRip</span>
           </a>
         </div>
       </header>

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, Play, Share2, Check, ArrowLeft, Star, Bookmark, Volume2, VolumeX,
   AlertTriangle, ExternalLink, Sparkles, Film, Clock, Tv, ChevronLeft, ChevronRight,
-  Heart, ThumbsUp
+  Heart, ThumbsUp, Download
 } from 'lucide-react';
 import { Movie, User } from '../types.ts';
-import { isTvOrSeries } from '../services/streamService.ts';
+import { isTvOrSeries, getStreamRipUrl } from '../services/streamService.ts';
 import { fetchTmdbFullMovieDetails, TmdbFullMovieDetails, fetchSeasonEpisodes, TvEpisode, getUniqueEpisodeThumbnail } from '../services/watchmodeService.ts';
 import { ReportIssueModal } from './ReportIssueModal.tsx';
 import { isMovieSaved, isMovieLiked, toggleSaveMovie, toggleLikeMovie } from '../services/userLibraryService.ts';
@@ -437,6 +437,17 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({
               >
                 {copied ? <Check className="w-4 h-4 md:w-5 md:h-5" /> : <Share2 className="w-4 h-4 md:w-5 md:h-5" />}
               </button>
+
+              {/* StreamRip Direct Link & Download */}
+              <a
+                href={getStreamRipUrl(movie, selectedSeason, selectedEpisode)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center border transition-all duration-300 active:scale-95 bg-white/10 hover:bg-amber-500/20 hover:border-amber-500/40 border-white/20 text-white hover:text-amber-300 backdrop-blur-md"
+                title={`Download / Open in StreamRip (${movie.title})`}
+              >
+                <Download className="w-4 h-4 md:w-5 md:h-5 text-amber-400" />
+              </a>
             </div>
           </div>
         </div>

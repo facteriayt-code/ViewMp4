@@ -804,14 +804,41 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
+  // StreamRip Server (https://streamrip.fun)
+  // - Movie: https://streamrip.fun/movie/{tmdb_id} (e.g. /movie/603)
+  // - TV Show: https://streamrip.fun/tv/{tmdb_id}/{season}/{episode} (e.g. /tv/1399/1/1)
+  // - Anime: https://streamrip.fun/anime/{anilist_id}/{episode} (e.g. /anime/16498/1)
+  const streamripUrl = anilistId
+    ? `https://streamrip.fun/anime/${anilistId}/${episode || 1}`
+    : isSeries
+      ? `https://streamrip.fun/tv/${tmdbId}/${season || 1}/${episode || 1}`
+      : `https://streamrip.fun/movie/${tmdbId}`;
+
+  const streamripServer: StreamServer = {
+    id: anilistId ? 'streamrip-anime' : 'streamrip-primary',
+    name: anilistId ? 'StreamRip Anime' : 'StreamRip 4K',
+    badge: anilistId ? 'AniList 4K' : 'Instant 4K',
+    url: streamripUrl,
+    type: 'iframe',
+    quality: '1080p / 4K Ultra HD',
+    description: anilistId
+      ? `StreamRip Anime Player - Direct embed with AniList ID (${anilistId}) Ep ${episode || 1}`
+      : isSeries
+        ? `StreamRip TV Server (Season ${season || 1} Episode ${episode || 1}) - Zero buffering`
+        : 'StreamRip HD Player - Instant 4K movie streaming with fast direct download link',
+    isTv: isSeries,
+    isAnime: Boolean(anilistId)
+  };
+
   // Original Stream Servers Priority Order:
-  // - Anime with AniList ID: Filmu Anime Server prioritized as Server #1
-  // - Indian content: AutoEmbed VIP & Filmu Hindi 4K & VidRock HD prioritized
-  // - General/International: Filmu / AutoEmbed / VidRock prioritized
+  // - Anime with AniList ID: Filmu Anime & StreamRip Anime prioritized as Server #1 and #2
+  // - Indian content: AutoEmbed VIP & Filmu Hindi 4K & StreamRip 4K & VidRock HD
+  // - General/International: Filmu / StreamRip / AutoEmbed / VidRock prioritized
   let orderedServers: StreamServer[] = [];
   if (anilistId) {
     orderedServers = [
       filmuServer,
+      streamripServer,
       autoembedServer,
       vidrockServer,
       codespectersServer,
@@ -821,6 +848,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     orderedServers = [
       autoembedServer,
       filmuServer,
+      streamripServer,
       vidrockServer,
       streamApiServer,
       codespectersServer
@@ -828,6 +856,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   } else {
     orderedServers = [
       filmuServer,
+      streamripServer,
       autoembedServer,
       vidrockServer,
       streamApiServer,
@@ -892,4 +921,25 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   }
 
   return servers;
+}
+
+/**
+ * Returns the direct StreamRip URL for a Movie, TV Show, or Anime
+ * - Movie: https://streamrip.fun/movie/{tmdb_id}
+ * - TV: https://streamrip.fun/tv/{tmdb_id}/{season}/{episode}
+ * - Anime: https://streamrip.fun/anime/{anilist_id}/{episode}
+ */
+export function getStreamRipUrl(movie: Movie, season: number = 1, episode: number = 1): string {
+  if (!movie) return 'https://streamrip.fun';
+  const anilistId = getMovieAnilistId(movie);
+  const tmdbId = getMovieTmdbId(movie);
+  const isSeries = isTvOrSeries(movie);
+
+  if (anilistId) {
+    return `https://streamrip.fun/anime/${anilistId}/${episode || 1}`;
+  }
+  if (isSeries) {
+    return `https://streamrip.fun/tv/${tmdbId}/${season || 1}/${episode || 1}`;
+  }
+  return `https://streamrip.fun/movie/${tmdbId}`;
 }
