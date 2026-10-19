@@ -5,8 +5,8 @@
     "userName": "GeminiStream Community",
     "userAvatar": "https://ui-avatars.com/api/?name=GS&background=E50914&color=fff",
     "text": "👋 Welcome to the GeminiStream Live Community Chat! Connect, share stream recommendations, and talk movies. All chats auto-delete after 12 hours.",
-    "createdAt": 1792291306024,
-    "expiresAt": 1792334506024
+    "createdAt": 1792394612455,
+    "expiresAt": 1792437812455
   },
   {
     "id": "welcome-community-2",
@@ -14,7 +14,7 @@
     "userName": "Alex R. (Moderator)",
     "userAvatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop",
     "text": "🍿 What is everyone binging tonight? The 4K streaming servers are flying fast today!",
-    "createdAt": 1792293106024,
-    "expiresAt": 1792336306024
+    "createdAt": 1792396412455,
+    "expiresAt": 1792439612455
   }
 ]

@@ -10,6 +10,7 @@ interface PlatformTransitionOverlayProps {
   toPlatform: TransitionEntity;
   isActive: boolean;
   onAnimationComplete: () => void;
+  onBlurClear?: () => void;
 }
 
 interface PlatformTheme {
@@ -85,7 +86,8 @@ export const PlatformTransitionOverlay: React.FC<PlatformTransitionOverlayProps>
   fromPlatform,
   toPlatform,
   isActive,
-  onAnimationComplete
+  onAnimationComplete,
+  onBlurClear
 }) => {
   const [stage, setStage] = useState<'charging' | 'revealing' | 'fadeOut'>('charging');
   const [progress, setProgress] = useState(0);
@@ -124,9 +126,10 @@ export const PlatformTransitionOverlay: React.FC<PlatformTransitionOverlayProps>
       setStage('revealing');
     }, 400);
 
-    // Stage 2: Fade out & smooth un-blur (1100ms)
+    // Stage 2: Fade out & smooth un-blur (1150ms)
     const t2 = setTimeout(() => {
       setStage('fadeOut');
+      onBlurClear?.();
     }, 1150);
 
     // Stage 3: Animation complete (1350ms)
@@ -144,6 +147,7 @@ export const PlatformTransitionOverlay: React.FC<PlatformTransitionOverlayProps>
   if (!isActive) return null;
 
   const handleSkip = () => {
+    onBlurClear?.();
     onAnimationComplete();
   };
 

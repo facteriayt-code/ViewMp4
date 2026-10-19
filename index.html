@@ -164,6 +164,22 @@
             animation: platformFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             will-change: opacity, transform;
         }
+        @keyframes platformZoomIn {
+            0% {
+                transform: scale(0.965);
+                filter: blur(8px);
+                opacity: 0.88;
+            }
+            100% {
+                transform: scale(1);
+                filter: blur(0px);
+                opacity: 1;
+            }
+        }
+        .animate-platform-zoom-in {
+            animation: platformZoomIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform, filter, opacity;
+        }
         @keyframes moviePageEntrance {
             0% {
                 opacity: 0;

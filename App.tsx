@@ -195,10 +195,12 @@ const App: React.FC = () => {
 
   const [transitionState, setTransitionState] = useState<{
     isActive: boolean;
+    isZoomingIn: boolean;
     from: TransitionEntity;
     to: TransitionEntity;
   }>({
     isActive: false,
+    isZoomingIn: false,
     from: 'geministream',
     to: 'netflix'
   });
@@ -208,9 +210,10 @@ const App: React.FC = () => {
 
     const fromEntity: TransitionEntity = activePlatform || 'geministream';
     
-    // Trigger cinematic light rays transition: GeminiStream -> Platform or Platform -> Platform
+    // Trigger transition: blur background and show attractive loading
     setTransitionState({
       isActive: true,
+      isZoomingIn: false,
       from: fromEntity,
       to: platformId
     });
@@ -223,9 +226,10 @@ const App: React.FC = () => {
   const handleExitPlatform = () => {
     const fromEntity: TransitionEntity = activePlatform || 'netflix';
 
-    // Trigger cinematic light rays transition back to GeminiStream
+    // Trigger transition back to GeminiStream
     setTransitionState({
       isActive: true,
+      isZoomingIn: false,
       from: fromEntity,
       to: 'geministream'
     });
@@ -235,8 +239,13 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
+  const handleBlurClear = () => {
+    // When blur effect clears, trigger the subtle zoom-in animation for destination platform content
+    setTransitionState(prev => ({ ...prev, isZoomingIn: true }));
+  };
+
   const handleTransitionComplete = () => {
-    setTransitionState(prev => ({ ...prev, isActive: false }));
+    setTransitionState(prev => ({ ...prev, isActive: false, isZoomingIn: false }));
   };
 
   const pushState = (params: Record<string, string | null>) => {
@@ -724,21 +733,24 @@ const App: React.FC = () => {
         onGoHome={handleBingrGoHome}
       />
       
-      {/* Full-screen Cinematic Light Rays Transition Portal (Gemini to Netflix, Prime, Disney+, etc.) */}
+      {/* Platform Transition Overlay with Blur & Zoom-In Coordination */}
       <PlatformTransitionOverlay
         fromPlatform={transitionState.from}
         toPlatform={transitionState.to}
         isActive={transitionState.isActive}
+        onBlurClear={handleBlurClear}
         onAnimationComplete={handleTransitionComplete}
       />
       
       {activePlatform ? (
         <div 
           key={activePlatform} 
-          className={`animate-platform-fade md:pl-20 transition-all duration-700 ease-out ${
-            transitionState.isActive 
-              ? 'filter blur-2xl brightness-75 scale-[1.01] pointer-events-none' 
-              : 'filter-none brightness-100 scale-100'
+          className={`md:pl-20 transition-all duration-700 ease-out origin-center ${
+            transitionState.isActive
+              ? transitionState.isZoomingIn
+                ? 'animate-platform-zoom-in filter-none brightness-100 opacity-100'
+                : 'filter blur-2xl brightness-75 scale-[0.96] opacity-80 pointer-events-none'
+              : 'filter-none brightness-100 scale-100 opacity-100'
           }`}
         >
           <StreamingPlatformReplica
@@ -753,10 +765,12 @@ const App: React.FC = () => {
       ) : (
         <div 
           key="geministream-main-site" 
-          className={`animate-platform-fade md:pl-20 transition-all duration-700 ease-out ${
-            transitionState.isActive 
-              ? 'filter blur-2xl brightness-75 scale-[1.01] pointer-events-none' 
-              : 'filter-none brightness-100 scale-100'
+          className={`md:pl-20 transition-all duration-700 ease-out origin-center ${
+            transitionState.isActive
+              ? transitionState.isZoomingIn
+                ? 'animate-platform-zoom-in filter-none brightness-100 opacity-100'
+                : 'filter blur-2xl brightness-75 scale-[0.96] opacity-80 pointer-events-none'
+              : 'filter-none brightness-100 scale-100 opacity-100'
           }`}
         >
           <Navbar 
