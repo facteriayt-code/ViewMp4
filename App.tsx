@@ -733,7 +733,14 @@ const App: React.FC = () => {
       />
       
       {activePlatform ? (
-        <div key={activePlatform} className="animate-platform-fade md:pl-20">
+        <div 
+          key={activePlatform} 
+          className={`animate-platform-fade md:pl-20 transition-all duration-700 ease-out ${
+            transitionState.isActive 
+              ? 'filter blur-2xl brightness-75 scale-[1.01] pointer-events-none' 
+              : 'filter-none brightness-100 scale-100'
+          }`}
+        >
           <StreamingPlatformReplica
             platformId={activePlatform}
             movies={movies}
@@ -744,7 +751,14 @@ const App: React.FC = () => {
           />
         </div>
       ) : (
-        <div key="geministream-main-site" className="animate-platform-fade md:pl-20">
+        <div 
+          key="geministream-main-site" 
+          className={`animate-platform-fade md:pl-20 transition-all duration-700 ease-out ${
+            transitionState.isActive 
+              ? 'filter blur-2xl brightness-75 scale-[1.01] pointer-events-none' 
+              : 'filter-none brightness-100 scale-100'
+          }`}
+        >
           <Navbar 
             user={user} 
             onUploadClick={() => {
