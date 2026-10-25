@@ -88,6 +88,11 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
 
   const isSearchEmpty = !searchTerm || searchTerm.trim().length === 0;
 
+  // Auto-reset category filter when search term changes so all results are visible
+  React.useEffect(() => {
+    setSelectedCategory('All Genres');
+  }, [searchTerm]);
+
   // Filtered catalog movies matching searchTerm, mediaType, and category
   const filteredCatalog = useMemo(() => {
     if (isSearchEmpty) return [];
@@ -108,17 +113,17 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   // Filtered TMDb database API results (deduplicated against catalog)
   const filteredApiResults = useMemo(() => {
     if (isSearchEmpty) return [];
-    const catalogTitles = new Set(filteredCatalog.map(m => m.title.toLowerCase().trim()));
     const catalogIds = new Set(filteredCatalog.map(m => m.watchmodeId || parseInt(m.id.replace(/\D/g, '') || '0', 10)));
+    const catalogKeys = new Set(filteredCatalog.map(m => `${m.title.toLowerCase().trim()}_${m.year || ''}`));
 
     return apiSearchResults.filter(item => {
       const isTv = item.type === 'tv_series' || item.type === 'tv';
       if (mediaType === 'tv' && !isTv) return false;
       if (mediaType === 'movie' && isTv) return false;
 
-      // Exclude if already shown in Featured Streams
-      const normTitle = (item.name || item.title || '').toLowerCase().trim();
-      if (catalogTitles.has(normTitle) || (item.id && catalogIds.has(item.id))) {
+      // Exclude if already shown in Featured Streams with the exact same ID and year
+      const itemKey = `${(item.name || item.title || '').toLowerCase().trim()}_${item.year || ''}`;
+      if ((item.id && catalogIds.has(item.id)) || catalogKeys.has(itemKey)) {
         return false;
       }
 

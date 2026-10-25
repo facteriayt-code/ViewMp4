@@ -67,6 +67,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
   );
   const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const replicaSearchSeqRef = useRef<number>(0);
   const [reportingMovie, setReportingMovie] = useState<Movie | null>(null);
   const [top10Data, setTop10Data] = useState<Top10PlatformData | null>(null);
   const [isRefreshingTop10, setIsRefreshingTop10] = useState(false);
@@ -131,6 +132,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
         tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
       }));
 
+    const currentSeq = ++replicaSearchSeqRef.current;
     if (instantLocal.length > 0) {
       setApiSearchResults(instantLocal);
     }
@@ -139,18 +141,20 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
     const timer = setTimeout(async () => {
       try {
         const results = await searchWatchmode(term);
-        if (results && results.length > 0) {
-          setApiSearchResults(results);
+        if (currentSeq === replicaSearchSeqRef.current) {
+          setApiSearchResults(results && results.length > 0 ? results : instantLocal);
         }
       } catch (err) {
         console.error("Replica search error:", err);
       } finally {
-        setIsSearchingApi(false);
+        if (currentSeq === replicaSearchSeqRef.current) {
+          setIsSearchingApi(false);
+        }
       }
-    }, 150);
+    }, 120);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, movies]);
+  }, [searchQuery]);
 
   const config = PLATFORMS[platformId];
 
@@ -319,7 +323,7 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
             </div>
 
             {/* In-Platform Search & Trending Searches Dropdown */}
-            {isSearchFocused && (
+            {isSearchFocused && !searchQuery.trim() && (
               <div className="fixed inset-x-2.5 top-[58px] max-w-[calc(100vw-1.25rem)] mx-auto sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:w-[480px] sm:max-w-[min(480px,calc(100vw-2rem))] mt-2 z-[150] bg-[#0c0d14]/98 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <SearchBoxResults
                   searchTerm={searchQuery}

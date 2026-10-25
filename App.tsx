@@ -139,6 +139,7 @@ const App: React.FC = () => {
   // Watchmode Database API Real-Time Search States
   const [apiSearchResults, setApiSearchResults] = useState<WatchmodeSearchResult[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const searchSequenceRef = useRef<number>(0);
   const [importingApiId, setImportingApiId] = useState<number | null>(null);
   const [addedMovieIds, setAddedMovieIds] = useState<Set<number>>(new Set());
 
@@ -513,7 +514,7 @@ const App: React.FC = () => {
     return featuredSpotlightMovies[0] || movies.find(m => !m.isUserUploaded) || INITIAL_MOVIES[0];
   }, [featuredSpotlightMovies, movies]);
 
-  // Real-time Watchmode Database API search when user types in search bar with instant local response
+  // Real-time TMDb Database search with request sequence tracking to prevent race conditions
   useEffect(() => {
     const term = searchTerm.trim();
     if (!term || term.length < 1) {
@@ -522,11 +523,13 @@ const App: React.FC = () => {
       return;
     }
 
+    const currentSeq = ++searchSequenceRef.current;
+
     // Instant local matches for 0ms visual feedback while network loads
     const lower = term.toLowerCase();
     const instantLocal: WatchmodeSearchResult[] = movies
       .filter(m => m.title.toLowerCase().includes(lower) || (m.genre && m.genre.toLowerCase().includes(lower)))
-      .slice(0, 24)
+      .slice(0, 36)
       .map(m => ({
         id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),
         name: m.title,
@@ -551,18 +554,21 @@ const App: React.FC = () => {
     const timer = setTimeout(async () => {
       try {
         const results = await searchWatchmode(term);
-        if (results && results.length > 0) {
-          setApiSearchResults(results);
+        // Only update if this request is still the newest one
+        if (currentSeq === searchSequenceRef.current) {
+          setApiSearchResults(results && results.length > 0 ? results : instantLocal);
         }
       } catch (err) {
         console.error("TMDb search error:", err);
       } finally {
-        setIsSearchingApi(false);
+        if (currentSeq === searchSequenceRef.current) {
+          setIsSearchingApi(false);
+        }
       }
-    }, 150);
+    }, 120);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, movies]);
+  }, [searchTerm]);
 
   // Handle direct streaming from an API result card
   const handleStreamApiMovie = async (item: WatchmodeSearchResult) => {

@@ -701,23 +701,46 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   const isSeries = isTvOrSeries(movie);
   const isIndian = isIndianContent(movie);
 
-  const autoembedId = imdbId || tmdbId;
-  const autoembedPlayerUrl = isSeries
-    ? `https://player.autoembed.co/embed/tv/${autoembedId}/${season}/${episode}`
-    : `https://player.autoembed.co/embed/movie/${autoembedId}`;
+  // AutoEmbed Official Embed Player (https://autoembed.co)
+  // - Movies: https://autoembed.co/movie/tmdb/{tmdb_id} or /movie/imdb/{imdb_id}
+  // - TV Shows: https://autoembed.co/tv/tmdb/{tmdb_id}-{season}-{episode} or /tv/imdb/{imdb_id}-{season}-{episode}
+  const autoembedOfficialUrl = isSeries
+    ? (tmdbId 
+        ? `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
+        : `https://autoembed.co/tv/imdb/${imdbId}-${season}-${episode}`)
+    : (tmdbId
+        ? `https://autoembed.co/movie/tmdb/${tmdbId}`
+        : `https://autoembed.co/movie/imdb/${imdbId}`);
 
   const autoembedServer: StreamServer = {
     id: 'autoembed-mirror',
     name: 'AutoEmbed 4K VIP',
-    badge: isIndian ? 'Indian Priority (Fast)' : '4K Ultra HD',
-    url: autoembedPlayerUrl,
+    badge: isIndian ? 'Indian Priority (Fast)' : 'Multi-Server 4K',
+    url: autoembedOfficialUrl,
     type: 'iframe',
     quality: '1080p / 4K',
     description: isIndian
-      ? 'AutoEmbed VIP - Prioritized top server for Indian & regional titles'
+      ? 'AutoEmbed VIP - Multi-server fallback engine with Hindi, regional & global streams'
       : (isSeries 
-          ? `AutoEmbed VIP Player (Season ${season} Episode ${episode})`
-          : 'Ultra-fast 4K streaming player with instant playback and multi-source failover'),
+          ? `AutoEmbed VIP Player (Season ${season} Episode ${episode}) with multi-server failover`
+          : 'AutoEmbed 4K - High-speed embed player with internal multi-server fallback'),
+    isAutoEmbed: true,
+    isTv: isSeries
+  };
+
+  // Direct AutoEmbed Player Mirror (player.autoembed.co)
+  const autoembedDirectUrl = isSeries
+    ? `https://player.autoembed.co/embed/tv/${tmdbId || imdbId}/${season}/${episode}`
+    : `https://player.autoembed.co/embed/movie/${tmdbId || imdbId}`;
+
+  const autoembedDirectServer: StreamServer = {
+    id: 'autoembed-direct',
+    name: 'AutoEmbed Direct Player',
+    badge: 'Direct Stream',
+    url: autoembedDirectUrl,
+    type: 'iframe',
+    quality: '1080p HD',
+    description: 'Direct player node for AutoEmbed stream cluster',
     isAutoEmbed: true,
     isTv: isSeries
   };
@@ -840,6 +863,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
       filmuServer,
       streamripServer,
       autoembedServer,
+      autoembedDirectServer,
       vidrockServer,
       codespectersServer,
       streamApiServer
@@ -847,6 +871,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
   } else if (isIndian) {
     orderedServers = [
       autoembedServer,
+      autoembedDirectServer,
       filmuServer,
       streamripServer,
       vidrockServer,
@@ -858,6 +883,7 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
       filmuServer,
       streamripServer,
       autoembedServer,
+      autoembedDirectServer,
       vidrockServer,
       streamApiServer,
       codespectersServer

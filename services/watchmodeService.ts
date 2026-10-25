@@ -144,32 +144,54 @@ export const convertSearchResultToMovie = (res: WatchmodeSearchResult): Movie =>
   };
 };
 
+// Helper for reliable network requests with a strict timeout to prevent infinite loading
+const fetchWithTimeout = async (url: string, timeoutMs: number = 3500): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+};
+
 // Client-side Direct TMDb Search Fallback (Fast direct client call from browser to TMDb CDN)
 const searchTmdbDirect = async (query: string): Promise<WatchmodeSearchResult[]> => {
   try {
     const q = encodeURIComponent(query.trim());
-    const [multiRes, movieRes] = await Promise.allSettled([
-      fetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_CLIENT_KEY}&query=${q}&include_adult=false`),
-      fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_CLIENT_KEY}&query=${q}&include_adult=false`)
+    const [multi1Res, multi2Res, movieRes, tvRes] = await Promise.allSettled([
+      fetchWithTimeout(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_CLIENT_KEY}&query=${q}&page=1&include_adult=false`, 3500),
+      fetchWithTimeout(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_CLIENT_KEY}&query=${q}&page=2&include_adult=false`, 3500),
+      fetchWithTimeout(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_CLIENT_KEY}&query=${q}&page=1&include_adult=false`, 3500),
+      fetchWithTimeout(`${TMDB_BASE_URL}/search/tv?api_key=${TMDB_CLIENT_KEY}&query=${q}&page=1&include_adult=false`, 3500)
     ]);
 
-    let rawMulti: any[] = [];
-    if (multiRes.status === 'fulfilled' && multiRes.value.ok) {
-      const data = await multiRes.value.json().catch(() => ({}));
-      rawMulti = Array.isArray(data.results) ? data.results : [];
-    }
+    const rawList: any[] = [];
+    const collectResults = async (res: PromiseSettledResult<Response>) => {
+      if (res.status === 'fulfilled' && res.value.ok) {
+        try {
+          const data = await res.value.json();
+          if (Array.isArray(data.results)) {
+            rawList.push(...data.results);
+          }
+        } catch {}
+      }
+    };
 
-    let rawMovie: any[] = [];
-    if (movieRes.status === 'fulfilled' && movieRes.value.ok) {
-      const data = await movieRes.value.json().catch(() => ({}));
-      rawMovie = Array.isArray(data.results) ? data.results : [];
-    }
+    await Promise.all([
+      collectResults(multi1Res),
+      collectResults(multi2Res),
+      collectResults(movieRes),
+      collectResults(tvRes)
+    ]);
 
-    const combined = [...rawMulti, ...rawMovie];
     const seen = new Set<number>();
     const uniqueRaw: any[] = [];
-    for (const item of combined) {
-      if (item && item.id && !seen.has(item.id)) {
+    for (const item of rawList) {
+      if (item && item.id && !seen.has(item.id) && item.media_type !== 'person') {
         seen.add(item.id);
         uniqueRaw.push(item);
       }
@@ -177,7 +199,7 @@ const searchTmdbDirect = async (query: string): Promise<WatchmodeSearchResult[]>
 
     return formatTmdbResults(uniqueRaw);
   } catch (err) {
-    console.error("Direct TMDb search error:", err);
+    console.debug("Direct TMDb search error:", err);
     return [];
   }
 };
@@ -363,7 +385,33 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
       tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
     }));
 
-  // 2. Query TMDb API directly from browser (Ultra-fast from TMDb global CDN)
+  // 2. Query High-Speed Server Proxy First (/api/tmdb/search) with 3.5s timeout
+  try {
+    const proxyRes = await fetchWithTimeout(`/api/tmdb/search?query=${encodeURIComponent(query)}`, 3500);
+    if (proxyRes.ok) {
+      const data = await proxyRes.json();
+      if (Array.isArray(data.results) && data.results.length > 0) {
+        const seen = new Set<number>();
+        const merged: WatchmodeSearchResult[] = [];
+        for (const item of [...localMatches, ...data.results]) {
+          if (item && item.id && !seen.has(item.id)) {
+            seen.add(item.id);
+            merged.push(item);
+          }
+        }
+        if (searchCache.size > 200) {
+          const firstKey = searchCache.keys().next().value;
+          if (firstKey) searchCache.delete(firstKey);
+        }
+        searchCache.set(term, merged);
+        return merged;
+      }
+    }
+  } catch (proxyErr) {
+    console.debug('Server TMDb proxy search failed, falling back to direct client TMDb call:', proxyErr);
+  }
+
+  // 3. Query TMDb API directly from browser (Ultra-fast from TMDb global CDN with 3.5s timeout)
   try {
     const directResults = await searchTmdbDirect(query);
     if (directResults.length > 0) {
@@ -388,7 +436,7 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
     console.debug('Direct TMDb search exception:', err);
   }
 
-  // 3. Fallback to local catalog matches
+  // 4. Fallback to local catalog matches
   searchCache.set(term, localMatches);
   return localMatches;
 };

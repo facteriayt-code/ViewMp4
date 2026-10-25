@@ -1028,37 +1028,63 @@ Recommend exactly ONE great movie they would love. Provide response in format:
         return res.json(cached);
       }
 
-      const resp = await fetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`);
-      if (!resp.ok) {
-        return res.status(resp.status).json({ success: false, error: "TMDb search request failed" });
-      }
+      const q = encodeURIComponent(query);
+      const [multi1Res, multi2Res, movieRes, tvRes] = await Promise.allSettled([
+        fetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${q}&page=1&include_adult=false`),
+        fetch(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${q}&page=2&include_adult=false`),
+        fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${q}&page=1&include_adult=false`),
+        fetch(`${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${q}&page=1&include_adult=false`)
+      ]);
 
-      const data: any = await resp.json();
-      const rawResults = Array.isArray(data.results) ? data.results : [];
+      const rawItems: any[] = [];
+      const appendRaw = async (resPromise: PromiseSettledResult<any>) => {
+        if (resPromise.status === 'fulfilled' && resPromise.value.ok) {
+          try {
+            const json = await resPromise.value.json();
+            if (Array.isArray(json.results)) {
+              rawItems.push(...json.results);
+            }
+          } catch {}
+        }
+      };
 
-      const results = rawResults
-        .filter((item: any) => item && (item.media_type === 'movie' || item.media_type === 'tv' || (!item.media_type && (item.title || item.name))))
-        .map((item: any) => {
-          const isTv = item.media_type === 'tv';
-          const title = item.title || item.name || "Untitled";
-          const releaseDate = item.release_date || item.first_air_date || "";
-          const year = releaseDate ? parseInt(releaseDate.slice(0, 4), 10) : undefined;
-          const poster = item.poster_path ? `${TMDB_IMG_THUMB}${item.poster_path}` : null;
-          const backdrop = item.backdrop_path ? `${TMDB_IMG_BACKDROP}${item.backdrop_path}` : null;
+      await Promise.all([
+        appendRaw(multi1Res),
+        appendRaw(multi2Res),
+        appendRaw(movieRes),
+        appendRaw(tvRes)
+      ]);
 
-          return {
-            id: item.id,
-            name: title,
-            title: title,
-            type: isTv ? 'tv_series' : 'movie',
-            year: year,
-            imageUrl: poster,
-            backdropUrl: backdrop,
-            voteAverage: item.vote_average,
-            overview: item.overview || "",
-            tmdb_id: item.id
-          };
+      const seenIds = new Set<number>();
+      const results: any[] = [];
+
+      for (const item of rawItems) {
+        if (!item || !item.id || seenIds.has(item.id)) continue;
+        if (item.media_type === 'person') continue;
+
+        seenIds.add(item.id);
+        const isTv = item.media_type === 'tv' || Boolean(item.first_air_date && !item.release_date);
+        const title = item.title || item.name || "Untitled";
+        const releaseDate = item.release_date || item.first_air_date || "";
+        const year = releaseDate ? parseInt(releaseDate.slice(0, 4), 10) : undefined;
+        const poster = item.poster_path ? `${TMDB_IMG_THUMB}${item.poster_path}` : (item.backdrop_path ? `${TMDB_IMG_THUMB}${item.backdrop_path}` : null);
+        const backdrop = item.backdrop_path ? `${TMDB_IMG_BACKDROP}${item.backdrop_path}` : poster;
+
+        results.push({
+          id: item.id,
+          name: title,
+          title: title,
+          type: isTv ? 'tv_series' : 'movie',
+          year: year,
+          imageUrl: poster,
+          poster_path: poster,
+          thumbnail: poster,
+          backdropUrl: backdrop,
+          voteAverage: item.vote_average ? Math.round(item.vote_average * 10) / 10 : undefined,
+          overview: item.overview || "",
+          tmdb_id: item.id
         });
+      }
 
       const responsePayload = {
         success: true,

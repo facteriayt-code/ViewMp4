@@ -1102,6 +1102,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             title={activeServer.name}
             className="w-full h-full border-0 absolute inset-0 z-10"
             loading="eager"
+            referrerPolicy="origin"
             allowFullScreen={true}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             onLoad={() => {
