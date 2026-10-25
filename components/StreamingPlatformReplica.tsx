@@ -114,7 +114,12 @@ export const StreamingPlatformReplica: React.FC<StreamingPlatformReplicaProps> =
 
     const lower = term.toLowerCase();
     const instantLocal: WatchmodeSearchResult[] = movies
-      .filter(m => m.title.toLowerCase().includes(lower) || (m.genre && m.genre.toLowerCase().includes(lower)))
+      .filter(m => {
+        const title = (m.title || '').toLowerCase();
+        const genre = (m.genre || '').toLowerCase();
+        const desc = (m.description || '').toLowerCase();
+        return title.includes(lower) || genre.includes(lower) || (desc.length > 0 && desc.includes(lower));
+      })
       .slice(0, 24)
       .map(m => ({
         id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),

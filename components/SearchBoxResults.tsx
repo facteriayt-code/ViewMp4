@@ -113,7 +113,11 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   // Filtered TMDb database API results (deduplicated against catalog)
   const filteredApiResults = useMemo(() => {
     if (isSearchEmpty) return [];
-    const catalogIds = new Set(filteredCatalog.map(m => m.watchmodeId || parseInt(m.id.replace(/\D/g, '') || '0', 10)));
+    const catalogIds = new Set(
+      filteredCatalog
+        .map(m => m.watchmodeId)
+        .filter((id): id is number => typeof id === 'number' && id > 0)
+    );
     const catalogKeys = new Set(filteredCatalog.map(m => `${m.title.toLowerCase().trim()}_${m.year || ''}`));
 
     return apiSearchResults.filter(item => {
@@ -121,15 +125,16 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
       if (mediaType === 'tv' && !isTv) return false;
       if (mediaType === 'movie' && isTv) return false;
 
-      // Exclude if already shown in Featured Streams with the exact same ID and year
-      const itemKey = `${(item.name || item.title || '').toLowerCase().trim()}_${item.year || ''}`;
+      // Exclude if already shown in Featured Streams with the exact same ID or title+year
+      const itemTitle = (item.name || item.title || '').toLowerCase().trim();
+      const itemKey = `${itemTitle}_${item.year || ''}`;
       if ((item.id && catalogIds.has(item.id)) || catalogKeys.has(itemKey)) {
         return false;
       }
 
-      if (selectedCategory !== 'All Genres') {
+      if (selectedCategory && selectedCategory !== 'All Genres' && !selectedCategory.toLowerCase().startsWith('all')) {
         const cat = selectedCategory.toLowerCase();
-        const text = `${item.name || item.title || ''} ${item.overview || ''}`.toLowerCase();
+        const text = `${itemTitle} ${item.overview || ''}`.toLowerCase();
         if (cat === 'animation') {
           if (!text.includes('anim')) return false;
         } else if (cat === 'sci-fi') {

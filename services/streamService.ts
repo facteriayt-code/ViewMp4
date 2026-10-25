@@ -524,8 +524,18 @@ export function matchesMediaType(movie: Movie, type: 'all' | 'movie' | 'tv'): bo
  * Filter movies by category / genre name
  */
 export function matchesCategory(movie: Movie, category: string): boolean {
-  if (!category || category === 'all' || category === 'All' || category === 'All Categories') return true;
+  if (!category) return true;
   const target = category.toLowerCase().trim();
+  if (
+    target === 'all' || 
+    target === 'all genres' || 
+    target === 'all categories' || 
+    target === 'all movies' || 
+    target === 'all shows' ||
+    target === ''
+  ) {
+    return true;
+  }
   const genre = (movie.genre || '').toLowerCase();
   const title = (movie.title || '').toLowerCase();
   

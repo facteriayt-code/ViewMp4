@@ -368,12 +368,17 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
 
   // 1. Instant local matches from the stored TMDb blockbuster movies
   const localMatches: WatchmodeSearchResult[] = INITIAL_MOVIES
-    .filter(m => m.title.toLowerCase().includes(term) || (m.genre && m.genre.toLowerCase().includes(term)))
+    .filter(m => {
+      const title = (m.title || '').toLowerCase();
+      const genre = (m.genre || '').toLowerCase();
+      const desc = (m.description || '').toLowerCase();
+      return title.includes(term) || genre.includes(term) || (desc.length > 0 && desc.includes(term));
+    })
     .map(m => ({
       id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),
       name: m.title,
       title: m.title,
-      type: 'movie',
+      type: m.isTv ? 'tv_series' : 'movie',
       year: m.year,
       imageUrl: m.thumbnail,
       image_url: m.thumbnail,
@@ -385,9 +390,9 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
       tmdb_id: typeof m.watchmodeId === 'number' ? m.watchmodeId : undefined
     }));
 
-  // 2. Query High-Speed Server Proxy First (/api/tmdb/search) with 3.5s timeout
+  // 2. Query High-Speed Server Proxy First (/api/tmdb/search) with 2.5s timeout
   try {
-    const proxyRes = await fetchWithTimeout(`/api/tmdb/search?query=${encodeURIComponent(query)}`, 3500);
+    const proxyRes = await fetchWithTimeout(`/api/tmdb/search?query=${encodeURIComponent(query)}`, 2500);
     if (proxyRes.ok) {
       const data = await proxyRes.json();
       if (Array.isArray(data.results) && data.results.length > 0) {
@@ -408,14 +413,13 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
       }
     }
   } catch (proxyErr) {
-    console.debug('Server TMDb proxy search failed, falling back to direct client TMDb call:', proxyErr);
+    console.debug('Server TMDb proxy search failed or timed out, falling back to direct client TMDb call:', proxyErr);
   }
 
-  // 3. Query TMDb API directly from browser (Ultra-fast from TMDb global CDN with 3.5s timeout)
+  // 3. Query TMDb API directly from browser CDN (Handles static deployments / shared URLs with 4.5s timeout)
   try {
     const directResults = await searchTmdbDirect(query);
     if (directResults.length > 0) {
-      // Merge results, prioritizing exact title matches
       const seen = new Set<number>();
       const merged: WatchmodeSearchResult[] = [];
       for (const item of [...localMatches, ...directResults]) {
@@ -424,7 +428,6 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
           merged.push(item);
         }
       }
-      // Store in memory cache
       if (searchCache.size > 200) {
         const firstKey = searchCache.keys().next().value;
         if (firstKey) searchCache.delete(firstKey);
@@ -436,7 +439,7 @@ export const searchWatchmode = async (query: string): Promise<WatchmodeSearchRes
     console.debug('Direct TMDb search exception:', err);
   }
 
-  // 4. Fallback to local catalog matches
+  // 4. Reliable fallback to local catalog matches
   searchCache.set(term, localMatches);
   return localMatches;
 };

@@ -528,7 +528,12 @@ const App: React.FC = () => {
     // Instant local matches for 0ms visual feedback while network loads
     const lower = term.toLowerCase();
     const instantLocal: WatchmodeSearchResult[] = movies
-      .filter(m => m.title.toLowerCase().includes(lower) || (m.genre && m.genre.toLowerCase().includes(lower)))
+      .filter(m => {
+        const title = (m.title || '').toLowerCase();
+        const genre = (m.genre || '').toLowerCase();
+        const desc = (m.description || '').toLowerCase();
+        return title.includes(lower) || genre.includes(lower) || (desc.length > 0 && desc.includes(lower));
+      })
       .slice(0, 36)
       .map(m => ({
         id: typeof m.watchmodeId === 'number' ? m.watchmodeId : parseInt(m.id.replace(/\D/g, '') || '1', 10),
