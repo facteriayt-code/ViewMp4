@@ -97,11 +97,20 @@ export const SearchBoxResults: React.FC<SearchBoxResultsProps> = ({
   const filteredCatalog = useMemo(() => {
     if (isSearchEmpty) return [];
     const q = searchTerm.toLowerCase().trim();
+    const cleanQ = q.replace(/[^a-z0-9]/g, '');
     return catalogMovies.filter(m => {
+      const title = (m.title || '').toLowerCase();
+      const cleanTitle = title.replace(/[^a-z0-9]/g, '');
+      const genre = (m.genre || '').toLowerCase();
+      const desc = (m.description || '').toLowerCase();
+      const uploader = (m.uploaderName || '').toLowerCase();
+
       const matchesQuery = 
-        m.title.toLowerCase().includes(q) || 
-        m.genre.toLowerCase().includes(q) || 
-        (m.uploaderName && m.uploaderName.toLowerCase().includes(q));
+        title.includes(q) || 
+        (cleanQ.length > 2 && cleanTitle.includes(cleanQ)) ||
+        genre.includes(q) || 
+        (desc.length > 0 && desc.includes(q)) ||
+        uploader.includes(q);
       
       if (!matchesQuery) return false;
       if (!matchesMediaType(m, mediaType)) return false;

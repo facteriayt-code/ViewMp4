@@ -56,7 +56,7 @@ export interface WatchmodeStatus {
 export type TmdbStatus = WatchmodeStatus;
 
 // TMDb Official Configuration
-const TMDB_CLIENT_KEY = (import.meta as any).env?.VITE_TMDB_API_KEY || "f4a9807fa5f35bc12030eaa91320e625";
+const TMDB_CLIENT_KEY = (import.meta as any).env?.VITE_TMDB_API_KEY || "4851d8a03fc01a4f1f27857cd0a20793";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w780";
 const TMDB_IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";

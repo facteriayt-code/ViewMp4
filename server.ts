@@ -598,7 +598,7 @@ Recommend exactly ONE great movie they would love. Provide response in format:
   });
 
   // --- The Movie Database (TMDb) & CodeSpecters Streaming API Integration ---
-  const TMDB_API_KEY = process.env.TMDB_API_KEY || "f4a9807fa5f35bc12030eaa91320e625";
+  const TMDB_API_KEY = process.env.TMDB_API_KEY || "4851d8a03fc01a4f1f27857cd0a20793";
   const CODESPECTERS_API_KEY = process.env.CODESPECTERS_API_KEY || process.env.STREAMING_API_KEY || "nx_f3ccddc8595f92a260f141adc7a7ec50";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
   const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w780";

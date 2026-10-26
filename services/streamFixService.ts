@@ -54,7 +54,7 @@ export interface StreamFixResult {
   weWillFixSoon?: boolean;
 }
 
-const TMDB_API_KEY = "f4a9807fa5f35bc12030eaa91320e625";
+const TMDB_API_KEY = "4851d8a03fc01a4f1f27857cd0a20793";
 
 // In-memory cache fallback for SSR and environments without window/localStorage
 const memoryOverrides: Record<string, MovieOverride> = {};
