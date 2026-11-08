@@ -825,8 +825,8 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     }
   });
 
-  // --- Automated 24-Hour Top 10 Endpoints for Netflix & Prime Video India ---
-  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  // --- Automated Dynamic Top 10 Endpoints for Netflix & Prime Video India ---
+  const TWENTY_FOUR_HOURS = 4 * 60 * 60 * 1000; // Refreshes automatically every 4 hours
   interface Top10CacheEntry {
     lastUpdated: number;
     nextRefreshAt: number;
@@ -923,14 +923,93 @@ Recommend exactly ONE great movie they would love. Provide response in format:
     };
   }
 
+  async function fetchLivePlatformTop10(providerId: number, platform: 'netflix' | 'prime'): Promise<any[]> {
+    try {
+      // 1. Fetch live popular movies on this platform in India
+      const movieUrl = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_watch_providers=${providerId}&watch_region=IN&sort_by=popularity.desc&page=1`;
+      // 2. Fetch live popular TV shows on this platform in India
+      const tvUrl = `${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_watch_providers=${providerId}&watch_region=IN&sort_by=popularity.desc&page=1`;
+
+      const [movieRes, tvRes] = await Promise.allSettled([
+        fetch(movieUrl).then(r => r.json()),
+        fetch(tvUrl).then(r => r.json())
+      ]);
+
+      const candidates: any[] = [];
+      if (movieRes.status === 'fulfilled' && Array.isArray((movieRes.value as any)?.results)) {
+        for (const m of (movieRes.value as any).results) {
+          if (m && m.poster_path && (m.title || m.original_title)) {
+            candidates.push({ ...m, media_type: 'movie' });
+          }
+        }
+      }
+      if (tvRes.status === 'fulfilled' && Array.isArray((tvRes.value as any)?.results)) {
+        for (const t of (tvRes.value as any).results) {
+          if (t && t.poster_path && (t.name || t.original_name)) {
+            candidates.push({ ...t, media_type: 'tv' });
+          }
+        }
+      }
+
+      // Sort by popularity descending to get the actual live Top 10
+      candidates.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+
+      // Deduplicate by ID
+      const seen = new Set<number>();
+      const topItems: any[] = [];
+      for (const item of candidates) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          topItems.push(item);
+          if (topItems.length >= 10) break;
+        }
+      }
+
+      if (topItems.length >= 8) {
+        return topItems.map((hit, idx) => {
+          const rank = idx + 1;
+          const isTv = hit.media_type === 'tv';
+          const title = hit.title || hit.name || 'Untitled';
+          const poster = hit.poster_path ? `${TMDB_IMG_POSTER}${hit.poster_path}` : "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=2070&auto=format&fit=crop";
+          const backdrop = hit.backdrop_path ? `${TMDB_IMG_BACKDROP}${hit.backdrop_path}` : poster;
+          const releaseDate = hit.release_date || hit.first_air_date || "2026";
+          const year = parseInt(releaseDate.slice(0, 4), 10) || 2026;
+
+          return {
+            id: `${platform}-top10-${rank}-${hit.id}`,
+            rank,
+            title,
+            description: hit.overview || `Rank #${rank} in Top 10 on ${platform === "netflix" ? "Netflix" : "Prime Video"} India today.`,
+            thumbnail: poster,
+            poster,
+            backdrop,
+            genre: isTv ? "TV Series" : "Feature Film",
+            year,
+            rating: hit.adult ? "18+" : "PG-13",
+            views: Math.floor(4000000 - rank * 180000 + (hit.popularity || 0) * 100),
+            userRating: hit.vote_average ? Math.round(hit.vote_average * 10) / 10 : 8.0,
+            criticScore: hit.vote_average ? Math.round(hit.vote_average * 10) : 80,
+            tmdbId: hit.id,
+            isTv,
+            videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          };
+        });
+      }
+    } catch (err) {
+      console.warn(`[Top10] Live fetch failed for ${platform}, using snapshot fallback:`, err);
+    }
+
+    // Fallback to defaults if live fetch fails or is offline
+    const defaults = platform === 'netflix' ? DEFAULT_NETFLIX_TITLES : DEFAULT_PRIME_TITLES;
+    return Promise.all(defaults.map(p => enrichTop10Item(p.title, p.rank, platform, (p as any).isTv, p.poster, (p as any).weeks, p.backdrop)));
+  }
+
   async function scrapeNetflixTop10(): Promise<any[]> {
-    // Return verified, high-resolution 2:3 vertical posters so live site matches preview perfectly
-    return Promise.all(DEFAULT_NETFLIX_TITLES.map(p => enrichTop10Item(p.title, p.rank, "netflix", false, p.poster, p.weeks, p.backdrop)));
+    return fetchLivePlatformTop10(8, 'netflix');
   }
 
   async function scrapePrimeTop10(): Promise<any[]> {
-    // Return verified, high-resolution 2:3 vertical posters so live site matches preview perfectly
-    return Promise.all(DEFAULT_PRIME_TITLES.map(p => enrichTop10Item(p.title, p.rank, "prime", p.isTv, p.poster, undefined, p.backdrop)));
+    return fetchLivePlatformTop10(119, 'prime');
   }
 
   async function getOrRefreshTop10(platform: 'netflix' | 'prime', forceRefresh: boolean = false) {

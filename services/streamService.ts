@@ -755,17 +755,16 @@ export function getMovieStreamServers(movie: Movie, season: number = 1, episode:
     isTv: isSeries
   };
 
-  // Filmu standard movie / tv URL
+  // Filmu / Vidly standard movie / tv URL (Direct vidly.pro prevents 301 cross-origin redirect that breaks iframe fullscreen)
   const standardFilmuUrl = isSeries 
-    ? `https://embed.filmu.in/tv/${tmdbId}/${season}/${episode}`
-    : `https://embed.filmu.in/movie/${tmdbId}`;
+    ? `https://vidly.pro/tv/${tmdbId}/${season}/${episode}`
+    : `https://vidly.pro/movie/${tmdbId}`;
 
-  // Filmu Anime URL using AniList ID: https://embed.filmu.in/anime/{anist_ids}/{season}/{episode}
-  // Season and episode are optional, or can be passed directly for specific episodes
+  // Filmu Anime URL using AniList ID: https://vidly.pro/anime/{anist_ids}/{season}/{episode}
   const filmuAnimeUrl = anilistId 
     ? (season && episode 
-        ? `https://embed.filmu.in/anime/${anilistId}/${season}/${episode}`
-        : `https://embed.filmu.in/anime/${anilistId}`)
+        ? `https://vidly.pro/anime/${anilistId}/${season}/${episode}`
+        : `https://vidly.pro/anime/${anilistId}`)
     : standardFilmuUrl;
 
   const filmuUrl = anilistId ? filmuAnimeUrl : standardFilmuUrl;

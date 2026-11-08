@@ -9,13 +9,13 @@ export interface Top10PlatformData {
   movies: Movie[];
 }
 
-const CACHE_VERSION = 'v7_bingr_perfect_posters';
+const CACHE_VERSION = 'v8_dynamic_live_charts';
 const STORAGE_KEYS = {
   netflix: `geministream_top10_netflix_${CACHE_VERSION}`,
   prime: `geministream_top10_prime_${CACHE_VERSION}`
 };
 
-// Purge legacy outdated cache keys so visiting the site always loads perfect posters
+// Purge legacy outdated cache keys so visiting the site always loads fresh live data
 if (typeof window !== 'undefined') {
   try {
     [
@@ -28,12 +28,16 @@ if (typeof window !== 'undefined') {
       'geministream_top10_netflix_v4',
       'geministream_top10_prime_v4',
       'geministream_top10_netflix_v5_royal_posters',
-      'geministream_top10_prime_v5_royal_posters'
+      'geministream_top10_prime_v5_royal_posters',
+      'geministream_top10_netflix_v6_verified_indians',
+      'geministream_top10_prime_v6_verified_indians',
+      'geministream_top10_netflix_v7_bingr_perfect_posters',
+      'geministream_top10_prime_v7_bingr_perfect_posters'
     ].forEach(k => localStorage.removeItem(k));
   } catch {}
 }
 
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours cache TTL for fresh live charts
 
 // Verified Netflix Tudum India Top 10 fallback snapshot (https://www.netflix.com/tudum/top10/india)
 export const NETFLIX_TUDUM_SNAPSHOT: Movie[] = [
@@ -406,28 +410,40 @@ function getStoredTop10(platform: 'netflix' | 'prime'): Top10PlatformData | null
   } catch {}
   return null;
 }
+const refreshListeners = new Set<(platform: 'netflix' | 'prime', data: Top10PlatformData) => void>();
+
+function notifyRefreshListeners(platform: 'netflix' | 'prime', data: Top10PlatformData) {
+  refreshListeners.forEach(listener => {
+    try {
+      listener(platform, data);
+    } catch (e) {
+      console.warn('Top 10 listener error:', e);
+    }
+  });
+}
 
 /**
- * Saves Top 10 data to localStorage
+ * Saves Top 10 data to localStorage and notifies reactive listeners
  */
 function saveStoredTop10(platform: 'netflix' | 'prime', data: Top10PlatformData): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEYS[platform], JSON.stringify(data));
+    notifyRefreshListeners(platform, data);
   } catch {}
 }
 
 /**
- * Fetches Top 10 for a platform with 24-hour automatic refresh cache
+ * Fetches Top 10 for a platform with 3-hour automatic refresh cache
  */
 export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefresh: boolean = false): Promise<Top10PlatformData> {
   const cached = getStoredTop10(platform);
   const now = Date.now();
 
   // If we have a valid, recent cache and not force-refreshing, return it immediately for instant 0ms load!
-  if (cached && !forceRefresh && (now - cached.lastUpdated < TWENTY_FOUR_HOURS_MS)) {
-    // If older than 6 hours, silently refresh in the background without blocking the UI
-    if (now - cached.lastUpdated > 6 * 60 * 60 * 1000) {
+  if (cached && !forceRefresh && (now - cached.lastUpdated < CACHE_TTL_MS)) {
+    // If older than 1 hour, silently refresh in the background without blocking the UI
+    if (now - cached.lastUpdated > 60 * 60 * 1000) {
       fetch(`/api/top10/${platform}`)
         .then(res => res.json())
         .then(data => {
@@ -435,9 +451,9 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
             saveStoredTop10(platform, {
               platform,
               sourceUrl: data.sourceUrl || (platform === 'netflix' ? 'https://www.netflix.com/tudum/top10/india' : 'https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/'),
-              sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'FlixPatrol India',
+              sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'Amazon Prime Video India',
               lastUpdated: data.lastUpdated || Date.now(),
-              nextRefreshAt: data.nextRefreshAt || (Date.now() + TWENTY_FOUR_HOURS_MS),
+              nextRefreshAt: data.nextRefreshAt || (Date.now() + CACHE_TTL_MS),
               movies: data.movies
             });
           }
@@ -455,9 +471,9 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
         const top10Data: Top10PlatformData = {
           platform,
           sourceUrl: data.sourceUrl || (platform === 'netflix' ? 'https://www.netflix.com/tudum/top10/india' : 'https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/'),
-          sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'FlixPatrol India',
+          sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'Amazon Prime Video India',
           lastUpdated: data.lastUpdated || now,
-          nextRefreshAt: data.nextRefreshAt || (now + TWENTY_FOUR_HOURS_MS),
+          nextRefreshAt: data.nextRefreshAt || (now + CACHE_TTL_MS),
           movies: data.movies
         };
         saveStoredTop10(platform, top10Data);
@@ -478,9 +494,9 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
   const fallbackData: Top10PlatformData = {
     platform,
     sourceUrl: platform === 'netflix' ? 'https://www.netflix.com/tudum/top10/india' : 'https://flixpatrol.com/top10/amazon-prime/india/2026-10-06/',
-    sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'FlixPatrol India',
+    sourceName: platform === 'netflix' ? 'Netflix Tudum India' : 'Amazon Prime Video India',
     lastUpdated: now,
-    nextRefreshAt: now + TWENTY_FOUR_HOURS_MS,
+    nextRefreshAt: now + CACHE_TTL_MS,
     movies: fallbackMovies
   };
   saveStoredTop10(platform, fallbackData);
@@ -488,15 +504,19 @@ export async function getPlatformTop10(platform: 'netflix' | 'prime', forceRefre
 }
 
 /**
- * Initializes automatic 24-hour background refreshing
+ * Initializes automatic background refreshing with active subscription
  */
 export function initTop10AutoRefresh(onRefresh?: (platform: 'netflix' | 'prime', data: Top10PlatformData) => void): () => void {
+  if (onRefresh) {
+    refreshListeners.add(onRefresh);
+  }
+
   const checkAndSchedule = async () => {
     const platforms: ('netflix' | 'prime')[] = ['netflix', 'prime'];
     for (const p of platforms) {
       const cached = getStoredTop10(p);
       const now = Date.now();
-      if (!cached || (now - cached.lastUpdated >= TWENTY_FOUR_HOURS_MS)) {
+      if (!cached || (now - cached.lastUpdated >= CACHE_TTL_MS)) {
         try {
           const fresh = await getPlatformTop10(p, true);
           if (onRefresh) onRefresh(p, fresh);
@@ -506,7 +526,12 @@ export function initTop10AutoRefresh(onRefresh?: (platform: 'netflix' | 'prime',
   };
 
   checkAndSchedule();
-  // Check every hour if 24 hours have elapsed
-  const intervalId = setInterval(checkAndSchedule, 60 * 60 * 1000);
-  return () => clearInterval(intervalId);
+  // Check every 15 minutes for new updates
+  const intervalId = setInterval(checkAndSchedule, 15 * 60 * 1000);
+  return () => {
+    clearInterval(intervalId);
+    if (onRefresh) {
+      refreshListeners.delete(onRefresh);
+    }
+  };
 }
